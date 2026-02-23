@@ -48,9 +48,10 @@ func NewSalePageHandler(salePageService *service.SalePageService, logger *slog.L
 }
 
 type salePageTemplateData struct {
-	Page    *domain.SalePage
-	Content *domain.SimpleContent
-	APIKey  string
+	Page      *domain.SalePage
+	Content   *domain.SimpleContent
+	APIKey    string
+	FBPixelID string
 }
 
 func (h *SalePageHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +164,7 @@ func (h *SalePageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.renderTemplate(w, data.Page, data.APIKey)
+	h.renderTemplate(w, data.Page, data.APIKey, data.FBPixelID)
 }
 
 func (h *SalePageHandler) Preview(w http.ResponseWriter, r *http.Request) {
@@ -184,10 +185,10 @@ func (h *SalePageHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.renderTemplate(w, page, "")
+	h.renderTemplate(w, page, "", "")
 }
 
-func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.SalePage, apiKey string) {
+func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.SalePage, apiKey string, fbPixelID string) {
 	var content domain.SimpleContent
 	if err := json.Unmarshal(page.Content, &content); err != nil {
 		http.Error(w, "invalid page content", http.StatusInternalServerError)
@@ -201,9 +202,10 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.Sal
 	}
 
 	td := salePageTemplateData{
-		Page:    page,
-		Content: &content,
-		APIKey:  apiKey,
+		Page:      page,
+		Content:   &content,
+		APIKey:    apiKey,
+		FBPixelID: fbPixelID,
 	}
 
 	var buf bytes.Buffer

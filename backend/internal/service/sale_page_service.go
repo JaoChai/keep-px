@@ -35,12 +35,14 @@ var reservedSlugs = map[string]bool{
 type SalePageService struct {
 	salePageRepo repository.SalePageRepository
 	customerRepo repository.CustomerRepository
+	pixelRepo    repository.PixelRepository
 }
 
-func NewSalePageService(salePageRepo repository.SalePageRepository, customerRepo repository.CustomerRepository) *SalePageService {
+func NewSalePageService(salePageRepo repository.SalePageRepository, customerRepo repository.CustomerRepository, pixelRepo repository.PixelRepository) *SalePageService {
 	return &SalePageService{
 		salePageRepo: salePageRepo,
 		customerRepo: customerRepo,
+		pixelRepo:    pixelRepo,
 	}
 }
 
@@ -63,8 +65,9 @@ type UpdateSalePageInput struct {
 }
 
 type SalePagePublishData struct {
-	Page   *domain.SalePage
-	APIKey string
+	Page     *domain.SalePage
+	APIKey   string
+	FBPixelID string
 }
 
 func validateSlug(slug string) error {
@@ -246,8 +249,17 @@ func (s *SalePageService) GetPublishData(ctx context.Context, slug string) (*Sal
 		return nil, fmt.Errorf("customer not found")
 	}
 
+	var fbPixelID string
+	if page.PixelID != nil {
+		pixel, err := s.pixelRepo.GetByID(ctx, *page.PixelID)
+		if err == nil && pixel != nil {
+			fbPixelID = pixel.FBPixelID
+		}
+	}
+
 	return &SalePagePublishData{
-		Page:   page,
-		APIKey: customer.APIKey,
+		Page:      page,
+		APIKey:    customer.APIKey,
+		FBPixelID: fbPixelID,
 	}, nil
 }

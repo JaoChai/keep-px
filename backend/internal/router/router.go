@@ -45,7 +45,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	ruleService := service.NewRuleService(eventRuleRepo, pixelRepo)
 	replayService := service.NewReplayService(replaySessionRepo, eventRepo, pixelRepo, capiClient, logger)
 	analyticsService := service.NewAnalyticsService(pool)
-	salePageService := service.NewSalePageService(salePageRepo, customerRepo)
+	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo)
 
 	// Handlers
 	healthHandler := handler.NewHealthHandler()
