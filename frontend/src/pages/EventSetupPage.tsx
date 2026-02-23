@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, MousePointerClick, Globe } from 'lucide-react'
+import { Eye, MousePointerClick, Globe, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { usePixels } from '@/hooks/use-pixels'
 import { useCreateRule } from '@/hooks/use-rules'
+import api from '@/lib/api'
 
 const urlSchema = z.object({
   url: z.string().url('Please enter a valid URL'),
@@ -27,6 +28,9 @@ interface SelectedElement {
 export function EventSetupPage() {
   const { data: pixels } = usePixels()
   const [iframeUrl, setIframeUrl] = useState('')
+  const [originalUrl, setOriginalUrl] = useState('')
+  const [isLoadingPage, setIsLoadingPage] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null)
   const [showRuleDialog, setShowRuleDialog] = useState(false)
   const [selectedEventName, setSelectedEventName] = useState('ViewContent')
@@ -54,8 +58,44 @@ export function EventSetupPage() {
     return () => window.removeEventListener('message', handleMessage)
   }, [])
 
-  const onLoadPage = (data: UrlForm) => {
-    setIframeUrl(`/api/v1/proxy?url=${encodeURIComponent(data.url)}`)
+  // Clean up blob URL on unmount or when URL changes
+  const revokePreviousUrl = useCallback(() => {
+    if (iframeUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(iframeUrl)
+    }
+  }, [iframeUrl])
+
+  useEffect(() => {
+    return revokePreviousUrl
+  }, [revokePreviousUrl])
+
+  const onLoadPage = async (data: UrlForm) => {
+    setIsLoadingPage(true)
+    setLoadError('')
+    try {
+      const response = await api.get('/proxy', {
+        params: { url: data.url },
+        responseType: 'text',
+        transformResponse: [(data: string) => data],
+      })
+
+      let html: string = response.data
+
+      // Inject <base> tag so relative URLs in the fetched page resolve correctly
+      const targetUrl = data.url.startsWith('http') ? data.url : `https://${data.url}`
+      const baseOrigin = new URL(targetUrl).origin
+      html = html.replace(/<base[^>]*>/gi, '')
+      html = html.replace('<head>', `<head><base href="${baseOrigin}/">`)
+
+      revokePreviousUrl()
+      const blob = new Blob([html], { type: 'text/html' })
+      setIframeUrl(URL.createObjectURL(blob))
+      setOriginalUrl(targetUrl)
+    } catch {
+      setLoadError('ไม่สามารถโหลดหน้าเว็บได้ กรุณาตรวจสอบ URL แล้วลองใหม่')
+    } finally {
+      setIsLoadingPage(false)
+    }
   }
 
   const activateSetup = () => {
@@ -85,9 +125,9 @@ export function EventSetupPage() {
               placeholder="https://your-salepage.com"
               {...register('url')}
             />
-            <Button type="submit">
-              <Globe className="h-4 w-4" />
-              Load
+            <Button type="submit" disabled={isLoadingPage}>
+              {isLoadingPage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+              {isLoadingPage ? 'Loading...' : 'Load'}
             </Button>
           </div>
         </form>
@@ -112,9 +152,24 @@ export function EventSetupPage() {
         ) : (
           <div className="flex items-center justify-center h-full text-neutral-400">
             <div className="text-center">
-              <Eye className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">Enter a URL to preview your salepage</p>
-              <p className="text-sm mt-1">Then click elements to create event rules</p>
+              {isLoadingPage ? (
+                <>
+                  <Loader2 className="h-12 w-12 mx-auto mb-4 opacity-50 animate-spin" />
+                  <p className="text-lg font-medium">กำลังโหลดหน้าเว็บ...</p>
+                </>
+              ) : loadError ? (
+                <>
+                  <Eye className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium text-red-500">{loadError}</p>
+                  <p className="text-sm mt-1">ลองตรวจสอบ URL แล้วกด Load อีกครั้ง</p>
+                </>
+              ) : (
+                <>
+                  <Eye className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">Enter a URL to preview your salepage</p>
+                  <p className="text-sm mt-1">Then click elements to create event rules</p>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -178,7 +233,7 @@ export function EventSetupPage() {
                     const pixelId = getValues('pixel_id')
                     createRule({
                       pixelId,
-                      page_url: decodeURIComponent(iframeUrl.replace('/api/v1/proxy?url=', '')),
+                      page_url: originalUrl,
                       event_name: selectedEventName,
                       trigger_type: selectedTriggerType,
                       css_selector: selectedElement.cssSelector,
