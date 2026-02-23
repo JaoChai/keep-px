@@ -1,11 +1,13 @@
 interface PixlinksConfig {
   apiKey: string
+  pixelId: string
   endpoint?: string
   debug?: boolean
 }
 
 interface EventPayload {
   event_name: string
+  pixel_id: string
   event_data?: Record<string, unknown>
   user_data?: Record<string, unknown>
   source_url?: string
@@ -33,8 +35,13 @@ export class PixlinksTracker {
       throw new Error('[Pixlinks] apiKey is required')
     }
 
+    if (!config.pixelId) {
+      throw new Error('[Pixlinks] pixelId is required')
+    }
+
     this.config = {
       apiKey: config.apiKey,
+      pixelId: config.pixelId,
       endpoint: config.endpoint || DEFAULT_ENDPOINT,
       debug: config.debug || false,
     }
@@ -52,6 +59,7 @@ export class PixlinksTracker {
 
     const payload: EventPayload = {
       event_name: eventName,
+      pixel_id: this.config.pixelId,
       event_data: eventData || {},
       user_data: userData,
       source_url: window.location.href,

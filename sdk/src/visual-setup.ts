@@ -1,5 +1,6 @@
 interface VisualSetupConfig {
   apiKey: string
+  pixelId?: string
   endpoint?: string
 }
 
@@ -22,6 +23,7 @@ export class VisualSetup {
   constructor(config: VisualSetupConfig) {
     this.config = {
       apiKey: config.apiKey,
+      pixelId: config.pixelId || '',
       endpoint: config.endpoint || 'https://api.pixlinks.io',
     }
   }

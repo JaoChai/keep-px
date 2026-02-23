@@ -60,6 +60,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(middleware.RateLimit(cfg.RateLimitRPS))
 		// Auth routes (public)
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", authHandler.Register)

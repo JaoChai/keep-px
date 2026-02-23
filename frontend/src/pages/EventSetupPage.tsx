@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { usePixels } from '@/hooks/use-pixels'
+import { useCreateRule } from '@/hooks/use-rules'
 
 const urlSchema = z.object({
   url: z.string().url('Please enter a valid URL'),
@@ -28,14 +29,19 @@ export function EventSetupPage() {
   const [iframeUrl, setIframeUrl] = useState('')
   const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null)
   const [showRuleDialog, setShowRuleDialog] = useState(false)
+  const [selectedEventName, setSelectedEventName] = useState('ViewContent')
+  const [selectedTriggerType, setSelectedTriggerType] = useState('click')
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const {
     register,
     handleSubmit,
+    getValues,
   } = useForm<UrlForm>({
     resolver: zodResolver(urlSchema),
   })
+
+  const { mutate: createRule, isPending } = useCreateRule()
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
@@ -135,7 +141,11 @@ export function EventSetupPage() {
 
               <div className="space-y-2">
                 <Label>Event Name</Label>
-                <select className="flex h-9 w-full rounded-md border border-neutral-200 px-3 text-sm">
+                <select
+                  className="flex h-9 w-full rounded-md border border-neutral-200 px-3 text-sm"
+                  value={selectedEventName}
+                  onChange={(e) => setSelectedEventName(e.target.value)}
+                >
                   <option value="ViewContent">ViewContent</option>
                   <option value="AddToCart">AddToCart</option>
                   <option value="InitiateCheckout">InitiateCheckout</option>
@@ -149,7 +159,11 @@ export function EventSetupPage() {
 
               <div className="space-y-2">
                 <Label>Trigger</Label>
-                <select className="flex h-9 w-full rounded-md border border-neutral-200 px-3 text-sm">
+                <select
+                  className="flex h-9 w-full rounded-md border border-neutral-200 px-3 text-sm"
+                  value={selectedTriggerType}
+                  onChange={(e) => setSelectedTriggerType(e.target.value)}
+                >
                   <option value="click">Click</option>
                   <option value="pageview">Page View</option>
                   <option value="scroll">Scroll into View</option>
@@ -158,7 +172,28 @@ export function EventSetupPage() {
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowRuleDialog(false)}>Cancel</Button>
-                <Button onClick={() => setShowRuleDialog(false)}>Save Rule</Button>
+                <Button
+                  disabled={isPending}
+                  onClick={() => {
+                    const pixelId = getValues('pixel_id')
+                    createRule({
+                      pixelId,
+                      page_url: decodeURIComponent(iframeUrl.replace('/api/v1/proxy?url=', '')),
+                      event_name: selectedEventName,
+                      trigger_type: selectedTriggerType,
+                      css_selector: selectedElement.cssSelector,
+                      element_text: selectedElement.text,
+                    }, {
+                      onSuccess: () => {
+                        setShowRuleDialog(false)
+                        setSelectedElement(null)
+                      },
+                      onError: (err) => console.error(err),
+                    })
+                  }}
+                >
+                  {isPending ? 'Saving...' : 'Save Rule'}
+                </Button>
               </DialogFooter>
             </div>
           )}

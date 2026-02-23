@@ -11,12 +11,14 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
     if (script) {
       const apiKey = script.getAttribute('data-pixlinks-key')
+      const pixelId = script.getAttribute('data-pixlinks-pixel-id')
       const endpoint = script.getAttribute('data-endpoint')
       const debug = script.getAttribute('data-debug') === 'true'
 
-      if (apiKey) {
+      if (apiKey && pixelId) {
         const tracker = new PixlinksTracker({
           apiKey,
+          pixelId,
           endpoint: endpoint || undefined,
           debug,
         })

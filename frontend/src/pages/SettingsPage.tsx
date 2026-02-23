@@ -66,7 +66,7 @@ export function SettingsPage() {
               </Button>
             </div>
             <p className="text-xs text-neutral-400 mt-2">
-              Add this to your website: {`<script src="https://cdn.pixlinks.io/pixlinks.min.js" data-pixlinks-key="${customer?.api_key || 'YOUR_API_KEY'}"></script>`}
+              Add this to your website: {`<script src="https://cdn.pixlinks.io/pixlinks.min.js" data-pixlinks-key="${customer?.api_key || 'YOUR_API_KEY'}" data-pixlinks-pixel-id="YOUR_PIXEL_ID"></script>`}
             </p>
           </CardContent>
         </Card>
