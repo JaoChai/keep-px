@@ -58,6 +58,17 @@ type LoginInput struct {
 	Password string `json:"password" validate:"required"`
 }
 
+func (s *AuthService) GetCustomerByID(ctx context.Context, id string) (*domain.Customer, error) {
+	customer, err := s.customerRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get customer: %w", err)
+	}
+	if customer == nil {
+		return nil, ErrInvalidCredentials
+	}
+	return customer, nil
+}
+
 func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*AuthTokens, error) {
 	existing, err := s.customerRepo.GetByEmail(ctx, input.Email)
 	if err != nil {

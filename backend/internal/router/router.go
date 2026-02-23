@@ -87,6 +87,9 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.JWTAuth(cfg.JWTSecret))
 
+			// Auth - get current user
+			r.Get("/auth/me", authHandler.Me)
+
 			// Pixel routes - Phase 3
 			r.Route("/pixels", func(r chi.Router) {
 				r.Get("/", pixelHandler.List)

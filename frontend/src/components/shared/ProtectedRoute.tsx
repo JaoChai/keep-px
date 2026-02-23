@@ -1,16 +1,60 @@
+import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router'
 import { useAuthStore } from '@/stores/auth-store'
+import api from '@/lib/api'
 import type { ReactNode } from 'react'
+import type { APIResponse } from '@/types'
+import type { Customer } from '@/types'
 
 interface ProtectedRouteProps {
   children: ReactNode
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const hasToken = localStorage.getItem('access_token')
+  const hasHydrated = useAuthStore((s) => s._hasHydrated)
+  const setCustomer = useAuthStore((s) => s.setCustomer)
+  const logout = useAuthStore((s) => s.logout)
+  const [isVerifying, setIsVerifying] = useState(true)
+  const [isValid, setIsValid] = useState(false)
 
-  if (!isAuthenticated && !hasToken) {
+  useEffect(() => {
+    if (!hasHydrated) return
+
+    const token = localStorage.getItem('access_token')
+    if (!token) {
+      setIsVerifying(false)
+      setIsValid(false)
+      return
+    }
+
+    // Always verify token with server and fetch fresh customer data
+    api
+      .get<APIResponse<Customer>>('/auth/me')
+      .then(({ data }) => {
+        if (data.data) {
+          setCustomer(data.data)
+          setIsValid(true)
+        } else {
+          logout()
+          setIsValid(false)
+        }
+      })
+      .catch(() => {
+        logout()
+        setIsValid(false)
+      })
+      .finally(() => setIsVerifying(false))
+  }, [hasHydrated]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!hasHydrated || isVerifying) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={{ color: '#666', fontSize: '14px' }}>Loading...</div>
+      </div>
+    )
+  }
+
+  if (!isValid) {
     return <Navigate to="/login" replace />
   }
 

@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jaochai/pixlinks/backend/internal/middleware"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
@@ -73,6 +74,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSON(w, http.StatusOK, APIResponse{Data: tokens})
+}
+
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
+	customer, err := h.authService.GetCustomerByID(r.Context(), customerID)
+	if err != nil {
+		ErrorJSON(w, http.StatusUnauthorized, "invalid token")
+		return
+	}
+	JSON(w, http.StatusOK, APIResponse{Data: customer})
 }
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
