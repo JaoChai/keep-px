@@ -112,6 +112,20 @@ func runMigrations(databaseURL string, logger *slog.Logger) error {
 			logger.Info("migrations: already up to date")
 			return nil
 		}
+		// Check if dirty — try to recover
+		version, dirty, verErr := m.Version()
+		if verErr == nil && dirty {
+			logger.Warn("dirty migration detected, forcing version", "version", version)
+			if forceErr := m.Force(int(version)); forceErr != nil {
+				return fmt.Errorf("force migration version: %w", forceErr)
+			}
+			// Retry Up after force
+			if retryErr := m.Up(); retryErr != nil && !errors.Is(retryErr, migrate.ErrNoChange) {
+				return fmt.Errorf("run migrations after force: %w", retryErr)
+			}
+			logger.Info("migrations: recovered from dirty state")
+			return nil
+		}
 		return fmt.Errorf("run migrations: %w", err)
 	}
 

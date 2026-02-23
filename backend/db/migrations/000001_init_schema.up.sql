@@ -1,5 +1,5 @@
 -- customers (ผู้ใช้ระบบ Pixlinks)
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS customers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE customers (
 );
 
 -- pixels (Facebook Pixel ที่ลูกค้าเชื่อมต่อ)
-CREATE TABLE pixels (
+CREATE TABLE IF NOT EXISTS pixels (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
     fb_pixel_id VARCHAR(50) NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE pixels (
 );
 
 -- pixel_events (ทุก event ที่เก็บไว้)
-CREATE TABLE pixel_events (
+CREATE TABLE IF NOT EXISTS pixel_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pixel_id UUID REFERENCES pixels(id) ON DELETE CASCADE,
     event_name VARCHAR(100) NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE pixel_events (
 );
 
 -- event_rules (กฎจากเครื่องมือกำหนด Event แบบ Visual)
-CREATE TABLE event_rules (
+CREATE TABLE IF NOT EXISTS event_rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     pixel_id UUID REFERENCES pixels(id) ON DELETE CASCADE,
     page_url TEXT NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE event_rules (
 );
 
 -- replay_sessions (ประวัติการ replay)
-CREATE TABLE replay_sessions (
+CREATE TABLE IF NOT EXISTS replay_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID REFERENCES customers(id),
     source_pixel_id UUID REFERENCES pixels(id),
@@ -75,7 +75,7 @@ CREATE TABLE replay_sessions (
 );
 
 -- refresh_tokens
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
     token_hash VARCHAR(255) NOT NULL,
@@ -84,9 +84,9 @@ CREATE TABLE refresh_tokens (
 );
 
 -- Indexes
-CREATE INDEX idx_pixel_events_pixel_time ON pixel_events(pixel_id, event_time DESC);
-CREATE INDEX idx_pixel_events_not_forwarded ON pixel_events(forwarded_to_capi) WHERE forwarded_to_capi = false;
-CREATE INDEX idx_event_rules_pixel_active ON event_rules(pixel_id) WHERE is_active = true;
-CREATE INDEX idx_customers_api_key ON customers(api_key);
-CREATE INDEX idx_pixels_customer ON pixels(customer_id);
-CREATE INDEX idx_replay_sessions_customer ON replay_sessions(customer_id);
+CREATE INDEX IF NOT EXISTS idx_pixel_events_pixel_time ON pixel_events(pixel_id, event_time DESC);
+CREATE INDEX IF NOT EXISTS idx_pixel_events_not_forwarded ON pixel_events(forwarded_to_capi) WHERE forwarded_to_capi = false;
+CREATE INDEX IF NOT EXISTS idx_event_rules_pixel_active ON event_rules(pixel_id) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_customers_api_key ON customers(api_key);
+CREATE INDEX IF NOT EXISTS idx_pixels_customer ON pixels(customer_id);
+CREATE INDEX IF NOT EXISTS idx_replay_sessions_customer ON replay_sessions(customer_id);

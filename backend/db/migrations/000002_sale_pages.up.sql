@@ -1,4 +1,4 @@
-CREATE TABLE sale_pages (
+CREATE TABLE IF NOT EXISTS sale_pages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     pixel_id UUID REFERENCES pixels(id) ON DELETE SET NULL,
@@ -11,5 +11,5 @@ CREATE TABLE sale_pages (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_sale_pages_customer ON sale_pages(customer_id);
-CREATE INDEX idx_sale_pages_slug ON sale_pages(slug);
+CREATE INDEX IF NOT EXISTS idx_sale_pages_customer ON sale_pages(customer_id);
+CREATE INDEX IF NOT EXISTS idx_sale_pages_slug ON sale_pages(slug);
