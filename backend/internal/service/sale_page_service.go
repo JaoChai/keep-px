@@ -50,6 +50,7 @@ type CreateSalePageInput struct {
 	PixelID      *string         `json:"pixel_id,omitempty"`
 	TemplateName string          `json:"template_name" validate:"required"`
 	Content      json.RawMessage `json:"content" validate:"required"`
+	IsPublished  bool            `json:"is_published"`
 }
 
 type UpdateSalePageInput struct {
@@ -107,6 +108,7 @@ func (s *SalePageService) Create(ctx context.Context, customerID string, input C
 		Slug:         input.Slug,
 		TemplateName: input.TemplateName,
 		Content:      input.Content,
+		IsPublished:  input.IsPublished,
 	}
 
 	if err := s.salePageRepo.Create(ctx, page); err != nil {
