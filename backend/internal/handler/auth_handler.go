@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -12,12 +13,14 @@ import (
 type AuthHandler struct {
 	authService *service.AuthService
 	validate    *validator.Validate
+	logger      *slog.Logger
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, logger *slog.Logger) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 		validate:    validator.New(),
+		logger:      logger,
 	}
 }
 
@@ -39,6 +42,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusConflict, "email already exists")
 			return
 		}
+		h.logger.Error("registration failed", "error", err)
 		ErrorJSON(w, http.StatusInternalServerError, "registration failed")
 		return
 	}

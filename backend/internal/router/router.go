@@ -47,7 +47,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 
 	// Handlers
 	healthHandler := handler.NewHealthHandler()
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, logger)
 	pixelHandler := handler.NewPixelHandler(pixelService)
 	eventHandler := handler.NewEventHandler(eventService)
 	ruleHandler := handler.NewRuleHandler(ruleService)

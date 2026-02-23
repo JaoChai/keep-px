@@ -4,7 +4,7 @@ CREATE TABLE customers (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255),
-    api_key VARCHAR(64) UNIQUE NOT NULL,
+    api_key VARCHAR(128) UNIQUE NOT NULL,
     plan VARCHAR(50) DEFAULT 'free',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
