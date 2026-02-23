@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
@@ -55,6 +59,12 @@ func main() {
 	}
 	logger.Info("connected to database")
 
+	// Run database migrations
+	if err := runMigrations(cfg.DatabaseURL, logger); err != nil {
+		logger.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
+
 	handler := router.New(cfg, logger, pool)
 
 	srv := &http.Server{
@@ -86,4 +96,25 @@ func main() {
 	}
 
 	logger.Info("server stopped")
+}
+
+func runMigrations(databaseURL string, logger *slog.Logger) error {
+	logger.Info("running database migrations...")
+
+	m, err := migrate.New("file://db/migrations", databaseURL)
+	if err != nil {
+		return fmt.Errorf("create migrate instance: %w", err)
+	}
+	defer m.Close()
+
+	if err := m.Up(); err != nil {
+		if errors.Is(err, migrate.ErrNoChange) {
+			logger.Info("migrations: already up to date")
+			return nil
+		}
+		return fmt.Errorf("run migrations: %w", err)
+	}
+
+	logger.Info("migrations: applied successfully")
+	return nil
 }
