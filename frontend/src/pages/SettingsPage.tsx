@@ -66,7 +66,7 @@ export function SettingsPage() {
               </Button>
             </div>
             <p className="text-xs text-neutral-400 mt-2">
-              Add this to your website: {`<script src="https://cdn.pixlinks.io/pixlinks.min.js" data-pixlinks-key="${customer?.api_key || 'YOUR_API_KEY'}" data-pixlinks-pixel-id="YOUR_PIXEL_ID"></script>`}
+              Go to <a href="/pixels" className="text-blue-500 hover:underline">Pixels</a> and click the <code className="bg-neutral-100 px-1 rounded">&lt;/&gt;</code> button to get a ready-to-use snippet for each pixel.
             </p>
           </CardContent>
         </Card>
