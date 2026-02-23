@@ -1,0 +1,169 @@
+import { useState, useRef, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Eye, MousePointerClick, Globe } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { usePixels } from '@/hooks/use-pixels'
+
+const urlSchema = z.object({
+  url: z.string().url('Please enter a valid URL'),
+  pixel_id: z.string().min(1, 'Select a pixel'),
+})
+
+type UrlForm = z.infer<typeof urlSchema>
+
+interface SelectedElement {
+  tagName: string
+  text: string
+  cssSelector: string
+}
+
+export function EventSetupPage() {
+  const { data: pixels } = usePixels()
+  const [iframeUrl, setIframeUrl] = useState('')
+  const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null)
+  const [showRuleDialog, setShowRuleDialog] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  const {
+    register,
+    handleSubmit,
+  } = useForm<UrlForm>({
+    resolver: zodResolver(urlSchema),
+  })
+
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'pixlinks:element-selected') {
+        setSelectedElement(e.data.data)
+        setShowRuleDialog(true)
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
+  const onLoadPage = (data: UrlForm) => {
+    setIframeUrl(`/api/v1/proxy?url=${encodeURIComponent(data.url)}`)
+  }
+
+  const activateSetup = () => {
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: 'pixlinks:activate-setup' },
+      '*'
+    )
+  }
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      {/* Toolbar */}
+      <div className="flex items-center gap-4 p-4 border-b border-neutral-200 bg-white">
+        <form onSubmit={handleSubmit(onLoadPage)} className="flex items-center gap-3 flex-1">
+          <select
+            className="h-9 rounded-md border border-neutral-200 px-3 text-sm"
+            {...register('pixel_id')}
+          >
+            <option value="">Select pixel...</option>
+            {pixels?.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+
+          <div className="flex-1 flex gap-2">
+            <Input
+              placeholder="https://your-salepage.com"
+              {...register('url')}
+            />
+            <Button type="submit">
+              <Globe className="h-4 w-4" />
+              Load
+            </Button>
+          </div>
+        </form>
+
+        {iframeUrl && (
+          <Button variant="outline" onClick={activateSetup}>
+            <MousePointerClick className="h-4 w-4" />
+            Select Element
+          </Button>
+        )}
+      </div>
+
+      {/* Preview Area */}
+      <div className="flex-1 bg-neutral-100">
+        {iframeUrl ? (
+          <iframe
+            ref={iframeRef}
+            src={iframeUrl}
+            className="w-full h-full border-0"
+            sandbox="allow-scripts allow-same-origin"
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-neutral-400">
+            <div className="text-center">
+              <Eye className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">Enter a URL to preview your salepage</p>
+              <p className="text-sm mt-1">Then click elements to create event rules</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Rule Creation Dialog */}
+      <Dialog open={showRuleDialog} onOpenChange={setShowRuleDialog}>
+        <DialogContent onClose={() => setShowRuleDialog(false)}>
+          <DialogHeader>
+            <DialogTitle>Create Event Rule</DialogTitle>
+          </DialogHeader>
+          {selectedElement && (
+            <div className="space-y-4 mt-4">
+              <div>
+                <Label className="text-xs text-neutral-500">Selected Element</Label>
+                <div className="mt-1 p-3 rounded-md bg-neutral-50 border border-neutral-200">
+                  <Badge variant="secondary" className="mb-2">{selectedElement.tagName}</Badge>
+                  {selectedElement.text && (
+                    <p className="text-sm text-neutral-700 mt-1">"{selectedElement.text}"</p>
+                  )}
+                  <p className="text-xs text-neutral-400 mt-1 font-mono break-all">{selectedElement.cssSelector}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Event Name</Label>
+                <select className="flex h-9 w-full rounded-md border border-neutral-200 px-3 text-sm">
+                  <option value="ViewContent">ViewContent</option>
+                  <option value="AddToCart">AddToCart</option>
+                  <option value="InitiateCheckout">InitiateCheckout</option>
+                  <option value="Purchase">Purchase</option>
+                  <option value="Lead">Lead</option>
+                  <option value="CompleteRegistration">CompleteRegistration</option>
+                  <option value="AddPaymentInfo">AddPaymentInfo</option>
+                  <option value="Search">Search</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Trigger</Label>
+                <select className="flex h-9 w-full rounded-md border border-neutral-200 px-3 text-sm">
+                  <option value="click">Click</option>
+                  <option value="pageview">Page View</option>
+                  <option value="scroll">Scroll into View</option>
+                </select>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowRuleDialog(false)}>Cancel</Button>
+                <Button onClick={() => setShowRuleDialog(false)}>Save Rule</Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

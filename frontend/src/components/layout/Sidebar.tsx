@@ -1,0 +1,64 @@
+import { NavLink } from 'react-router'
+import {
+  LayoutDashboard,
+  Radio,
+  MousePointerClick,
+  ScrollText,
+  RotateCcw,
+  Settings,
+  LogOut,
+} from 'lucide-react'
+import { useAuthStore } from '@/stores/auth-store'
+
+const navItems = [
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/pixels', icon: Radio, label: 'Pixels' },
+  { to: '/events/setup', icon: MousePointerClick, label: 'Event Setup' },
+  { to: '/events/log', icon: ScrollText, label: 'Event Log' },
+  { to: '/replay', icon: RotateCcw, label: 'Replay Center' },
+  { to: '/settings', icon: Settings, label: 'Settings' },
+]
+
+export function Sidebar() {
+  const logout = useAuthStore((s) => s.logout)
+
+  return (
+    <aside className="fixed inset-y-0 left-0 z-50 w-[260px] border-r border-neutral-200 bg-white flex flex-col">
+      <div className="flex h-16 items-center px-6 border-b border-neutral-200">
+        <h1 className="text-xl font-bold text-indigo-600">Pixlinks</h1>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
+        <ul className="space-y-1">
+          {navItems.map((item) => (
+            <li key={item.to}>
+              <NavLink
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-indigo-50 text-indigo-600'
+                      : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
+                  }`
+                }
+              >
+                <item.icon className="h-5 w-5" />
+                {item.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <div className="border-t border-neutral-200 p-3">
+        <button
+          onClick={logout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
+        >
+          <LogOut className="h-5 w-5" />
+          Logout
+        </button>
+      </div>
+    </aside>
+  )
+}
