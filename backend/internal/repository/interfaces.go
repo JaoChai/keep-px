@@ -49,6 +49,16 @@ type ReplaySessionRepository interface {
 	UpdateStatus(ctx context.Context, id string, status string) error
 }
 
+type SalePageRepository interface {
+	Create(ctx context.Context, page *domain.SalePage) error
+	GetByID(ctx context.Context, id string) (*domain.SalePage, error)
+	GetBySlug(ctx context.Context, slug string) (*domain.SalePage, error)
+	ListByCustomerID(ctx context.Context, customerID string) ([]*domain.SalePage, error)
+	Update(ctx context.Context, page *domain.SalePage) error
+	Delete(ctx context.Context, id string) error
+	SlugExists(ctx context.Context, slug string) (bool, error)
+}
+
 type RefreshTokenRepository interface {
 	Create(ctx context.Context, customerID, tokenHash string, expiresAt time.Time) error
 	GetByTokenHash(ctx context.Context, tokenHash string) (customerID string, expiresAt time.Time, err error)

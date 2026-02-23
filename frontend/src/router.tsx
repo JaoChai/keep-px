@@ -9,6 +9,8 @@ import { EventSetupPage } from '@/pages/EventSetupPage'
 import { EventLogPage } from '@/pages/EventLogPage'
 import { ReplayPage } from '@/pages/ReplayPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { SalePagesPage } from '@/pages/SalePagesPage'
+import { SalePageEditorPage } from '@/pages/SalePageEditorPage'
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +32,9 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'pixels', element: <PixelsPage /> },
+      { path: 'sale-pages', element: <SalePagesPage /> },
+      { path: 'sale-pages/new', element: <SalePageEditorPage /> },
+      { path: 'sale-pages/:id/edit', element: <SalePageEditorPage /> },
       { path: 'events/setup', element: <EventSetupPage /> },
       { path: 'events/log', element: <EventLogPage /> },
       { path: 'replay', element: <ReplayPage /> },

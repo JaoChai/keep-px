@@ -33,6 +33,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	eventRepo := postgres.NewEventRepo(pool)
 	eventRuleRepo := postgres.NewEventRuleRepo(pool)
 	replaySessionRepo := postgres.NewReplaySessionRepo(pool)
+	salePageRepo := postgres.NewSalePageRepo(pool)
 
 	// Facebook CAPI client
 	capiClient := facebook.NewCAPIClient(cfg.FBGraphAPIURL)
@@ -44,6 +45,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	ruleService := service.NewRuleService(eventRuleRepo, pixelRepo)
 	replayService := service.NewReplayService(replaySessionRepo, eventRepo, pixelRepo, capiClient, logger)
 	analyticsService := service.NewAnalyticsService(pool)
+	salePageService := service.NewSalePageService(salePageRepo, customerRepo)
 
 	// Handlers
 	healthHandler := handler.NewHealthHandler()
@@ -54,9 +56,16 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	replayHandler := handler.NewReplayHandler(replayService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService)
 	proxyHandler := handler.NewProxyHandler()
+	salePageHandler := handler.NewSalePageHandler(salePageService, logger)
 
 	// Health check
 	r.Get("/health", healthHandler.Health)
+
+	// Public sale page route (rate limited)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.RateLimit(cfg.RateLimitRPS))
+		r.Get("/p/{slug}", salePageHandler.Serve)
+	})
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
@@ -105,6 +114,15 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 				r.Post("/", replayHandler.Create)
 				r.Get("/", replayHandler.List)
 				r.Get("/{id}", replayHandler.GetByID)
+			})
+
+			// Sale pages routes
+			r.Route("/sale-pages", func(r chi.Router) {
+				r.Get("/", salePageHandler.List)
+				r.Post("/", salePageHandler.Create)
+				r.Put("/{id}", salePageHandler.Update)
+				r.Delete("/{id}", salePageHandler.Delete)
+				r.Get("/{id}/preview", salePageHandler.Preview)
 			})
 
 			// Analytics routes

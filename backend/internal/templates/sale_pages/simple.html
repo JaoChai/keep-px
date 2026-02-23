@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Content.Hero.Title}}</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1a1a2e;
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+        .page-wrapper {
+            max-width: 480px;
+            margin: 0 auto;
+            background: #ffffff;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+        .hero {
+            position: relative;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .hero img {
+            width: 100%;
+            max-width: 320px;
+            height: auto;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .hero h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        .hero p {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        .body-section {
+            padding: 2rem 1.5rem;
+        }
+        .description {
+            font-size: 0.95rem;
+            color: #4a4a6a;
+            margin-bottom: 1.5rem;
+            white-space: pre-line;
+        }
+        .features {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+        .features li {
+            padding: 0.6rem 0;
+            padding-left: 1.75rem;
+            position: relative;
+            font-size: 0.95rem;
+            color: #2d2d4a;
+            border-bottom: 1px solid #f0f0f5;
+        }
+        .features li::before {
+            content: '\2713';
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: 700;
+        }
+        .cta-section {
+            padding: 1rem 1.5rem 2rem;
+            text-align: center;
+        }
+        .cta-button {
+            display: inline-block;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        .contact-section {
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-top: 1px solid #eee;
+        }
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            font-size: 0.9rem;
+            color: #4a4a6a;
+        }
+        .contact-icon {
+            width: 20px;
+            text-align: center;
+        }
+        .footer {
+            padding: 1rem 1.5rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        {{if or .Content.Hero.Title .Content.Hero.Subtitle .Content.Hero.ImageURL}}
+        <div class="hero">
+            {{if .Content.Hero.ImageURL}}
+            <img src="{{.Content.Hero.ImageURL}}" alt="{{.Content.Hero.Title}}">
+            {{end}}
+            {{if .Content.Hero.Title}}<h1>{{.Content.Hero.Title}}</h1>{{end}}
+            {{if .Content.Hero.Subtitle}}<p>{{.Content.Hero.Subtitle}}</p>{{end}}
+        </div>
+        {{end}}
+
+        {{if or .Content.Body.Description .Content.Body.Features}}
+        <div class="body-section">
+            {{if .Content.Body.Description}}
+            <div class="description">{{.Content.Body.Description}}</div>
+            {{end}}
+            {{if .Content.Body.Features}}
+            <ul class="features">
+                {{range .Content.Body.Features}}
+                <li>{{.}}</li>
+                {{end}}
+            </ul>
+            {{end}}
+        </div>
+        {{end}}
+
+        {{if or .Content.CTA.ButtonText .Content.CTA.ButtonLink}}
+        <div class="cta-section">
+            <a href="{{.Content.CTA.ButtonLink}}" class="cta-button" data-track-cta>
+                {{.Content.CTA.ButtonText}}
+            </a>
+        </div>
+        {{end}}
+
+        {{if or .Content.Contact.LineID .Content.Contact.Phone}}
+        <div class="contact-section">
+            {{if .Content.Contact.LineID}}
+            <div class="contact-item">
+                <span class="contact-icon">LINE</span>
+                <span>{{.Content.Contact.LineID}}</span>
+            </div>
+            {{end}}
+            {{if .Content.Contact.Phone}}
+            <div class="contact-item">
+                <span class="contact-icon">Tel</span>
+                <span>{{.Content.Contact.Phone}}</span>
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+
+        <div class="footer">
+            Powered by Pixlinks
+        </div>
+    </div>
+
+    {{if and .APIKey .Page.PixelID}}
+    <script src="https://cdn.pixlinks.io/pixlinks.min.js"
+            data-pixlinks-key="{{.APIKey}}"
+            data-pixlinks-pixel-id="{{deref .Page.PixelID}}">
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var ctaButtons = document.querySelectorAll('[data-track-cta]');
+        ctaButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (window.pixlinks) {
+                    window.pixlinks.track('Lead', {
+                        content_name: document.title,
+                        content_category: 'sale_page'
+                    });
+                }
+            });
+        });
+    });
+    </script>
+    {{end}}
+</body>
+</html>

@@ -67,6 +67,39 @@ export interface ReplaySession {
   created_at: string
 }
 
+export interface SalePageContent {
+  hero: {
+    title: string
+    subtitle: string
+    image_url: string
+  }
+  body: {
+    description: string
+    features: string[]
+  }
+  cta: {
+    button_text: string
+    button_link: string
+  }
+  contact: {
+    line_id: string
+    phone: string
+  }
+}
+
+export interface SalePage {
+  id: string
+  customer_id: string
+  pixel_id: string | null
+  name: string
+  slug: string
+  template_name: string
+  content: SalePageContent
+  is_published: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface PaginatedResponse<T> {
   data: T[]
   total: number

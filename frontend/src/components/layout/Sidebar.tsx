@@ -2,6 +2,7 @@ import { NavLink } from 'react-router'
 import {
   LayoutDashboard,
   Radio,
+  FileText,
   MousePointerClick,
   ScrollText,
   RotateCcw,
@@ -13,6 +14,7 @@ import { useAuthStore } from '@/stores/auth-store'
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/pixels', icon: Radio, label: 'Pixels' },
+  { to: '/sale-pages', icon: FileText, label: 'Sale Pages' },
   { to: '/events/setup', icon: MousePointerClick, label: 'Event Setup' },
   { to: '/events/log', icon: ScrollText, label: 'Event Log' },
   { to: '/replay', icon: RotateCcw, label: 'Replay Center' },
