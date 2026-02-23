@@ -1,8 +1,13 @@
 package router
 
 import (
+	"errors"
+	"io/fs"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -115,5 +120,48 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 		})
 	})
 
+	// SPA static file serving
+	spaHandler := spaFileServer("./public")
+	r.NotFound(spaHandler)
+
 	return r
+}
+
+// spaFileServer serves static files from the given directory.
+// If the file exists, it serves it with immutable cache headers.
+// Otherwise, it serves index.html with no-cache for client-side routing.
+func spaFileServer(publicDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Clean the path and prevent directory traversal
+		path := filepath.Clean(r.URL.Path)
+		if path == "/" {
+			path = "/index.html"
+		}
+
+		// Don't serve API paths as static files
+		if strings.HasPrefix(path, "/api/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		fullPath := filepath.Join(publicDir, path)
+
+		// Check if the file exists and is not a directory
+		info, err := os.Stat(fullPath)
+		if err == nil && !info.IsDir() {
+			// File exists — serve with immutable cache
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			http.ServeFile(w, r, fullPath)
+			return
+		}
+
+		// File doesn't exist — serve index.html for SPA routing
+		indexPath := filepath.Join(publicDir, "index.html")
+		if _, err := os.Stat(indexPath); errors.Is(err, fs.ErrNotExist) {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-cache")
+		http.ServeFile(w, r, indexPath)
+	}
 }
