@@ -67,6 +67,13 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 		r.Get("/p/{slug}", salePageHandler.Serve)
 	})
 
+	// Public SDK route (no auth, with caching)
+	sdkHandler := handler.NewSDKHandler()
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.RateLimit(cfg.RateLimitRPS))
+		r.Get("/sdk/pixlinks.min.js", sdkHandler.ServeSDK)
+	})
+
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(middleware.RateLimit(cfg.RateLimitRPS))

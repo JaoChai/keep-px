@@ -21,7 +21,8 @@ const pixelSchema = z.object({
 type PixelForm = z.infer<typeof pixelSchema>
 
 function getSnippet(pixelId: string, apiKey: string): string {
-  return `<script src="https://cdn.pixlinks.io/pixlinks.min.js"
+  const sdkUrl = `${window.location.origin}/sdk/pixlinks.min.js`
+  return `<script src="${sdkUrl}"
         data-pixlinks-key="${apiKey}"
         data-pixlinks-pixel-id="${pixelId}">
 </script>`

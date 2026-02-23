@@ -196,7 +196,7 @@
     {{end}}
 
     {{if and .APIKey .Page.PixelID}}
-    <script src="https://cdn.pixlinks.io/pixlinks.min.js"
+    <script src="/sdk/pixlinks.min.js"
             data-pixlinks-key="{{.APIKey}}"
             data-pixlinks-pixel-id="{{deref .Page.PixelID}}">
     </script>
