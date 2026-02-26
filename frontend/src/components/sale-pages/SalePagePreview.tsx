@@ -5,9 +5,10 @@ interface SalePagePreviewProps {
   body: { description: string; features: string[] }
   cta: { button_text: string; button_link: string }
   contact: { line_id: string; phone: string }
+  ctaEventName?: string
 }
 
-export function SalePagePreview({ hero, body, cta, contact }: SalePagePreviewProps) {
+export function SalePagePreview({ hero, body, cta, contact, ctaEventName }: SalePagePreviewProps) {
   return (
     <div className="max-w-[375px] mx-auto rounded-2xl border border-neutral-200 shadow-lg overflow-hidden bg-white">
       {/* Hero Section */}
@@ -63,9 +64,16 @@ export function SalePagePreview({ hero, body, cta, contact }: SalePagePreviewPro
 
       {/* CTA Section */}
       <div className="px-6 pb-4">
-        <button className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm shadow-md">
-          {cta.button_text || 'Call to Action'}
-        </button>
+        <div className="relative">
+          <button className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm shadow-md">
+            {cta.button_text || 'Call to Action'}
+          </button>
+          {ctaEventName && (
+            <span className="absolute -top-2 -right-2 px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded-full border border-amber-200">
+              {ctaEventName}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Contact Section */}
@@ -74,13 +82,13 @@ export function SalePagePreview({ hero, body, cta, contact }: SalePagePreviewPro
           <p className="text-xs font-medium text-neutral-500 mb-2 text-center">Contact Us</p>
           <div className="flex items-center justify-center gap-4">
             {contact.line_id && (
-              <div className="flex items-center gap-1.5 text-xs text-neutral-600">
+              <div className="flex items-center gap-1.5 text-xs text-indigo-600 underline cursor-pointer hover:text-indigo-800">
                 <MessageCircle className="h-3.5 w-3.5 text-emerald-500" />
                 <span>{contact.line_id}</span>
               </div>
             )}
             {contact.phone && (
-              <div className="flex items-center gap-1.5 text-xs text-neutral-600">
+              <div className="flex items-center gap-1.5 text-xs text-indigo-600 underline cursor-pointer hover:text-indigo-800">
                 <Phone className="h-3.5 w-3.5 text-indigo-500" />
                 <span>{contact.phone}</span>
               </div>

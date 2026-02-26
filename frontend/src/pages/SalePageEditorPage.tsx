@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Plus, X, Copy, Check, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Plus, X, Copy, Check, ExternalLink, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +14,16 @@ import { SalePagePreview } from '@/components/sale-pages/SalePagePreview'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
 import type { SalePageContent } from '@/types'
+
+const CTA_EVENT_OPTIONS = [
+  { value: 'Lead', label: 'Lead — ลูกค้าสนใจ ต้องการข้อมูลเพิ่ม' },
+  { value: 'Purchase', label: 'Purchase — ลูกค้าซื้อสินค้า/บริการ' },
+  { value: 'InitiateCheckout', label: 'InitiateCheckout — ลูกค้าเริ่มชำระเงิน' },
+  { value: 'AddToCart', label: 'AddToCart — ลูกค้าเพิ่มสินค้าลงตะกร้า' },
+  { value: 'CompleteRegistration', label: 'CompleteRegistration — ลูกค้าสมัครสมาชิกสำเร็จ' },
+  { value: 'Schedule', label: 'Schedule — ลูกค้าจองนัดหมาย' },
+  { value: 'SubmitApplication', label: 'SubmitApplication — ลูกค้าส่งใบสมัคร' },
+] as const
 
 const salePageSchema = z.object({
   name: z.string().min(1, 'Page name is required'),
@@ -28,6 +38,10 @@ const salePageSchema = z.object({
   cta_button_link: z.string(),
   contact_line_id: z.string(),
   contact_phone: z.string(),
+  cta_event_name: z.string(),
+  tracking_content_name: z.string(),
+  tracking_content_value: z.number(),
+  tracking_currency: z.string(),
 })
 
 type SalePageForm = z.infer<typeof salePageSchema>
@@ -80,6 +94,10 @@ export function SalePageEditorPage() {
       cta_button_link: '',
       contact_line_id: '',
       contact_phone: '',
+      cta_event_name: 'Lead',
+      tracking_content_name: '',
+      tracking_content_value: 0,
+      tracking_currency: 'THB',
     },
   })
 
@@ -101,6 +119,10 @@ export function SalePageEditorPage() {
         cta_button_link: c.cta.button_link,
         contact_line_id: c.contact.line_id,
         contact_phone: c.contact.phone,
+        cta_event_name: c.tracking?.cta_event_name || 'Lead',
+        tracking_content_name: c.tracking?.content_name || '',
+        tracking_content_value: c.tracking?.content_value || 0,
+        tracking_currency: c.tracking?.currency || 'THB',
       })
       setFeatures(featuresList)
       setSlugTouched(true)
@@ -156,6 +178,12 @@ export function SalePageEditorPage() {
     contact: {
       line_id: data.contact_line_id ?? '',
       phone: data.contact_phone ?? '',
+    },
+    tracking: {
+      cta_event_name: data.cta_event_name || 'Lead',
+      content_name: data.tracking_content_name || '',
+      content_value: data.tracking_content_value || 0,
+      currency: data.tracking_currency || 'THB',
     },
   })
 
@@ -357,6 +385,72 @@ export function SalePageEditorPage() {
             </CardContent>
           </Card>
 
+          {/* Tracking Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>ตั้งค่าการติดตาม</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="cta_event_name">เมื่อกดปุ่ม CTA ให้ยิงอีเวนต์</Label>
+                <select
+                  id="cta_event_name"
+                  className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600"
+                  {...register('cta_event_name')}
+                >
+                  {CTA_EVENT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tracking_content_name">ชื่อสินค้า (ไม่บังคับ)</Label>
+                <Input
+                  id="tracking_content_name"
+                  placeholder="เช่น ครีมหน้าใส, คอร์สออนไลน์"
+                  {...register('tracking_content_name')}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="tracking_content_value">ราคาสินค้า (ไม่บังคับ)</Label>
+                  <Input
+                    id="tracking_content_value"
+                    type="number"
+                    placeholder="0"
+                    {...register('tracking_content_value', { valueAsNumber: true })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tracking_currency">สกุลเงิน</Label>
+                  <select
+                    id="tracking_currency"
+                    className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600"
+                    {...register('tracking_currency')}
+                  >
+                    <option value="THB">THB (บาท)</option>
+                    <option value="USD">USD (ดอลลาร์)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
+                <div className="flex items-start gap-2">
+                  <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                  <div className="text-xs text-blue-700 space-y-1">
+                    <p className="font-medium">อีเวนต์ที่ยิงอัตโนมัติ:</p>
+                    <ul className="space-y-0.5 ml-1">
+                      <li><code className="bg-blue-100 px-1 rounded">PageView</code> — ยิงเมื่อเปิดหน้าเพจ</li>
+                      <li><code className="bg-blue-100 px-1 rounded">ViewContent</code> — ยิงเมื่อเปิดหน้าเพจ</li>
+                      <li><code className="bg-blue-100 px-1 rounded">Contact</code> — ยิงเมื่อกด LINE หรือเบอร์โทร</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Contact Info */}
           <Card>
             <CardHeader>
@@ -397,6 +491,7 @@ export function SalePageEditorPage() {
                 line_id: watchedValues.contact_line_id ?? '',
                 phone: watchedValues.contact_phone ?? '',
               }}
+              ctaEventName={watchedValues.cta_event_name || 'Lead'}
             />
           </div>
         </div>

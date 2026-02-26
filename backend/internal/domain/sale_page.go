@@ -19,10 +19,18 @@ type SalePage struct {
 }
 
 type SimpleContent struct {
-	Hero    HeroSection `json:"hero"`
-	Body    BodySection `json:"body"`
-	CTA     CTASection  `json:"cta"`
-	Contact ContactInfo `json:"contact"`
+	Hero     HeroSection    `json:"hero"`
+	Body     BodySection    `json:"body"`
+	CTA      CTASection     `json:"cta"`
+	Contact  ContactInfo    `json:"contact"`
+	Tracking TrackingConfig `json:"tracking"`
+}
+
+type TrackingConfig struct {
+	CTAEventName string  `json:"cta_event_name"`
+	ContentName  string  `json:"content_name"`
+	ContentValue float64 `json:"content_value"`
+	Currency     string  `json:"currency"`
 }
 
 type HeroSection struct {

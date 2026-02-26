@@ -104,11 +104,19 @@
             gap: 0.75rem;
             padding: 0.5rem 0;
             font-size: 0.9rem;
-            color: #4a4a6a;
+        }
+        .contact-item a {
+            color: #667eea;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+        .contact-item a:hover {
+            color: #4c63d2;
         }
         .contact-icon {
             width: 20px;
             text-align: center;
+            color: #4a4a6a;
         }
         .footer {
             padding: 1rem 1.5rem;
@@ -158,13 +166,13 @@
             {{if .Content.Contact.LineID}}
             <div class="contact-item">
                 <span class="contact-icon">LINE</span>
-                <span>{{.Content.Contact.LineID}}</span>
+                <a href="https://line.me/ti/p/~{{.Content.Contact.LineID}}" target="_blank" rel="noopener" data-track-contact="line">{{.Content.Contact.LineID}}</a>
             </div>
             {{end}}
             {{if .Content.Contact.Phone}}
             <div class="contact-item">
                 <span class="contact-icon">Tel</span>
-                <span>{{.Content.Contact.Phone}}</span>
+                <a href="tel:{{.Content.Contact.Phone}}" data-track-contact="phone">{{.Content.Contact.Phone}}</a>
             </div>
             {{end}}
         </div>
@@ -200,21 +208,58 @@
             data-pixlinks-key="{{.APIKey}}"
             data-pixlinks-pixel-id="{{deref .Page.PixelID}}">
     </script>
+    {{end}}
+
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var ctaButtons = document.querySelectorAll('[data-track-cta]');
-        ctaButtons.forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                if (window.pixlinks) {
-                    window.pixlinks.track('Lead', {
-                        content_name: document.title,
-                        content_category: 'sale_page'
-                    });
-                }
+    (function() {
+        var ctaEventName = '{{.Content.Tracking.CTAEventName}}' || 'Lead';
+        var contentName = '{{.Content.Tracking.ContentName}}' || document.title;
+        var contentValue = {{.Content.Tracking.ContentValue}};
+        var currency = '{{.Content.Tracking.Currency}}' || 'THB';
+
+        function dualTrack(eventName, params) {
+            if (typeof fbq === 'function') {
+                fbq('track', eventName, params);
+            }
+            if (window.pixlinks) {
+                window.pixlinks.track(eventName, params);
+            }
+        }
+
+        function buildParams(extra) {
+            var params = { content_name: contentName, content_category: 'sale_page' };
+            if (contentValue > 0) {
+                params.value = contentValue;
+                params.currency = currency;
+            }
+            if (extra) {
+                for (var k in extra) { params[k] = extra[k]; }
+            }
+            return params;
+        }
+
+        // ViewContent — fires on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            dualTrack('ViewContent', buildParams());
+
+            // CTA click
+            var ctaButtons = document.querySelectorAll('[data-track-cta]');
+            ctaButtons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    dualTrack(ctaEventName, buildParams());
+                });
+            });
+
+            // Contact click (LINE / Phone)
+            var contactLinks = document.querySelectorAll('[data-track-contact]');
+            contactLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    var contactType = this.getAttribute('data-track-contact');
+                    dualTrack('Contact', { content_name: contentName, content_category: contactType });
+                });
             });
         });
-    });
+    })();
     </script>
-    {{end}}
 </body>
 </html>

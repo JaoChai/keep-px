@@ -85,6 +85,12 @@ export interface SalePageContent {
     line_id: string
     phone: string
   }
+  tracking?: {
+    cta_event_name: string
+    content_name: string
+    content_value: number
+    currency: string
+  }
 }
 
 export interface SalePage {
