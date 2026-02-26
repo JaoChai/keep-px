@@ -76,6 +76,7 @@ export interface SalePageContent {
   body: {
     description: string
     features: string[]
+    images?: string[]
   }
   cta: {
     button_text: string

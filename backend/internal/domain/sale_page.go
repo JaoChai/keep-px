@@ -42,6 +42,7 @@ type HeroSection struct {
 type BodySection struct {
 	Description string   `json:"description"`
 	Features    []string `json:"features"`
+	Images      []string `json:"images"`
 }
 
 type CTASection struct {

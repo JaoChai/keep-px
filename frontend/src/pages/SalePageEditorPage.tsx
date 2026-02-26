@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Plus, X, Copy, Check, ExternalLink, Info } from 'lucide-react'
+import { ArrowLeft, Plus, X, Copy, Check, ExternalLink, Info, Upload, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { SalePagePreview } from '@/components/sale-pages/SalePagePreview'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
+import { useUploadImage } from '@/hooks/use-upload'
 import type { SalePageContent } from '@/types'
 
 const CTA_EVENT_OPTIONS = [
@@ -66,9 +67,13 @@ export function SalePageEditorPage() {
   const updateSalePage = useUpdateSalePage()
 
   const [features, setFeatures] = useState<string[]>([''])
+  const [bodyImages, setBodyImages] = useState<string[]>([])
   const [slugTouched, setSlugTouched] = useState(false)
   const [publishedDialog, setPublishedDialog] = useState<{ slug: string } | null>(null)
   const [copiedUrl, setCopiedUrl] = useState(false)
+  const uploadImage = useUploadImage()
+  const heroFileRef = useRef<HTMLInputElement>(null)
+  const bodyFileRef = useRef<HTMLInputElement>(null)
 
   const existingPage = isEditing ? salePages?.find((p) => p.id === id) : undefined
 
@@ -125,6 +130,7 @@ export function SalePageEditorPage() {
         tracking_currency: c.tracking?.currency || 'THB',
       })
       setFeatures(featuresList)
+      setBodyImages(c.body.images ?? [])
       setSlugTouched(true)
     }
   }, [existingPage, reset])
@@ -161,6 +167,26 @@ export function SalePageEditorPage() {
     setFeatures(updated)
   }
 
+  const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = await uploadImage.mutateAsync(file)
+    setValue('hero_image_url', url)
+    if (heroFileRef.current) heroFileRef.current.value = ''
+  }
+
+  const handleBodyImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const url = await uploadImage.mutateAsync(file)
+    setBodyImages((prev) => [...prev, url])
+    if (bodyFileRef.current) bodyFileRef.current.value = ''
+  }
+
+  const removeBodyImage = (index: number) => {
+    setBodyImages((prev) => prev.filter((_, i) => i !== index))
+  }
+
   const buildContent = (data: SalePageForm): SalePageContent => ({
     hero: {
       title: data.hero_title ?? '',
@@ -170,6 +196,7 @@ export function SalePageEditorPage() {
     body: {
       description: data.description ?? '',
       features: features.filter((f) => f.trim()),
+      images: bodyImages,
     },
     cta: {
       button_text: data.cta_button_text ?? '',
@@ -314,8 +341,33 @@ export function SalePageEditorPage() {
                 <Input id="hero_subtitle" placeholder="A short description..." {...register('hero_subtitle')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="hero_image_url">Hero Image URL</Label>
-                <Input id="hero_image_url" placeholder="https://example.com/image.jpg" {...register('hero_image_url')} />
+                <Label>Hero Image</Label>
+                {watchedValues.hero_image_url && (
+                  <div className="relative w-full max-w-[200px]">
+                    <img src={watchedValues.hero_image_url} alt="" className="w-full h-auto rounded-lg border border-neutral-200" />
+                    <button
+                      type="button"
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                      onClick={() => setValue('hero_image_url', '')}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input ref={heroFileRef} type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadImage.isPending}
+                    onClick={() => heroFileRef.current?.click()}
+                  >
+                    {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    อัพโหลดรูป
+                  </Button>
+                </div>
+                <Input id="hero_image_url" placeholder="หรือวาง URL รูปภาพ" {...register('hero_image_url')} className="text-xs" />
               </div>
             </CardContent>
           </Card>
@@ -364,6 +416,38 @@ export function SalePageEditorPage() {
                     Add Feature
                   </Button>
                 )}
+              </div>
+              <div className="space-y-2">
+                <Label>รูปภาพเนื้อหา</Label>
+                {bodyImages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {bodyImages.map((url, index) => (
+                      <div key={index} className="relative group">
+                        <img src={url} alt="" className="w-full h-24 object-cover rounded-lg border border-neutral-200" />
+                        <button
+                          type="button"
+                          className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                          onClick={() => removeBodyImage(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div>
+                  <input ref={bodyFileRef} type="file" accept="image/*" className="hidden" onChange={handleBodyImageUpload} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadImage.isPending}
+                    onClick={() => bodyFileRef.current?.click()}
+                  >
+                    {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    เพิ่มรูปภาพ
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -482,6 +566,7 @@ export function SalePageEditorPage() {
               body={{
                 description: watchedValues.description ?? '',
                 features: features,
+                images: bodyImages,
               }}
               cta={{
                 button_text: watchedValues.cta_button_text ?? '',

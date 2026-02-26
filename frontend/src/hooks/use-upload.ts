@@ -1,0 +1,19 @@
+import { useMutation } from '@tanstack/react-query'
+import api from '@/lib/api'
+
+interface UploadResponse {
+  url: string
+}
+
+export function useUploadImage() {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      const { data } = await api.post<{ data: UploadResponse }>('/api/v1/uploads/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      return data.data.url
+    },
+  })
+}

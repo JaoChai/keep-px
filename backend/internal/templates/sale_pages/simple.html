@@ -138,7 +138,7 @@
         </div>
         {{end}}
 
-        {{if or .Content.Body.Description .Content.Body.Features}}
+        {{if or .Content.Body.Description .Content.Body.Features .Content.Body.Images}}
         <div class="body-section">
             {{if .Content.Body.Description}}
             <div class="description">{{.Content.Body.Description}}</div>
@@ -149,6 +149,13 @@
                 <li>{{.}}</li>
                 {{end}}
             </ul>
+            {{end}}
+            {{if .Content.Body.Images}}
+            <div class="body-images">
+                {{range .Content.Body.Images}}
+                <img src="{{.}}" alt="" style="width:100%;height:auto;border-radius:12px;margin-bottom:1rem;">
+                {{end}}
+            </div>
             {{end}}
         </div>
         {{end}}

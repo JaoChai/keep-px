@@ -47,6 +47,9 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	analyticsService := service.NewAnalyticsService(pool)
 	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo)
 
+	// Storage
+	storageService := service.NewStorageService(cfg)
+
 	// Handlers
 	healthHandler := handler.NewHealthHandler()
 	authHandler := handler.NewAuthHandler(authService, logger)
@@ -57,6 +60,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService)
 	proxyHandler := handler.NewProxyHandler()
 	salePageHandler := handler.NewSalePageHandler(salePageService, logger)
+	uploadHandler := handler.NewUploadHandler(storageService)
 
 	// Health check
 	r.Get("/health", healthHandler.Health)
@@ -138,6 +142,9 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 			// Analytics routes
 			r.Get("/analytics/overview", analyticsHandler.Overview)
 			r.Get("/analytics/events", analyticsHandler.EventChart)
+
+			// Upload
+			r.Post("/uploads/image", uploadHandler.UploadImage)
 
 			// Proxy (for visual event setup)
 			r.Get("/proxy", proxyHandler.Proxy)

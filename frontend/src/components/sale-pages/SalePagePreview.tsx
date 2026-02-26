@@ -2,7 +2,7 @@ import { CheckCircle, Phone, MessageCircle } from 'lucide-react'
 
 interface SalePagePreviewProps {
   hero: { title: string; subtitle: string; image_url: string }
-  body: { description: string; features: string[] }
+  body: { description: string; features: string[]; images?: string[] }
   cta: { button_text: string; button_link: string }
   contact: { line_id: string; phone: string }
   ctaEventName?: string
@@ -59,6 +59,15 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName }: Sale
               <span>Feature item</span>
             </li>
           </ul>
+        )}
+
+        {/* Body Images */}
+        {body.images && body.images.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {body.images.map((url, i) => (
+              <img key={i} src={url} alt="" className="w-full h-auto rounded-lg" />
+            ))}
+          </div>
         )}
       </div>
 
