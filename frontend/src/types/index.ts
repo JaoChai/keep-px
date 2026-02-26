@@ -85,6 +85,7 @@ export interface SalePageContent {
   contact: {
     line_id: string
     phone: string
+    website_url?: string
   }
   tracking?: {
     cta_event_name: string

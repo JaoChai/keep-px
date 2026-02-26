@@ -1,10 +1,10 @@
-import { CheckCircle, Phone, MessageCircle } from 'lucide-react'
+import { CheckCircle, Phone, MessageCircle, Globe } from 'lucide-react'
 
 interface SalePagePreviewProps {
   hero: { title: string; subtitle: string; image_url: string }
   body: { description: string; features: string[]; images?: string[] }
   cta: { button_text: string; button_link: string }
-  contact: { line_id: string; phone: string }
+  contact: { line_id: string; phone: string; website_url?: string }
   ctaEventName?: string
 }
 
@@ -86,20 +86,26 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName }: Sale
       </div>
 
       {/* Contact Section */}
-      {(contact.line_id || contact.phone) && (
+      {(contact.line_id || contact.phone || contact.website_url) && (
         <div className="px-6 py-4 border-t border-neutral-100">
-          <p className="text-xs font-medium text-neutral-500 mb-2 text-center">Contact Us</p>
-          <div className="flex items-center justify-center gap-4">
+          <p className="text-xs font-medium text-neutral-500 mb-3 text-center">ติดต่อเรา</p>
+          <div className="space-y-2">
             {contact.line_id && (
-              <div className="flex items-center gap-1.5 text-xs text-indigo-600 underline cursor-pointer hover:text-indigo-800">
-                <MessageCircle className="h-3.5 w-3.5 text-emerald-500" />
-                <span>{contact.line_id}</span>
+              <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: '#06C755' }}>
+                <MessageCircle className="h-4 w-4" />
+                <span>LINE: {contact.line_id}</span>
               </div>
             )}
             {contact.phone && (
-              <div className="flex items-center gap-1.5 text-xs text-indigo-600 underline cursor-pointer hover:text-indigo-800">
-                <Phone className="h-3.5 w-3.5 text-indigo-500" />
-                <span>{contact.phone}</span>
+              <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold">
+                <Phone className="h-4 w-4" />
+                <span>โทร: {contact.phone}</span>
+              </div>
+            )}
+            {contact.website_url && (
+              <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-purple-600 text-white text-sm font-semibold">
+                <Globe className="h-4 w-4" />
+                <span>เยี่ยมชมเว็บไซต์</span>
               </div>
             )}
           </div>

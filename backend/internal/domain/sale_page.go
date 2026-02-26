@@ -51,6 +51,7 @@ type CTASection struct {
 }
 
 type ContactInfo struct {
-	LineID string `json:"line_id"`
-	Phone  string `json:"phone"`
+	LineID     string `json:"line_id"`
+	Phone      string `json:"phone"`
+	WebsiteURL string `json:"website_url"`
 }

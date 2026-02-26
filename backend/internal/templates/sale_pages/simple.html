@@ -98,25 +98,62 @@
             background: #f8f9fa;
             border-top: 1px solid #eee;
         }
-        .contact-item {
+        .contact-section h3 {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        .contact-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .contact-btn {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.5rem 0;
-            font-size: 0.9rem;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #ffffff;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .contact-item a {
-            color: #667eea;
-            text-decoration: underline;
-            transition: color 0.2s;
+        .contact-btn:hover {
+            transform: translateY(-2px);
         }
-        .contact-item a:hover {
-            color: #4c63d2;
+        .contact-btn--line {
+            background-color: #06C755;
+            box-shadow: 0 4px 12px rgba(6, 199, 85, 0.3);
         }
-        .contact-icon {
+        .contact-btn--line:hover {
+            box-shadow: 0 6px 16px rgba(6, 199, 85, 0.4);
+        }
+        .contact-btn--phone {
+            background-color: #2563eb;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        .contact-btn--phone:hover {
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+        }
+        .contact-btn--website {
+            background-color: #7c3aed;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+        }
+        .contact-btn--website:hover {
+            box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+        }
+        .contact-btn svg {
             width: 20px;
-            text-align: center;
-            color: #4a4a6a;
+            height: 20px;
+            fill: currentColor;
         }
         .footer {
             padding: 1rem 1.5rem;
@@ -168,20 +205,29 @@
         </div>
         {{end}}
 
-        {{if or .Content.Contact.LineID .Content.Contact.Phone}}
+        {{if or .Content.Contact.LineID .Content.Contact.Phone .Content.Contact.WebsiteURL}}
         <div class="contact-section">
-            {{if .Content.Contact.LineID}}
-            <div class="contact-item">
-                <span class="contact-icon">LINE</span>
-                <a href="https://line.me/ti/p/~{{.Content.Contact.LineID}}" target="_blank" rel="noopener" data-track-contact="line">{{.Content.Contact.LineID}}</a>
+            <h3>ติดต่อเรา</h3>
+            <div class="contact-buttons">
+                {{if .Content.Contact.LineID}}
+                <a href="https://line.me/ti/p/~{{.Content.Contact.LineID}}" target="_blank" rel="noopener" class="contact-btn contact-btn--line" data-track-contact="line">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19.365 9.864c.018 0 .032.003.046.007a.096.096 0 0 1 .076.093v.598c0 .044-.028.082-.068.094l-.008.002H17.91v.473h1.501a.098.098 0 0 1 .068.028l.005.006a.09.09 0 0 1 .023.063v.598a.098.098 0 0 1-.096.096H17.31a.098.098 0 0 1-.096-.096V9.964a.098.098 0 0 1 .096-.096h2.055v-.004zm-3.478 0a.098.098 0 0 1 .096.1v.598a.098.098 0 0 1-.096.096h-1.501v.473h1.501a.098.098 0 0 1 .096.096v.598a.098.098 0 0 1-.096.096h-2.052a.1.1 0 0 1-.098-.096V9.964a.098.098 0 0 1 .098-.096h2.052v-.004zM12 3C6.48 3 2 6.58 2 10.94c0 3.49 2.88 6.49 7.03 7.44.27.06.64.18.73.42.08.22.05.56.03.78l-.12.7c-.04.2-.16.78.68.43.84-.36 4.54-2.67 6.19-4.57h.01C18.41 14.15 22 12.72 22 10.94 22 6.58 17.52 3 12 3z"/></svg>
+                    LINE: {{.Content.Contact.LineID}}
+                </a>
+                {{end}}
+                {{if .Content.Contact.Phone}}
+                <a href="tel:{{.Content.Contact.Phone}}" class="contact-btn contact-btn--phone" data-track-contact="phone">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6.62 10.79c1.44 2.83 3.76 5.15 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                    โทร: {{.Content.Contact.Phone}}
+                </a>
+                {{end}}
+                {{if .Content.Contact.WebsiteURL}}
+                <a href="{{.Content.Contact.WebsiteURL}}" target="_blank" rel="noopener" class="contact-btn contact-btn--website" data-track-contact="website">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    เยี่ยมชมเว็บไซต์
+                </a>
+                {{end}}
             </div>
-            {{end}}
-            {{if .Content.Contact.Phone}}
-            <div class="contact-item">
-                <span class="contact-icon">Tel</span>
-                <a href="tel:{{.Content.Contact.Phone}}" data-track-contact="phone">{{.Content.Contact.Phone}}</a>
-            </div>
-            {{end}}
         </div>
         {{end}}
 

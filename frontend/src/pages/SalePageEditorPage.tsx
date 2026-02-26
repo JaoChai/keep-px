@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { SalePagePreview } from '@/components/sale-pages/SalePagePreview'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
-import { useUploadImage } from '@/hooks/use-upload'
+import { useUploadImage, useUploadImages } from '@/hooks/use-upload'
 import type { SalePageContent } from '@/types'
 
 const CTA_EVENT_OPTIONS = [
@@ -39,6 +39,7 @@ const salePageSchema = z.object({
   cta_button_link: z.string(),
   contact_line_id: z.string(),
   contact_phone: z.string(),
+  contact_website_url: z.string(),
   cta_event_name: z.string(),
   tracking_content_name: z.string(),
   tracking_content_value: z.number(),
@@ -72,6 +73,7 @@ export function SalePageEditorPage() {
   const [publishedDialog, setPublishedDialog] = useState<{ slug: string } | null>(null)
   const [copiedUrl, setCopiedUrl] = useState(false)
   const uploadImage = useUploadImage()
+  const uploadImages = useUploadImages()
   const heroFileRef = useRef<HTMLInputElement>(null)
   const bodyFileRef = useRef<HTMLInputElement>(null)
 
@@ -99,6 +101,7 @@ export function SalePageEditorPage() {
       cta_button_link: '',
       contact_line_id: '',
       contact_phone: '',
+      contact_website_url: '',
       cta_event_name: 'Lead',
       tracking_content_name: '',
       tracking_content_value: 0,
@@ -124,6 +127,7 @@ export function SalePageEditorPage() {
         cta_button_link: c.cta.button_link,
         contact_line_id: c.contact.line_id,
         contact_phone: c.contact.phone,
+        contact_website_url: c.contact.website_url ?? '',
         cta_event_name: c.tracking?.cta_event_name || 'Lead',
         tracking_content_name: c.tracking?.content_name || '',
         tracking_content_value: c.tracking?.content_value || 0,
@@ -176,10 +180,10 @@ export function SalePageEditorPage() {
   }
 
   const handleBodyImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await uploadImage.mutateAsync(file)
-    setBodyImages((prev) => [...prev, url])
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const urls = await uploadImages.mutateAsync(Array.from(files))
+    setBodyImages((prev) => [...prev, ...urls])
     if (bodyFileRef.current) bodyFileRef.current.value = ''
   }
 
@@ -205,6 +209,7 @@ export function SalePageEditorPage() {
     contact: {
       line_id: data.contact_line_id ?? '',
       phone: data.contact_phone ?? '',
+      website_url: data.contact_website_url ?? '',
     },
     tracking: {
       cta_event_name: data.cta_event_name || 'Lead',
@@ -436,15 +441,15 @@ export function SalePageEditorPage() {
                   </div>
                 )}
                 <div>
-                  <input ref={bodyFileRef} type="file" accept="image/*" className="hidden" onChange={handleBodyImageUpload} />
+                  <input ref={bodyFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleBodyImageUpload} />
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={uploadImage.isPending}
+                    disabled={uploadImages.isPending}
                     onClick={() => bodyFileRef.current?.click()}
                   >
-                    {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    {uploadImages.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                     เพิ่มรูปภาพ
                   </Button>
                 </div>
@@ -549,6 +554,14 @@ export function SalePageEditorPage() {
                 <Label htmlFor="contact_phone">Phone Number</Label>
                 <Input id="contact_phone" placeholder="08x-xxx-xxxx" {...register('contact_phone')} />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="contact_website_url">Website URL</Label>
+                <Input
+                  id="contact_website_url"
+                  placeholder="https://yourwebsite.com"
+                  {...register('contact_website_url')}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -575,6 +588,7 @@ export function SalePageEditorPage() {
               contact={{
                 line_id: watchedValues.contact_line_id ?? '',
                 phone: watchedValues.contact_phone ?? '',
+                website_url: watchedValues.contact_website_url ?? '',
               }}
               ctaEventName={watchedValues.cta_event_name || 'Lead'}
             />
