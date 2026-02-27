@@ -1,0 +1,22 @@
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - goconst
+    - gosimple
+
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - (net/http.ResponseWriter).Write
+      - (io.Closer).Close
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+issues:
+  exclude-dirs:
+    - db/generated
