@@ -1,0 +1,29 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - goconst
+
+  settings:
+    errcheck:
+      exclude-functions:
+        - (net/http.ResponseWriter).Write
+        - (io.Closer).Close
+        - (*encoding/json.Encoder).Encode
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (*github.com/golang-migrate/migrate/v4.Migrate).Close
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+
+  exclusions:
+    generated: strict
+    paths:
+      - db/generated
