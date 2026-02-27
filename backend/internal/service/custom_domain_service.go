@@ -17,6 +17,8 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
 
+const cfStatusActive = "active"
+
 var (
 	ErrCustomDomainNotFound    = errors.New("custom domain not found")
 	ErrCustomDomainNotOwned    = errors.New("custom domain not owned by customer")
@@ -221,8 +223,8 @@ func (s *CustomDomainService) Verify(ctx context.Context, customerID, id string)
 	}
 
 	// Update DNS and SSL status based on CF response
-	d.DNSVerified = cfResp.Status == "active"
-	d.SSLActive = cfResp.SSL.Status == "active"
+	d.DNSVerified = cfResp.Status == cfStatusActive
+	d.SSLActive = cfResp.SSL.Status == cfStatusActive
 
 	if d.DNSVerified && d.VerifiedAt == nil {
 		now := time.Now()

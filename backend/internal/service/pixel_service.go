@@ -9,6 +9,11 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
 
+const (
+	pixelStatusActive = "active"
+	pixelStatusPaused = "paused"
+)
+
 var (
 	ErrPixelNotFound = errors.New("pixel not found")
 	ErrPixelNotOwned = errors.New("pixel not owned by customer")
@@ -98,9 +103,9 @@ func (s *PixelService) Update(ctx context.Context, customerID, pixelID string, i
 	if input.IsActive != nil {
 		pixel.IsActive = *input.IsActive
 		if !*input.IsActive {
-			pixel.Status = "paused"
+			pixel.Status = pixelStatusPaused
 		} else {
-			pixel.Status = "active"
+			pixel.Status = pixelStatusActive
 		}
 	}
 
