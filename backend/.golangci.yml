@@ -14,6 +14,11 @@ linters:
       exclude-functions:
         - (net/http.ResponseWriter).Write
         - (io.Closer).Close
+        - (*encoding/json.Encoder).Encode
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (*github.com/golang-migrate/migrate/v4.Migrate).Close
     goconst:
       min-len: 3
       min-occurrences: 3
