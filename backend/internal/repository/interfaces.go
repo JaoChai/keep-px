@@ -30,6 +30,7 @@ type EventRepository interface {
 	ListByCustomerID(ctx context.Context, customerID string, limit, offset int) ([]*domain.PixelEvent, int, error)
 	MarkForwarded(ctx context.Context, id string, responseCode int) error
 	GetEventsForReplay(ctx context.Context, pixelID string, eventTypes []string, from, to *time.Time) ([]*domain.PixelEvent, error)
+	ListRecentByCustomerID(ctx context.Context, customerID string, since time.Time, pixelID string, limit int) ([]*domain.RealtimeEvent, error)
 }
 
 type EventRuleRepository interface {

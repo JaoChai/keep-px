@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router'
 import {
   LayoutDashboard,
   Radio,
+  Activity,
   FileText,
   Globe,
   ScrollText,
@@ -18,6 +19,7 @@ const navItems = [
   { to: '/sale-pages', icon: FileText, label: 'Sale Pages' },
   { to: '/domains', icon: Globe, label: 'Custom Domains' },
   { to: '/events/log', icon: ScrollText, label: 'Event Log' },
+  { to: '/events/realtime', icon: Activity, label: 'Realtime' },
   { to: '/replay', icon: RotateCcw, label: 'Replay Center' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]
