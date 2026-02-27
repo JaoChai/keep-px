@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,7 +19,7 @@ import (
 func newTestPixelService() (*PixelService, *MockPixelRepo) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
-	svc := NewPixelService(pixelRepo, capiClient, nil)
+	svc := NewPixelService(pixelRepo, capiClient, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	return svc, pixelRepo
 }
 
@@ -349,7 +351,7 @@ func TestPixelService_TestConnection(t *testing.T) {
 				capiClient = facebook.NewCAPIClient("http://localhost:9999")
 			}
 
-			svc := NewPixelService(pixelRepo, capiClient, nil)
+			svc := NewPixelService(pixelRepo, capiClient, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 			resp, err := svc.TestConnection(context.Background(), tt.customerID, tt.pixelID)
 

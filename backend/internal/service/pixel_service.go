@@ -160,8 +160,17 @@ func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID s
 
 	resp, err := s.capiClient.SendEvent(ctx, pixel.FBPixelID, pixel.FBAccessToken, event)
 	if err != nil {
+		s.logger.WarnContext(ctx, "pixel test connection failed",
+			slog.String("pixel_id", pixelID),
+			slog.String("error", err.Error()),
+		)
 		return nil, fmt.Errorf("test connection: %w", err)
 	}
+
+	s.logger.InfoContext(ctx, "pixel test connection succeeded",
+		slog.String("pixel_id", pixelID),
+		slog.Int("events_received", resp.EventsReceived),
+	)
 
 	return resp, nil
 }

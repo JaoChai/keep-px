@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -121,14 +122,31 @@ func (h *PixelHandler) Test(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusBadRequest, "pixel has no access token configured")
 			return
 		}
-		// Check for Facebook CAPI error
+		// Check for Facebook CAPI error — never expose raw FB response to client
 		var capiErr *facebook.CAPIError
 		if errors.As(err, &capiErr) {
-			ErrorJSON(w, http.StatusBadGateway, fmt.Sprintf("Facebook CAPI error (status %d): %s", capiErr.StatusCode, capiErr.Message))
+			slog.Error("pixel test connection CAPI error",
+				"pixel_id", pixelID,
+				"fb_status", capiErr.StatusCode,
+			)
+			ErrorJSON(w, http.StatusBadGateway, sanitizeCAPIError(capiErr.StatusCode))
 			return
 		}
 		ErrorJSON(w, http.StatusBadGateway, "failed to test pixel connection")
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: resp})
+}
+
+func sanitizeCAPIError(statusCode int) string {
+	switch statusCode {
+	case 400:
+		return "Facebook rejected the request. Check your Pixel ID and Access Token."
+	case 401, 403:
+		return "Facebook authentication failed. Your access token may be invalid or expired."
+	case 429:
+		return "Facebook rate limit exceeded. Please try again later."
+	default:
+		return fmt.Sprintf("Facebook returned an error (HTTP %d). Please try again.", statusCode)
+	}
 }
