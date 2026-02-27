@@ -146,6 +146,20 @@ export interface APIResponse<T> {
   message?: string
 }
 
+export interface CustomDomain {
+  id: string
+  customer_id: string
+  sale_page_id: string
+  domain: string
+  cf_hostname_id: string | null
+  verification_token: string
+  dns_verified: boolean
+  ssl_active: boolean
+  verified_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface AuthTokens {
   access_token: string
   refresh_token: string
