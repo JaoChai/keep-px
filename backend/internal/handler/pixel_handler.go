@@ -3,11 +3,13 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 
+	"github.com/jaochai/pixlinks/backend/internal/facebook"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
@@ -99,4 +101,34 @@ func (h *PixelHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Message: "pixel deleted"})
+}
+
+func (h *PixelHandler) Test(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
+	pixelID := chi.URLParam(r, "id")
+
+	resp, err := h.pixelService.TestConnection(r.Context(), customerID, pixelID)
+	if err != nil {
+		if errors.Is(err, service.ErrPixelNotFound) {
+			ErrorJSON(w, http.StatusNotFound, "pixel not found")
+			return
+		}
+		if errors.Is(err, service.ErrPixelNotOwned) {
+			ErrorJSON(w, http.StatusForbidden, "pixel not owned by you")
+			return
+		}
+		if errors.Is(err, service.ErrPixelNoAccessToken) {
+			ErrorJSON(w, http.StatusBadRequest, "pixel has no access token configured")
+			return
+		}
+		// Check for Facebook CAPI error
+		var capiErr *facebook.CAPIError
+		if errors.As(err, &capiErr) {
+			ErrorJSON(w, http.StatusBadGateway, fmt.Sprintf("Facebook CAPI error (status %d): %s", capiErr.StatusCode, capiErr.Message))
+			return
+		}
+		ErrorJSON(w, http.StatusBadGateway, "failed to test pixel connection")
+		return
+	}
+	JSON(w, http.StatusOK, APIResponse{Data: resp})
 }

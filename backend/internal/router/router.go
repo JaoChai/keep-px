@@ -48,7 +48,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 
 	// Services
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
-	pixelService := service.NewPixelService(pixelRepo)
+	pixelService := service.NewPixelService(pixelRepo, capiClient, logger)
 	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger)
 	ruleService := service.NewRuleService(eventRuleRepo, pixelRepo)
 	replayService := service.NewReplayService(replaySessionRepo, eventRepo, pixelRepo, capiClient, logger)
@@ -117,6 +117,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 				r.Post("/", pixelHandler.Create)
 				r.Put("/{id}", pixelHandler.Update)
 				r.Delete("/{id}", pixelHandler.Delete)
+				r.Post("/{id}/test", pixelHandler.Test)
 			})
 
 			// Event log routes - Phase 4
