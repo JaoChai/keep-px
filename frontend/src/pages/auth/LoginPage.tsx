@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,9 +34,12 @@ export function LoginPage() {
     setError('')
     try {
       await login.mutateAsync(data)
+      toast.success('เข้าสู่ระบบสำเร็จ')
       navigate('/dashboard')
     } catch {
-      setError('Invalid email or password')
+      const msg = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
+      setError(msg)
+      toast.error(msg)
     }
   }
 

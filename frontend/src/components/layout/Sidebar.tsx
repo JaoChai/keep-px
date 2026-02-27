@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router'
+import { NavLink, useNavigate } from 'react-router'
 import {
   LayoutDashboard,
   Radio,
@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 
 const navItems = [
@@ -23,6 +24,13 @@ const navItems = [
 
 export function Sidebar() {
   const logout = useAuthStore((s) => s.logout)
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    toast.success('ออกจากระบบสำเร็จ')
+    navigate('/login', { replace: true })
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 w-[260px] border-r border-neutral-200 bg-white flex flex-col">
@@ -54,7 +62,7 @@ export function Sidebar() {
 
       <div className="border-t border-neutral-200 p-3">
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
         >
           <LogOut className="h-5 w-5" />

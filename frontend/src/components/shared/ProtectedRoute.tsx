@@ -12,34 +12,50 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const hasHydrated = useAuthStore((s) => s._hasHydrated)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const setCustomer = useAuthStore((s) => s.setCustomer)
   const logout = useAuthStore((s) => s.logout)
-  const [isVerifying, setIsVerifying] = useState(true)
+  const [isVerifying, setIsVerifying] = useState(
+    () => !!localStorage.getItem('access_token')
+  )
   const [isValid, setIsValid] = useState(false)
 
-  const token = localStorage.getItem('access_token')
-
   useEffect(() => {
-    if (!hasHydrated || !token) return
+    if (!hasHydrated) return
 
-    // Verify token with server and fetch fresh customer data
+    const token = localStorage.getItem('access_token')
+    if (!token) return
+
+    const controller = new AbortController()
+
     api
-      .get<APIResponse<Customer>>('/auth/me')
+      .get<APIResponse<Customer>>('/auth/me', { signal: controller.signal })
       .then(({ data }) => {
+        if (controller.signal.aborted) return
         if (data.data) {
           setCustomer(data.data)
           setIsValid(true)
         } else {
           logout()
+          setIsValid(false)
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        if (controller.signal.aborted) return
+        if (err.code === 'ERR_CANCELED') return
         logout()
+        setIsValid(false)
       })
-      .finally(() => setIsVerifying(false))
-  }, [hasHydrated, token]) // eslint-disable-line react-hooks/exhaustive-deps
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsVerifying(false)
+        }
+      })
 
-  if (!hasHydrated) {
+    return () => controller.abort()
+  }, [hasHydrated, setCustomer, logout])
+
+  if (!hasHydrated || isVerifying) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <div style={{ color: '#666', fontSize: '14px' }}>Loading...</div>
@@ -47,19 +63,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  if (!token) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (isVerifying) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <div style={{ color: '#666', fontSize: '14px' }}>Loading...</div>
-      </div>
-    )
-  }
-
-  if (!isValid) {
+  if (!isValid || !isAuthenticated) {
     return <Navigate to="/login" replace />
   }
 
