@@ -45,24 +45,35 @@ export function CustomDomainsPage() {
   }
 
   const handleCreate = async () => {
-    if (!newDomain || !selectedSalePageId) {
+    if (!newDomain.trim() || !selectedSalePageId) {
       toast.error('Please fill in all fields')
+      return
+    }
+    const domainTrimmed = newDomain.trim().toLowerCase()
+    const fqdnPattern = /^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+(?<!-)$/
+    if (!fqdnPattern.test(domainTrimmed)) {
+      toast.error('Please enter a valid domain (e.g., shop.example.com)')
       return
     }
     try {
       const result = await createDomain.mutateAsync({
-        domain: newDomain,
+        domain: domainTrimmed,
         sale_page_id: selectedSalePageId,
       })
-      setCreatedDomain(newDomain)
       setCnameTarget(result.cname_target)
+      setCreatedDomain(domainTrimmed)
       setShowAddDialog(false)
       setShowDnsDialog(true)
       setNewDomain('')
       setSelectedSalePageId('')
       toast.success('Domain added successfully')
-    } catch {
-      toast.error('Failed to add domain')
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } } }
+        toast.error(axiosErr.response?.data?.error || 'Failed to add domain')
+      } else {
+        toast.error('Failed to add domain')
+      }
     }
   }
 
@@ -70,8 +81,13 @@ export function CustomDomainsPage() {
     try {
       await verifyDomain.mutateAsync(id)
       toast.success('Domain verification initiated')
-    } catch {
-      toast.error('Failed to verify domain')
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } } }
+        toast.error(axiosErr.response?.data?.error || 'Failed to verify domain')
+      } else {
+        toast.error('Failed to verify domain')
+      }
     }
   }
 
@@ -80,8 +96,13 @@ export function CustomDomainsPage() {
       await deleteDomain.mutateAsync(id)
       setDeleteConfirm(null)
       toast.success('Domain deleted successfully')
-    } catch {
-      toast.error('Failed to delete domain')
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } } }
+        toast.error(axiosErr.response?.data?.error || 'Failed to delete domain')
+      } else {
+        toast.error('Failed to delete domain')
+      }
     }
   }
 
@@ -325,9 +346,10 @@ export function CustomDomainsPage() {
             </Button>
             <Button
               variant="destructive"
+              disabled={deleteDomain.isPending}
               onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
             >
-              Delete
+              {deleteDomain.isPending ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>

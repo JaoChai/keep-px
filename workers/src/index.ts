@@ -34,26 +34,32 @@ export default {
       return new Response("Invalid domain configuration", { status: 500 })
     }
 
-    // Check edge cache
-    const cacheKey = new Request(url.toString(), request)
+    // Validate slug format to prevent SSRF via malicious KV data
+    const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+    if (!slugPattern.test(mapping.slug)) {
+      return new Response("Invalid page configuration", { status: 500 })
+    }
+
+    // Check edge cache (include hostname explicitly to prevent cross-domain cache poisoning)
+    const cacheKey = new Request(`https://${hostname}${url.pathname}${url.search}`, {
+      method: "GET",
+    })
     const cache = caches.default
     const cachedResponse = await cache.match(cacheKey)
     if (cachedResponse) {
       return cachedResponse
     }
 
-    // Proxy to backend using slug-based URL
-    const backendUrl = `${env.BACKEND_ORIGIN}/p/${mapping.slug}`
+    // Proxy to backend using slug-based URL (encodeURIComponent as defense-in-depth)
+    const backendUrl = `${env.BACKEND_ORIGIN}/p/${encodeURIComponent(mapping.slug)}`
     const proxyRequest = new Request(backendUrl, {
       method: request.method,
       headers: new Headers(request.headers),
     })
 
-    // Add forwarding headers
+    // Add standard proxy forwarding headers only
     proxyRequest.headers.set("X-Forwarded-Host", hostname)
     proxyRequest.headers.set("X-Forwarded-Proto", url.protocol.replace(":", ""))
-    proxyRequest.headers.set("X-Page-ID", mapping.sale_page_id)
-    proxyRequest.headers.set("X-Customer-ID", mapping.customer_id)
 
     try {
       const response = await fetch(proxyRequest)

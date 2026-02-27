@@ -69,7 +69,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService)
 	proxyHandler := handler.NewProxyHandler()
 	salePageHandler := handler.NewSalePageHandler(salePageService, logger)
-	customDomainHandler := handler.NewCustomDomainHandler(customDomainService, cfg.CFCNAMETarget)
+	customDomainHandler := handler.NewCustomDomainHandler(customDomainService, cfg.CFCNAMETarget, logger)
 	uploadHandler := handler.NewUploadHandler(storageService)
 
 	// Health check

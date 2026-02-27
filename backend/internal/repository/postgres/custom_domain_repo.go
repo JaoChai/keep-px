@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,7 +32,7 @@ func (r *CustomDomainRepo) GetByID(ctx context.Context, id string) (*domain.Cust
 		`SELECT id, customer_id, sale_page_id, domain, cf_hostname_id, verification_token, dns_verified, ssl_active, verified_at, created_at, updated_at
 		 FROM custom_domains WHERE id = $1`, id,
 	).Scan(&d.ID, &d.CustomerID, &d.SalePageID, &d.Domain, &d.CFHostnameID, &d.VerificationToken, &d.DNSVerified, &d.SSLActive, &d.VerifiedAt, &d.CreatedAt, &d.UpdatedAt)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	return d, err
@@ -43,7 +44,7 @@ func (r *CustomDomainRepo) GetByDomain(ctx context.Context, domainName string) (
 		`SELECT id, customer_id, sale_page_id, domain, cf_hostname_id, verification_token, dns_verified, ssl_active, verified_at, created_at, updated_at
 		 FROM custom_domains WHERE domain = $1`, domainName,
 	).Scan(&d.ID, &d.CustomerID, &d.SalePageID, &d.Domain, &d.CFHostnameID, &d.VerificationToken, &d.DNSVerified, &d.SSLActive, &d.VerifiedAt, &d.CreatedAt, &d.UpdatedAt)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	return d, err

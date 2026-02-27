@@ -12,8 +12,8 @@ export function useCustomDomains() {
   })
 }
 
-interface CreateCustomDomainResponse {
-  data: CustomDomain
+interface CreateDomainData {
+  domain: CustomDomain
   cname_target: string
 }
 
@@ -21,8 +21,8 @@ export function useCreateCustomDomain() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (input: { domain: string; sale_page_id: string }) => {
-      const { data } = await api.post<CreateCustomDomainResponse>('/domains', input)
-      return data
+      const { data } = await api.post<APIResponse<CreateDomainData>>('/domains', input)
+      return data.data!
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['custom-domains'] })

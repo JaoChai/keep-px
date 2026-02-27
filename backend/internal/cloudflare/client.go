@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -97,7 +98,7 @@ func (c *Client) doRequest(ctx context.Context, method, url string, body []byte,
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
 		return nil, fmt.Errorf("read response: %w", err)
 	}
@@ -161,7 +162,7 @@ func (c *Client) CreateCustomHostname(ctx context.Context, hostname string) (*Cu
 
 // GetCustomHostname retrieves the status of a custom hostname.
 func (c *Client) GetCustomHostname(ctx context.Context, hostnameID string) (*CustomHostnameResponse, error) {
-	url := fmt.Sprintf("%s/zones/%s/custom_hostnames/%s", baseURL, c.zoneID, hostnameID)
+	url := fmt.Sprintf("%s/zones/%s/custom_hostnames/%s", baseURL, c.zoneID, url.PathEscape(hostnameID))
 
 	respBody, err := c.doRequest(ctx, http.MethodGet, url, nil, "")
 	if err != nil {
@@ -183,7 +184,7 @@ func (c *Client) GetCustomHostname(ctx context.Context, hostnameID string) (*Cus
 
 // DeleteCustomHostname removes a custom hostname from Cloudflare.
 func (c *Client) DeleteCustomHostname(ctx context.Context, hostnameID string) error {
-	url := fmt.Sprintf("%s/zones/%s/custom_hostnames/%s", baseURL, c.zoneID, hostnameID)
+	url := fmt.Sprintf("%s/zones/%s/custom_hostnames/%s", baseURL, c.zoneID, url.PathEscape(hostnameID))
 
 	_, err := c.doRequest(ctx, http.MethodDelete, url, nil, "")
 	return err
@@ -192,7 +193,7 @@ func (c *Client) DeleteCustomHostname(ctx context.Context, hostnameID string) er
 // PutKVValue stores a key-value pair in Cloudflare Workers KV.
 func (c *Client) PutKVValue(ctx context.Context, key string, value []byte) error {
 	url := fmt.Sprintf("%s/accounts/%s/storage/kv/namespaces/%s/values/%s",
-		baseURL, c.accountID, c.kvNamespaceID, key)
+		baseURL, c.accountID, c.kvNamespaceID, url.PathEscape(key))
 
 	_, err := c.doRequest(ctx, http.MethodPut, url, value, "application/octet-stream")
 	return err
@@ -201,7 +202,7 @@ func (c *Client) PutKVValue(ctx context.Context, key string, value []byte) error
 // DeleteKVValue removes a key-value pair from Cloudflare Workers KV.
 func (c *Client) DeleteKVValue(ctx context.Context, key string) error {
 	url := fmt.Sprintf("%s/accounts/%s/storage/kv/namespaces/%s/values/%s",
-		baseURL, c.accountID, c.kvNamespaceID, key)
+		baseURL, c.accountID, c.kvNamespaceID, url.PathEscape(key))
 
 	_, err := c.doRequest(ctx, http.MethodDelete, url, nil, "")
 	return err
