@@ -30,19 +30,22 @@ export function BlockPreview({ blocks, ctaEventName, style }: BlockPreviewProps)
         )}
         {blocks.map((block) => {
           if (block.type === 'image') {
-            return block.image_url ? (
+            const img = block.image_url ? (
               <img
-                key={block.id}
                 src={block.image_url}
                 alt=""
                 className="w-full block object-cover"
                 style={{ aspectRatio: '1/1' }}
               />
             ) : (
-              <div key={block.id} className="w-full bg-neutral-100 flex items-center justify-center text-neutral-400 text-xs" style={{ aspectRatio: '1/1' }}>
+              <div className="w-full bg-neutral-100 flex items-center justify-center text-neutral-400 text-xs" style={{ aspectRatio: '1/1' }}>
                 รูปภาพ
               </div>
             )
+            if (block.link_url) {
+              return <a key={block.id} href={block.link_url} target="_blank" rel="noopener noreferrer">{img}</a>
+            }
+            return <div key={block.id}>{img}</div>
           }
 
           if (block.type === 'text') {
