@@ -1,4 +1,5 @@
 import { CheckCircle, Phone, MessageCircle, Globe } from 'lucide-react'
+import type { PageStyle } from '@/types'
 
 interface SalePagePreviewProps {
   hero: { title: string; subtitle: string; image_url: string }
@@ -6,13 +7,28 @@ interface SalePagePreviewProps {
   cta: { button_text: string; button_link: string }
   contact: { line_id: string; phone: string; website_url?: string }
   ctaEventName?: string
+  style?: PageStyle
 }
 
-export function SalePagePreview({ hero, body, cta, contact, ctaEventName }: SalePagePreviewProps) {
+export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style }: SalePagePreviewProps) {
+  const accentColor = style?.accent_color || '#667eea'
+  const bgColor = style?.bg_color
+  const textColor = style?.text_color
+  const bgImageUrl = style?.bg_image_url
+
   return (
-    <div className="max-w-[375px] mx-auto rounded-2xl border border-neutral-200 shadow-lg overflow-hidden bg-white">
+    <div
+      className="max-w-[375px] mx-auto rounded-2xl border border-neutral-200 shadow-lg overflow-hidden bg-white"
+      style={{
+        ...(bgColor ? { backgroundColor: bgColor } : {}),
+        ...(bgImageUrl ? { backgroundImage: `url(${bgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
+      }}
+    >
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-indigo-600 to-purple-600 px-6 py-10 text-center text-white">
+      <div
+        className={!style?.accent_color ? 'bg-gradient-to-br from-indigo-600 to-purple-600 px-6 py-10 text-center text-white' : 'px-6 py-10 text-center text-white'}
+        style={style?.accent_color ? { background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)` } : undefined}
+      >
         {hero.image_url ? (
           <img
             src={hero.image_url}
@@ -35,9 +51,9 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName }: Sale
       </div>
 
       {/* Body Section */}
-      <div className="px-6 py-6">
+      <div className="px-6 py-6" style={textColor ? { color: textColor } : undefined}>
         {body.description ? (
-          <p className="text-sm text-neutral-600 leading-relaxed">{body.description}</p>
+          <p className="text-sm leading-relaxed" style={{ color: textColor || undefined }}>{body.description}</p>
         ) : (
           <p className="text-sm text-neutral-300">Description text will appear here...</p>
         )}
@@ -46,7 +62,7 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName }: Sale
         {body.features.length > 0 ? (
           <ul className="mt-4 space-y-2">
             {body.features.filter(f => f.trim()).map((feature, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-neutral-700">
+              <li key={i} className="flex items-start gap-2 text-sm" style={{ color: textColor || undefined }}>
                 <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
                 <span>{feature}</span>
               </li>
@@ -74,7 +90,10 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName }: Sale
       {/* CTA Section */}
       <div className="px-6 pb-4">
         <div className="relative">
-          <button className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm shadow-md">
+          <button
+            className={!style?.accent_color ? 'w-full py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm shadow-md' : 'w-full py-3 rounded-lg text-white font-semibold text-sm shadow-md'}
+            style={style?.accent_color ? { background: `linear-gradient(to right, ${accentColor}, ${accentColor}cc)` } : undefined}
+          >
             {cta.button_text || 'Call to Action'}
           </button>
           {ctaEventName && (

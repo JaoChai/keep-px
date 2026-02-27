@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Collapsible } from '@/components/ui/collapsible'
 import { BlockEditor } from '@/components/sale-pages/BlockEditor'
 import { BlockPreview } from '@/components/sale-pages/BlockPreview'
+import { StyleEditor } from '@/components/sale-pages/StyleEditor'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
-import type { Block, SalePage, SalePageContentV2 } from '@/types'
+import type { Block, SalePage, SalePageContentV2, PageStyle } from '@/types'
 
 const CTA_EVENT_OPTIONS = [
   { value: 'Lead', label: 'Lead — ลูกค้าสนใจ ต้องการข้อมูลเพิ่ม' },
@@ -76,6 +77,9 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
   const [slugTouched, setSlugTouched] = useState(isEditing)
   const [pixelId, setPixelId] = useState(existingPage?.pixel_id ?? '')
 
+  // Page style
+  const [pageStyle, setPageStyle] = useState<PageStyle>(v2?.style ?? {})
+
   // Blocks
   const [blocks, setBlocks] = useState<Block[]>(v2?.blocks ?? [])
 
@@ -107,6 +111,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
       content_value: trackingContentValue || 0,
       currency: trackingCurrency || 'THB',
     },
+    style: pageStyle,
   })
 
   const isSubmitting = createSalePage.isPending || updateSalePage.isPending
@@ -261,6 +266,11 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
           {/* Block Editor */}
           <BlockEditor blocks={blocks} onChange={setBlocks} />
 
+          {/* Page Style */}
+          <Collapsible title="รูปแบบหน้าเพจ">
+            <StyleEditor style={pageStyle} onChange={setPageStyle} />
+          </Collapsible>
+
           {/* Tracking Settings */}
           <Collapsible title="ตั้งค่าการติดตาม">
             <div className="space-y-4">
@@ -330,7 +340,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
         <div className={`lg:w-1/3 ${mobileView === 'edit' ? 'hidden lg:block' : ''}`}>
           <div className="sticky top-8">
             <p className="text-sm font-medium text-neutral-500 mb-3">Preview</p>
-            <BlockPreview blocks={blocks} ctaEventName={ctaEventName} />
+            <BlockPreview blocks={blocks} ctaEventName={ctaEventName} style={pageStyle} />
           </div>
         </div>
       </div>

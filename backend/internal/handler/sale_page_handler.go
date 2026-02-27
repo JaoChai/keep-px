@@ -54,6 +54,7 @@ type salePageTemplateData struct {
 	Page          *domain.SalePage
 	Content       *domain.SimpleContent
 	BlocksContent *domain.BlocksContent
+	Style         domain.PageStyle
 	APIKey        string
 	FBPixelID     string
 }
@@ -221,6 +222,7 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.Sal
 			return
 		}
 		td.BlocksContent = &blocks
+		td.Style = blocks.Style
 		templateName = "blocks"
 	} else {
 		var content domain.SimpleContent
@@ -229,6 +231,7 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.Sal
 			return
 		}
 		td.Content = &content
+		td.Style = content.Style
 	}
 
 	tmpl, ok := h.templates[templateName]

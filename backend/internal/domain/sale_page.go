@@ -18,12 +18,20 @@ type SalePage struct {
 	UpdatedAt    time.Time       `json:"updated_at"`
 }
 
+type PageStyle struct {
+	BgColor     string `json:"bg_color,omitempty"`
+	AccentColor string `json:"accent_color,omitempty"`
+	TextColor   string `json:"text_color,omitempty"`
+	BgImageURL  string `json:"bg_image_url,omitempty"`
+}
+
 type SimpleContent struct {
 	Hero     HeroSection    `json:"hero"`
 	Body     BodySection    `json:"body"`
 	CTA      CTASection     `json:"cta"`
 	Contact  ContactInfo    `json:"contact"`
 	Tracking TrackingConfig `json:"tracking"`
+	Style    PageStyle      `json:"style,omitempty"`
 }
 
 type TrackingConfig struct {
@@ -81,4 +89,5 @@ type BlocksContent struct {
 	Version  int            `json:"version"`
 	Blocks   []Block        `json:"blocks"`
 	Tracking TrackingConfig `json:"tracking"`
+	Style    PageStyle      `json:"style,omitempty"`
 }

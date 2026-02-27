@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
@@ -22,6 +23,7 @@ var (
 )
 
 var slugRegex = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+var hexColorRegex = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 var reservedSlugs = map[string]bool{
 	"api":       true,
@@ -280,6 +282,22 @@ func validateSafeURL(raw string) error {
 	return nil
 }
 
+func validatePageStyle(style domain.PageStyle) error {
+	if style.BgColor != "" && !hexColorRegex.MatchString(style.BgColor) {
+		return fmt.Errorf("%w: bg_color must be a valid hex color (e.g. #ffffff)", ErrInvalidContent)
+	}
+	if style.AccentColor != "" && !hexColorRegex.MatchString(style.AccentColor) {
+		return fmt.Errorf("%w: accent_color must be a valid hex color (e.g. #667eea)", ErrInvalidContent)
+	}
+	if style.TextColor != "" && !hexColorRegex.MatchString(style.TextColor) {
+		return fmt.Errorf("%w: text_color must be a valid hex color (e.g. #1a1a2e)", ErrInvalidContent)
+	}
+	if style.BgImageURL != "" && !strings.HasPrefix(style.BgImageURL, "https://") {
+		return fmt.Errorf("%w: bg_image_url must start with https://", ErrInvalidContent)
+	}
+	return nil
+}
+
 func validateContent(raw json.RawMessage) error {
 	var peek struct {
 		Version int `json:"version"`
@@ -323,6 +341,9 @@ func validateContent(raw json.RawMessage) error {
 				return fmt.Errorf("%w: block at index %d has unknown type %q", ErrInvalidContent, i, b.Type)
 			}
 		}
+		if err := validatePageStyle(content.Style); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -330,6 +351,9 @@ func validateContent(raw json.RawMessage) error {
 	var content domain.SimpleContent
 	if err := json.Unmarshal(raw, &content); err != nil {
 		return ErrInvalidContent
+	}
+	if err := validatePageStyle(content.Style); err != nil {
+		return err
 	}
 	return nil
 }
