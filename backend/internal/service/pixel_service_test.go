@@ -2,17 +2,24 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
+	"github.com/jaochai/pixlinks/backend/internal/facebook"
 )
 
 func newTestPixelService() (*PixelService, *MockPixelRepo) {
 	pixelRepo := new(MockPixelRepo)
-	svc := NewPixelService(pixelRepo)
+	capiClient := facebook.NewCAPIClient("http://localhost:9999")
+	svc := NewPixelService(pixelRepo, capiClient, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	return svc, pixelRepo
 }
 
@@ -239,6 +246,126 @@ func TestPixelService_Delete(t *testing.T) {
 				assert.ErrorIs(t, err, tt.wantErr)
 			} else {
 				assert.NoError(t, err)
+			}
+			pixelRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestPixelService_TestConnection(t *testing.T) {
+	tests := []struct {
+		name       string
+		customerID string
+		pixelID    string
+		setup      func(*MockPixelRepo)
+		fbHandler  http.HandlerFunc
+		wantErr    error
+		wantErrMsg string
+	}{
+		{
+			name:       "success",
+			customerID: "cust-1",
+			pixelID:    "pixel-1",
+			setup: func(pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:            "pixel-1",
+					CustomerID:    "cust-1",
+					FBPixelID:     "123456",
+					FBAccessToken: "valid-token",
+				}, nil)
+			},
+			fbHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"events_received": 1,
+					"fbtrace_id":      "test-trace-123",
+				})
+			},
+		},
+		{
+			name:       "pixel not found",
+			customerID: "cust-1",
+			pixelID:    "nonexistent",
+			setup: func(pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
+			},
+			wantErr: ErrPixelNotFound,
+		},
+		{
+			name:       "pixel not owned",
+			customerID: "cust-2",
+			pixelID:    "pixel-1",
+			setup: func(pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:         "pixel-1",
+					CustomerID: "cust-1",
+				}, nil)
+			},
+			wantErr: ErrPixelNotOwned,
+		},
+		{
+			name:       "missing access token",
+			customerID: "cust-1",
+			pixelID:    "pixel-1",
+			setup: func(pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:            "pixel-1",
+					CustomerID:    "cust-1",
+					FBPixelID:     "123456",
+					FBAccessToken: "",
+				}, nil)
+			},
+			wantErr: ErrPixelNoAccessToken,
+		},
+		{
+			name:       "capi error",
+			customerID: "cust-1",
+			pixelID:    "pixel-1",
+			setup: func(pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:            "pixel-1",
+					CustomerID:    "cust-1",
+					FBPixelID:     "123456",
+					FBAccessToken: "invalid-token",
+				}, nil)
+			},
+			fbHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid OAuth access token"))
+			},
+			wantErrMsg: "test connection",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pixelRepo := new(MockPixelRepo)
+			tt.setup(pixelRepo)
+
+			var capiClient *facebook.CAPIClient
+			if tt.fbHandler != nil {
+				server := httptest.NewServer(tt.fbHandler)
+				defer server.Close()
+				capiClient = facebook.NewCAPIClient(server.URL)
+			} else {
+				capiClient = facebook.NewCAPIClient("http://localhost:9999")
+			}
+
+			svc := NewPixelService(pixelRepo, capiClient, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+			resp, err := svc.TestConnection(context.Background(), tt.customerID, tt.pixelID)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, resp)
+			} else if tt.wantErrMsg != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
+				assert.Nil(t, resp)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, resp)
+				assert.Equal(t, 1, resp.EventsReceived)
 			}
 			pixelRepo.AssertExpectations(t)
 		})

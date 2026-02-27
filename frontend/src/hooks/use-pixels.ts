@@ -49,3 +49,12 @@ export function useDeletePixel() {
     },
   })
 }
+
+export function useTestPixel() {
+  return useMutation({
+    mutationFn: async (pixelId: string) => {
+      const { data } = await api.post<APIResponse<{ events_received: number; fbtrace_id?: string }>>(`/pixels/${pixelId}/test`)
+      return data.data!
+    },
+  })
+}

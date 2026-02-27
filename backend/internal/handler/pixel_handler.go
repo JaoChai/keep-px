@@ -3,11 +3,14 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 
+	"github.com/jaochai/pixlinks/backend/internal/facebook"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
@@ -99,4 +102,51 @@ func (h *PixelHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Message: "pixel deleted"})
+}
+
+func (h *PixelHandler) Test(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
+	pixelID := chi.URLParam(r, "id")
+
+	resp, err := h.pixelService.TestConnection(r.Context(), customerID, pixelID)
+	if err != nil {
+		if errors.Is(err, service.ErrPixelNotFound) {
+			ErrorJSON(w, http.StatusNotFound, "pixel not found")
+			return
+		}
+		if errors.Is(err, service.ErrPixelNotOwned) {
+			ErrorJSON(w, http.StatusForbidden, "pixel not owned by you")
+			return
+		}
+		if errors.Is(err, service.ErrPixelNoAccessToken) {
+			ErrorJSON(w, http.StatusBadRequest, "pixel has no access token configured")
+			return
+		}
+		// Check for Facebook CAPI error — never expose raw FB response to client
+		var capiErr *facebook.CAPIError
+		if errors.As(err, &capiErr) {
+			slog.Error("pixel test connection CAPI error",
+				"pixel_id", pixelID,
+				"fb_status", capiErr.StatusCode,
+			)
+			ErrorJSON(w, http.StatusBadGateway, sanitizeCAPIError(capiErr.StatusCode))
+			return
+		}
+		ErrorJSON(w, http.StatusBadGateway, "failed to test pixel connection")
+		return
+	}
+	JSON(w, http.StatusOK, APIResponse{Data: resp})
+}
+
+func sanitizeCAPIError(statusCode int) string {
+	switch statusCode {
+	case 400:
+		return "Facebook rejected the request. Check your Pixel ID and Access Token."
+	case 401, 403:
+		return "Facebook authentication failed. Your access token may be invalid or expired."
+	case 429:
+		return "Facebook rate limit exceeded. Please try again later."
+	default:
+		return fmt.Sprintf("Facebook returned an error (HTTP %d). Please try again.", statusCode)
+	}
 }

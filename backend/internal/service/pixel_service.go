@@ -4,8 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
+	"github.com/jaochai/pixlinks/backend/internal/facebook"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
 
@@ -15,16 +19,23 @@ const (
 )
 
 var (
-	ErrPixelNotFound = errors.New("pixel not found")
-	ErrPixelNotOwned = errors.New("pixel not owned by customer")
+	ErrPixelNotFound      = errors.New("pixel not found")
+	ErrPixelNotOwned      = errors.New("pixel not owned by customer")
+	ErrPixelNoAccessToken = errors.New("pixel has no access token configured")
 )
 
 type PixelService struct {
-	pixelRepo repository.PixelRepository
+	pixelRepo  repository.PixelRepository
+	capiClient *facebook.CAPIClient
+	logger     *slog.Logger
 }
 
-func NewPixelService(pixelRepo repository.PixelRepository) *PixelService {
-	return &PixelService{pixelRepo: pixelRepo}
+func NewPixelService(pixelRepo repository.PixelRepository, capiClient *facebook.CAPIClient, logger *slog.Logger) *PixelService {
+	return &PixelService{
+		pixelRepo:  pixelRepo,
+		capiClient: capiClient,
+		logger:     logger,
+	}
 }
 
 type CreatePixelInput struct {
@@ -127,4 +138,39 @@ func (s *PixelService) Delete(ctx context.Context, customerID, pixelID string) e
 		return ErrPixelNotOwned
 	}
 	return s.pixelRepo.Delete(ctx, pixelID)
+}
+
+func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID string) (*facebook.CAPIResponse, error) {
+	pixel, err := s.GetByID(ctx, customerID, pixelID)
+	if err != nil {
+		return nil, err
+	}
+
+	if pixel.FBAccessToken == "" {
+		return nil, ErrPixelNoAccessToken
+	}
+
+	event := facebook.CAPIEvent{
+		EventName:             "PageView",
+		EventTime:             time.Now().Unix(),
+		ActionSource:          "website",
+		EventID:               uuid.NewString(),
+		DataProcessingOptions: []string{},
+	}
+
+	resp, err := s.capiClient.SendEvent(ctx, pixel.FBPixelID, pixel.FBAccessToken, event)
+	if err != nil {
+		s.logger.WarnContext(ctx, "pixel test connection failed",
+			slog.String("pixel_id", pixelID),
+			slog.String("error", err.Error()),
+		)
+		return nil, fmt.Errorf("test connection: %w", err)
+	}
+
+	s.logger.InfoContext(ctx, "pixel test connection succeeded",
+		slog.String("pixel_id", pixelID),
+		slog.Int("events_received", resp.EventsReceived),
+	)
+
+	return resp, nil
 }

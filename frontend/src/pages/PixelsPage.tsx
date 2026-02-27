@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Pencil, Trash2, Code, Copy, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, Code, Copy, Check, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { usePixels, useCreatePixel, useUpdatePixel, useDeletePixel } from '@/hooks/use-pixels'
+import { toast } from 'sonner'
+import { usePixels, useCreatePixel, useUpdatePixel, useDeletePixel, useTestPixel } from '@/hooks/use-pixels'
 import { useAuthStore } from '@/stores/auth-store'
 import type { Pixel } from '@/types'
 
@@ -33,6 +34,7 @@ export function PixelsPage() {
   const createPixel = useCreatePixel()
   const updatePixel = useUpdatePixel()
   const deletePixel = useDeletePixel()
+  const testPixel = useTestPixel()
   const customer = useAuthStore((s) => s.customer)
 
   const [showDialog, setShowDialog] = useState(false)
@@ -95,6 +97,18 @@ export function PixelsPage() {
     await updatePixel.mutateAsync({ id: pixel.id, is_active: !pixel.is_active })
   }
 
+  const handleTestConnection = async (pixel: Pixel) => {
+    try {
+      await testPixel.mutateAsync(pixel.id)
+      toast.success('Pixel ทำงานปกติ — Facebook ได้รับ event แล้ว')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      // Extract error from API response if available
+      const apiError = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(apiError || `ส่งไม่ได้ — ${message}`)
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -147,6 +161,19 @@ export function PixelsPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="ทดสอบการเชื่อมต่อ"
+                        onClick={() => handleTestConnection(pixel)}
+                        disabled={testPixel.isPending}
+                      >
+                        {testPixel.isPending && testPixel.variables === pixel.id ? (
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <Zap className="h-4 w-4" />
+                        )}
+                      </Button>
                       <Button variant="ghost" size="icon" title="Get Code" onClick={() => setSnippetPixel(pixel)}>
                         <Code className="h-4 w-4" />
                       </Button>
