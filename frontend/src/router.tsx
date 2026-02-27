@@ -5,7 +5,6 @@ import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { PixelsPage } from '@/pages/PixelsPage'
-import { EventSetupPage } from '@/pages/EventSetupPage'
 import { EventLogPage } from '@/pages/EventLogPage'
 import { ReplayPage } from '@/pages/ReplayPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -38,7 +37,6 @@ export const router = createBrowserRouter([
       { path: 'sale-pages/new-classic', element: <SalePageEditorPage /> },
       { path: 'sale-pages/:id/edit', element: <SalePageEditorPage /> },
       { path: 'sale-pages/:id/edit-blocks', element: <BlockEditorPage /> },
-      { path: 'events/setup', element: <EventSetupPage /> },
       { path: 'events/log', element: <EventLogPage /> },
       { path: 'replay', element: <ReplayPage /> },
       { path: 'settings', element: <SettingsPage /> },

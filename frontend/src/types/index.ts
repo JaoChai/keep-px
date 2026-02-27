@@ -32,24 +32,6 @@ export interface PixelEvent {
   created_at: string
 }
 
-export interface EventRule {
-  id: string
-  pixel_id: string
-  page_url: string
-  event_name: string
-  trigger_type: string
-  css_selector?: string
-  xpath?: string
-  element_text?: string
-  conditions?: Record<string, unknown>
-  parameters?: Record<string, unknown>
-  fire_once: boolean
-  delay_ms: number
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
 export interface ReplaySession {
   id: string
   customer_id: string
