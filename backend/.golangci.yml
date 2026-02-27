@@ -19,6 +19,6 @@ linters:
       min-len: 3
       min-occurrences: 3
 
-issues:
-  exclude-dirs:
+run:
+  skip-dirs:
     - db/generated
