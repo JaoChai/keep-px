@@ -8,13 +8,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: {{if .Style.BgColor}}{{.Style.BgColor}}{{else}}#f8f9fa{{end}};
+            --accent-color: {{if .Style.AccentColor}}{{.Style.AccentColor}}{{else}}#4f46e5{{end}};
+            --text-color: {{if .Style.TextColor}}{{.Style.TextColor}}{{else}}#1a1a2e{{end}};
+        }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            color: #1a1a2e;
-            background: #f8f9fa;
+            color: var(--text-color);
+            background: var(--bg-color);
             min-height: 100vh;
+            {{if .Style.BgImageURL}}
+            background-image: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url({{.Style.BgImageURL}});
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            {{end}}
         }
         .page-wrapper {
             max-width: 480px;
@@ -32,7 +43,7 @@
             padding: 1.25rem 1.5rem;
             text-align: center;
             font-size: 0.95rem;
-            color: #4a4a6a;
+            color: var(--text-color);
             white-space: pre-line;
         }
         .block-button {
@@ -71,7 +82,7 @@
             box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
         }
         .block-button--custom {
-            background-color: #4f46e5;
+            background-color: var(--accent-color);
             box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
         }
         .block-button--custom:hover {

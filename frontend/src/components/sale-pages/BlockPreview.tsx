@@ -1,14 +1,26 @@
 import { MessageCircle, Globe, Link } from 'lucide-react'
-import type { Block } from '@/types'
+import type { Block, PageStyle } from '@/types'
 
 interface BlockPreviewProps {
   blocks: Block[]
   ctaEventName?: string
+  style?: PageStyle
 }
 
-export function BlockPreview({ blocks, ctaEventName }: BlockPreviewProps) {
+export function BlockPreview({ blocks, ctaEventName, style }: BlockPreviewProps) {
+  const accentColor = style?.accent_color
+  const bgColor = style?.bg_color
+  const textColor = style?.text_color
+  const bgImageUrl = style?.bg_image_url
+
   return (
-    <div className="max-w-[375px] mx-auto rounded-2xl border border-neutral-200 shadow-lg overflow-hidden bg-white">
+    <div
+      className="max-w-[375px] mx-auto rounded-2xl border border-neutral-200 shadow-lg overflow-hidden bg-white"
+      style={{
+        ...(bgColor ? { backgroundColor: bgColor } : {}),
+        ...(bgImageUrl ? { backgroundImage: `url(${bgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
+      }}
+    >
       {/* Blocks */}
       <div>
         {blocks.length === 0 && (
@@ -36,7 +48,7 @@ export function BlockPreview({ blocks, ctaEventName }: BlockPreviewProps) {
           if (block.type === 'text') {
             return (
               <div key={block.id} className="px-5 py-4 text-center">
-                <p className="text-sm text-neutral-700 whitespace-pre-line leading-relaxed">
+                <p className="text-sm whitespace-pre-line leading-relaxed" style={{ color: textColor || undefined }}>
                   {block.text || <span className="text-neutral-300">ข้อความ...</span>}
                 </p>
               </div>
@@ -44,14 +56,14 @@ export function BlockPreview({ blocks, ctaEventName }: BlockPreviewProps) {
           }
 
           if (block.type === 'button') {
-            const bgColor = block.button_style === 'line' ? '#06C755' : block.button_style === 'website' ? '#7c3aed' : '#4f46e5'
+            const btnColor = block.button_style === 'line' ? '#06C755' : block.button_style === 'website' ? '#7c3aed' : (accentColor || '#4f46e5')
             const Icon = block.button_style === 'line' ? MessageCircle : block.button_style === 'website' ? Globe : Link
             return (
               <div key={block.id} className="px-5 py-1.5">
                 <div className="relative">
                   <div
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white text-sm font-semibold"
-                    style={{ backgroundColor: bgColor }}
+                    style={{ backgroundColor: btnColor }}
                   >
                     <Icon className="h-4 w-4" />
                     <span>{block.button_text || 'ปุ่ม'}</span>

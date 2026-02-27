@@ -67,6 +67,18 @@ export interface ReplaySession {
   created_at: string
 }
 
+export interface PageStyle {
+  bg_color?: string
+  accent_color?: string
+  text_color?: string
+  bg_image_url?: string
+}
+
+export interface PresetTheme {
+  name: string
+  style: PageStyle
+}
+
 export interface SalePageContent {
   hero: {
     title: string
@@ -93,6 +105,7 @@ export interface SalePageContent {
     content_value: number
     currency: string
   }
+  style?: PageStyle
 }
 
 // Block-based content (v2)
@@ -121,6 +134,7 @@ export interface SalePageContentV2 {
   version: 2
   blocks: Block[]
   tracking: TrackingConfig
+  style?: PageStyle
 }
 
 export interface SalePage {

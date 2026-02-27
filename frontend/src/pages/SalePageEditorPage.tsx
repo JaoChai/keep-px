@@ -11,10 +11,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { SalePagePreview } from '@/components/sale-pages/SalePagePreview'
+import { StyleEditor } from '@/components/sale-pages/StyleEditor'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
 import { useUploadImage, useUploadImages } from '@/hooks/use-upload'
-import type { SalePageContent, SalePageContentV2 } from '@/types'
+import type { SalePageContent, SalePageContentV2, PageStyle } from '@/types'
 
 const CTA_EVENT_OPTIONS = [
   { value: 'Lead', label: 'Lead — ลูกค้าสนใจ ต้องการข้อมูลเพิ่ม' },
@@ -69,6 +70,7 @@ export function SalePageEditorPage() {
 
   const [features, setFeatures] = useState<string[]>([''])
   const [bodyImages, setBodyImages] = useState<string[]>([])
+  const [pageStyle, setPageStyle] = useState<PageStyle>({})
   const [slugTouched, setSlugTouched] = useState(false)
   const [publishedDialog, setPublishedDialog] = useState<{ slug: string } | null>(null)
   const [copiedUrl, setCopiedUrl] = useState(false)
@@ -139,6 +141,7 @@ export function SalePageEditorPage() {
       })
       setFeatures(featuresList)
       setBodyImages(c.body.images ?? [])
+      setPageStyle(c.style ?? {})
       setSlugTouched(true)
     }
   }, [existingPage, reset, id, navigate])
@@ -221,6 +224,7 @@ export function SalePageEditorPage() {
       content_value: data.tracking_content_value || 0,
       currency: data.tracking_currency || 'THB',
     },
+    style: pageStyle,
   })
 
   const onSubmit = async (data: SalePageForm, isPublished: boolean) => {
@@ -544,6 +548,9 @@ export function SalePageEditorPage() {
             </CardContent>
           </Card>
 
+          {/* Page Style */}
+          <StyleEditor style={pageStyle} onChange={setPageStyle} />
+
           {/* Contact Info */}
           <Card>
             <CardHeader>
@@ -595,6 +602,7 @@ export function SalePageEditorPage() {
                 website_url: watchedValues.contact_website_url ?? '',
               }}
               ctaEventName={watchedValues.cta_event_name || 'Lead'}
+              style={pageStyle}
             />
           </div>
         </div>
