@@ -68,7 +68,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	replayHandler := handler.NewReplayHandler(replayService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService)
 	proxyHandler := handler.NewProxyHandler()
-	salePageHandler := handler.NewSalePageHandler(salePageService, logger)
+	salePageHandler := handler.NewSalePageHandler(salePageService, cfg.BaseURL, logger)
 	customDomainHandler := handler.NewCustomDomainHandler(customDomainService, cfg.CFCNAMETarget, logger)
 	uploadHandler := handler.NewUploadHandler(storageService)
 

@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Content.Hero.Title}}</title>
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{.Content.Hero.Title}}">
+    {{if .Content.Hero.Subtitle}}<meta property="og:description" content="{{.Content.Hero.Subtitle}}">{{end}}
+    {{if .Content.Hero.ImageURL}}<meta property="og:image" content="{{.Content.Hero.ImageURL}}">{{end}}
+    <meta property="og:url" content="{{.BaseURL}}/p/{{.Page.Slug}}">
     <style>
         :root {
             --bg-color: {{if .Style.BgColor}}{{.Style.BgColor}}{{else}}#f8f9fa{{end}};

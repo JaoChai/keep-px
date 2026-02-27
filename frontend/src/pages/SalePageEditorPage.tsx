@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, Plus, X, Copy, Check, ExternalLink, Info, Upload, Loader2 } from 'lucide-react'
+import { ArrowLeft, Plus, X, Copy, Check, ExternalLink, Info, Upload, Loader2, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,7 +29,10 @@ const CTA_EVENT_OPTIONS = [
 
 const salePageSchema = z.object({
   name: z.string().min(1, 'Page name is required'),
-  slug: z.string().min(1, 'URL slug is required').regex(/^[a-z0-9-]+$/, 'Only lowercase letters, numbers, and hyphens'),
+  slug: z.string().refine(
+    (val) => val === '' || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(val),
+    'ใช้ได้เฉพาะตัวอักษรภาษาอังกฤษพิมพ์เล็ก ตัวเลข และเครื่องหมาย -'
+  ),
   pixel_id: z.string().optional(),
   hero_title: z.string(),
   hero_subtitle: z.string(),
@@ -49,15 +52,6 @@ const salePageSchema = z.object({
 
 type SalePageForm = z.infer<typeof salePageSchema>
 
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
 export function SalePageEditorPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -71,7 +65,7 @@ export function SalePageEditorPage() {
   const [features, setFeatures] = useState<string[]>([''])
   const [bodyImages, setBodyImages] = useState<string[]>([])
   const [pageStyle, setPageStyle] = useState<PageStyle>({})
-  const [slugTouched, setSlugTouched] = useState(false)
+  const [showCustomSlug, setShowCustomSlug] = useState(false)
   const [publishedDialog, setPublishedDialog] = useState<{ slug: string } | null>(null)
   const [copiedUrl, setCopiedUrl] = useState(false)
   const uploadImage = useUploadImage()
@@ -142,18 +136,9 @@ export function SalePageEditorPage() {
       setFeatures(featuresList)
       setBodyImages(c.body.images ?? [])
       setPageStyle(c.style ?? {})
-      setSlugTouched(true)
+      setShowCustomSlug(true)
     }
   }, [existingPage, reset, id, navigate])
-
-  // Auto-generate slug from name
-  const watchName = watch('name')
-  useEffect(() => {
-    if (!slugTouched && watchName) {
-      const slug = generateSlug(watchName)
-      setValue('slug', slug)
-    }
-  }, [watchName, slugTouched, setValue])
 
   // Sync features state to form
   useEffect(() => {
@@ -231,7 +216,7 @@ export function SalePageEditorPage() {
     const content = buildContent(data)
     const payload = {
       name: data.name,
-      slug: data.slug,
+      slug: data.slug || undefined,
       pixel_id: data.pixel_id ?? '',
       template_name: 'simple',
       content,
@@ -239,16 +224,16 @@ export function SalePageEditorPage() {
     }
 
     if (isEditing) {
-      await updateSalePage.mutateAsync({ id, ...payload })
+      const result = await updateSalePage.mutateAsync({ id, ...payload })
       if (isPublished) {
-        setPublishedDialog({ slug: data.slug })
+        setPublishedDialog({ slug: result.slug })
       } else {
         navigate('/sale-pages')
       }
     } else {
-      await createSalePage.mutateAsync(payload)
+      const result = await createSalePage.mutateAsync(payload)
       if (isPublished) {
-        setPublishedDialog({ slug: data.slug })
+        setPublishedDialog({ slug: result.slug })
       } else {
         navigate('/sale-pages')
       }
@@ -305,20 +290,30 @@ export function SalePageEditorPage() {
                 {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="slug">URL Slug</Label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-neutral-200 bg-neutral-50 text-sm text-neutral-500">
-                    /p/
-                  </span>
-                  <Input
-                    id="slug"
-                    className="rounded-l-none"
-                    placeholder="my-sale-page"
-                    {...register('slug', {
-                      onChange: () => setSlugTouched(true),
-                    })}
-                  />
-                </div>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+                  onClick={() => setShowCustomSlug(!showCustomSlug)}
+                >
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showCustomSlug ? 'rotate-0' : '-rotate-90'}`} />
+                  ตั้ง URL เอง (ไม่บังคับ)
+                </button>
+                {showCustomSlug && (
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-neutral-200 bg-neutral-50 text-sm text-neutral-500">
+                      /p/
+                    </span>
+                    <Input
+                      id="slug"
+                      className="rounded-l-none"
+                      placeholder="my-sale-page"
+                      {...register('slug')}
+                    />
+                  </div>
+                )}
+                {!showCustomSlug && (
+                  <p className="text-xs text-neutral-400">ระบบจะสร้าง URL ให้อัตโนมัติ</p>
+                )}
                 {errors.slug && <p className="text-sm text-red-500">{errors.slug.message}</p>}
               </div>
               <div className="space-y-2">

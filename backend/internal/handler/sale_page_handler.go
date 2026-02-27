@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -22,13 +23,22 @@ type SalePageHandler struct {
 	validate        *validator.Validate
 	templates       map[string]*template.Template
 	logger          *slog.Logger
+	baseURL         string
 }
 
-func NewSalePageHandler(salePageService *service.SalePageService, logger *slog.Logger) *SalePageHandler {
+func NewSalePageHandler(salePageService *service.SalePageService, baseURL string, logger *slog.Logger) *SalePageHandler {
 	funcMap := template.FuncMap{
 		"deref": func(s *string) string {
 			if s != nil {
 				return *s
+			}
+			return ""
+		},
+		"firstImageURL": func(blocks []domain.Block) string {
+			for _, b := range blocks {
+				if b.Type == "image" && b.ImageURL != "" {
+					return b.ImageURL
+				}
 			}
 			return ""
 		},
@@ -47,6 +57,7 @@ func NewSalePageHandler(salePageService *service.SalePageService, logger *slog.L
 		validate:        validator.New(),
 		templates:       tmplMap,
 		logger:          logger,
+		baseURL:         strings.TrimRight(baseURL, "/"),
 	}
 }
 
@@ -57,6 +68,7 @@ type salePageTemplateData struct {
 	Style         domain.PageStyle
 	APIKey        string
 	FBPixelID     string
+	BaseURL       string
 }
 
 func (h *SalePageHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -202,6 +214,7 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.Sal
 		Page:      page,
 		APIKey:    apiKey,
 		FBPixelID: fbPixelID,
+		BaseURL:   h.baseURL,
 	}
 
 	// Detect content version

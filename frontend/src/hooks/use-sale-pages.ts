@@ -17,7 +17,7 @@ export function useCreateSalePage() {
   return useMutation({
     mutationFn: async (input: {
       name: string
-      slug: string
+      slug?: string
       pixel_id?: string
       template_name: string
       content: SalePageContent | SalePageContentV2

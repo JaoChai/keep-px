@@ -67,7 +67,14 @@ export function SalePagesPage() {
                 <tr key={page.id} className="border-b border-neutral-200 last:border-0">
                   <td className="px-4 py-3 text-sm font-medium text-neutral-900">{page.name}</td>
                   <td className="px-4 py-3 text-sm text-neutral-600">
-                    <span className="font-mono truncate max-w-[200px] inline-block">/p/{page.slug}</span>
+                    <a
+                      href={`/p/${page.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono truncate max-w-[200px] inline-block text-indigo-600 hover:text-indigo-800 hover:underline"
+                    >
+                      /p/{page.slug}
+                    </a>
                   </td>
                   <td className="px-4 py-3 text-sm text-neutral-600">{getPixelName(page.pixel_id)}</td>
                   <td className="px-4 py-3">

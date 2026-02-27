@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/url"
 	"regexp"
 	"strings"
@@ -51,7 +53,7 @@ func NewSalePageService(salePageRepo repository.SalePageRepository, customerRepo
 
 type CreateSalePageInput struct {
 	Name         string          `json:"name" validate:"required"`
-	Slug         string          `json:"slug" validate:"required,min=2,max=100"`
+	Slug         string          `json:"slug" validate:"omitempty,min=2,max=100"`
 	PixelID      *string         `json:"pixel_id,omitempty"`
 	TemplateName string          `json:"template_name" validate:"required"`
 	Content      json.RawMessage `json:"content" validate:"required"`
@@ -73,6 +75,20 @@ type SalePagePublishData struct {
 	FBPixelID string
 }
 
+func generateRandomSlug() (string, error) {
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, 8)
+	max := big.NewInt(int64(len(charset)))
+	for i := range b {
+		n, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return "", err
+		}
+		b[i] = charset[n.Int64()]
+	}
+	return "p-" + string(b), nil
+}
+
 func validateSlug(slug string) error {
 	if !slugRegex.MatchString(slug) {
 		return ErrInvalidSlug
@@ -84,20 +100,40 @@ func validateSlug(slug string) error {
 }
 
 func (s *SalePageService) Create(ctx context.Context, customerID string, input CreateSalePageInput) (*domain.SalePage, error) {
-	if err := validateSlug(input.Slug); err != nil {
-		return nil, err
-	}
-
 	if err := validateContent(input.Content); err != nil {
 		return nil, err
 	}
 
-	exists, err := s.salePageRepo.SlugExists(ctx, input.Slug)
-	if err != nil {
-		return nil, fmt.Errorf("check slug: %w", err)
-	}
-	if exists {
-		return nil, ErrSlugTaken
+	if input.Slug == "" {
+		// Auto-generate random slug
+		for i := 0; i < 5; i++ {
+			generated, err := generateRandomSlug()
+			if err != nil {
+				return nil, fmt.Errorf("generate slug: %w", err)
+			}
+			exists, err := s.salePageRepo.SlugExists(ctx, generated)
+			if err != nil {
+				return nil, fmt.Errorf("check slug: %w", err)
+			}
+			if !exists {
+				input.Slug = generated
+				break
+			}
+		}
+		if input.Slug == "" {
+			return nil, fmt.Errorf("failed to generate unique slug")
+		}
+	} else {
+		if err := validateSlug(input.Slug); err != nil {
+			return nil, err
+		}
+		exists, err := s.salePageRepo.SlugExists(ctx, input.Slug)
+		if err != nil {
+			return nil, fmt.Errorf("check slug: %w", err)
+		}
+		if exists {
+			return nil, ErrSlugTaken
+		}
 	}
 
 	var pixelID *string
