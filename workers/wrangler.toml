@@ -1,11 +1,12 @@
 name = "pixlinks-worker"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
+account_id = "597f5be7a854697fad368e23dc391593"
 
 [vars]
-BACKEND_ORIGIN = "https://backend-url.railway.app"
-PLATFORM_DOMAINS = "pixlinks.xyz,app.pixlinks.xyz,www.pixlinks.xyz"
+BACKEND_ORIGIN = "https://api.pixlinks.xyz"
+PLATFORM_DOMAINS = "pixlinks.xyz,app.pixlinks.xyz,www.pixlinks.xyz,api.pixlinks.xyz"
 
 [[kv_namespaces]]
 binding = "DOMAIN_MAP"
-id = "<placeholder-kv-namespace-id>"
+id = "07285dcbbd434c4ba63a396e574f2dbe"
