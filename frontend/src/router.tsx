@@ -11,6 +11,7 @@ import { ReplayPage } from '@/pages/ReplayPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { SalePagesPage } from '@/pages/SalePagesPage'
 import { SalePageEditorPage } from '@/pages/SalePageEditorPage'
+import { BlockEditorPage } from '@/pages/BlockEditorPage'
 
 export const router = createBrowserRouter([
   {
@@ -33,8 +34,10 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'pixels', element: <PixelsPage /> },
       { path: 'sale-pages', element: <SalePagesPage /> },
-      { path: 'sale-pages/new', element: <SalePageEditorPage /> },
+      { path: 'sale-pages/new', element: <BlockEditorPage /> },
+      { path: 'sale-pages/new-classic', element: <SalePageEditorPage /> },
       { path: 'sale-pages/:id/edit', element: <SalePageEditorPage /> },
+      { path: 'sale-pages/:id/edit-blocks', element: <BlockEditorPage /> },
       { path: 'events/setup', element: <EventSetupPage /> },
       { path: 'events/log', element: <EventLogPage /> },
       { path: 'replay', element: <ReplayPage /> },

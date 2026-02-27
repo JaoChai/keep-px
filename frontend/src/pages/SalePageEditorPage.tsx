@@ -14,7 +14,7 @@ import { SalePagePreview } from '@/components/sale-pages/SalePagePreview'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
 import { useUploadImage, useUploadImages } from '@/hooks/use-upload'
-import type { SalePageContent } from '@/types'
+import type { SalePageContent, SalePageContentV2 } from '@/types'
 
 const CTA_EVENT_OPTIONS = [
   { value: 'Lead', label: 'Lead — ลูกค้าสนใจ ต้องการข้อมูลเพิ่ม' },
@@ -109,10 +109,14 @@ export function SalePageEditorPage() {
     },
   })
 
-  // Load existing data when editing
+  // Load existing data when editing — redirect to blocks editor if v2
   useEffect(() => {
     if (existingPage) {
-      const c = existingPage.content
+      if ('version' in existingPage.content && (existingPage.content as SalePageContentV2).version === 2) {
+        navigate(`/sale-pages/${id}/edit-blocks`, { replace: true })
+        return
+      }
+      const c = existingPage.content as SalePageContent
       const featuresList = c.body.features.length > 0 ? c.body.features : ['']
       reset({
         name: existingPage.name,
@@ -137,7 +141,7 @@ export function SalePageEditorPage() {
       setBodyImages(c.body.images ?? [])
       setSlugTouched(true)
     }
-  }, [existingPage, reset])
+  }, [existingPage, reset, id, navigate])
 
   // Auto-generate slug from name
   const watchName = watch('name')
