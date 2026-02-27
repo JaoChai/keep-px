@@ -133,6 +133,12 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
                 onChange={(e) => updateBlock(index, { image_url: e.target.value })}
                 className="text-xs"
               />
+              <Input
+                placeholder="ลิงก์เมื่อกดรูป (ไม่บังคับ) เช่น https://line.me/ti/p/~@shop"
+                value={block.link_url || ''}
+                onChange={(e) => updateBlock(index, { link_url: e.target.value })}
+                className="text-xs"
+              />
             </div>
           )}
 

@@ -18,13 +18,10 @@ import { useUploadImage, useUploadImages } from '@/hooks/use-upload'
 import type { SalePageContent, SalePageContentV2, PageStyle } from '@/types'
 
 const CTA_EVENT_OPTIONS = [
-  { value: 'Lead', label: 'Lead — ลูกค้าสนใจ ต้องการข้อมูลเพิ่ม' },
-  { value: 'Purchase', label: 'Purchase — ลูกค้าซื้อสินค้า/บริการ' },
-  { value: 'InitiateCheckout', label: 'InitiateCheckout — ลูกค้าเริ่มชำระเงิน' },
-  { value: 'AddToCart', label: 'AddToCart — ลูกค้าเพิ่มสินค้าลงตะกร้า' },
-  { value: 'CompleteRegistration', label: 'CompleteRegistration — ลูกค้าสมัครสมาชิกสำเร็จ' },
-  { value: 'Schedule', label: 'Schedule — ลูกค้าจองนัดหมาย' },
-  { value: 'SubmitApplication', label: 'SubmitApplication — ลูกค้าส่งใบสมัคร' },
+  { value: 'Lead', label: 'ลูกค้าสนใจ — แอด LINE / ทักแชท (Lead)' },
+  { value: 'Purchase', label: 'ลูกค้าสั่งซื้อ — โอนเงิน / จ่ายเงิน (Purchase)' },
+  { value: 'Contact', label: 'ลูกค้าติดต่อ — กดโทร / กดแชท (Contact)' },
+  { value: 'CompleteRegistration', label: 'ลูกค้าสมัคร — ลงทะเบียน / สมัครสมาชิก (CompleteRegistration)' },
 ] as const
 
 const salePageSchema = z.object({

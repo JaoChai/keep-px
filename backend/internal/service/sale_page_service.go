@@ -362,6 +362,9 @@ func validateContent(raw json.RawMessage) error {
 				if err := validateSafeURL(b.ImageURL); err != nil {
 					return err
 				}
+				if err := validateSafeURL(b.LinkURL); err != nil {
+					return err
+				}
 			case domain.BlockTypeText:
 				// text can be empty (draft)
 			case domain.BlockTypeButton:

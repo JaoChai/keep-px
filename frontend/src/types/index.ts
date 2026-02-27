@@ -98,6 +98,7 @@ export interface Block {
   id: string
   type: BlockType
   image_url?: string
+  link_url?: string
   text?: string
   button_style?: ButtonStyle
   button_text?: string

@@ -111,7 +111,13 @@
     <div class="page-wrapper">
         {{range .BlocksContent.Blocks}}
             {{if eq .Type "image"}}
-            <img src="{{.ImageURL}}" alt="" class="block-image">
+                {{if .LinkURL}}
+                <a href="{{.LinkURL}}" target="_blank" rel="noopener" data-track-cta>
+                    <img src="{{.ImageURL}}" alt="" class="block-image">
+                </a>
+                {{else}}
+                <img src="{{.ImageURL}}" alt="" class="block-image">
+                {{end}}
             {{end}}
 
             {{if eq .Type "text"}}

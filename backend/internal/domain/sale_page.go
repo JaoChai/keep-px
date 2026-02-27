@@ -78,6 +78,7 @@ type Block struct {
 	ID          string    `json:"id"`
 	Type        BlockType `json:"type"`
 	ImageURL    string    `json:"image_url,omitempty"`
+	LinkURL     string    `json:"link_url,omitempty"`
 	Text        string    `json:"text,omitempty"`
 	ButtonStyle string    `json:"button_style,omitempty"`
 	ButtonText  string    `json:"button_text,omitempty"`
