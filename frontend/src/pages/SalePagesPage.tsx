@@ -57,6 +57,7 @@ export function SalePagesPage() {
                 <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Name</th>
                 <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">URL</th>
                 <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Pixel</th>
+                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Template</th>
                 <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Status</th>
                 <th className="text-right text-sm font-medium text-neutral-500 px-4 py-3">Actions</th>
               </tr>
@@ -69,6 +70,11 @@ export function SalePagesPage() {
                     <span className="font-mono truncate max-w-[200px] inline-block">/p/{page.slug}</span>
                   </td>
                   <td className="px-4 py-3 text-sm text-neutral-600">{getPixelName(page.pixel_id)}</td>
+                  <td className="px-4 py-3">
+                    <Badge variant={page.template_name === 'blocks' ? 'default' : 'secondary'}>
+                      {page.template_name === 'blocks' ? 'Blocks' : 'Classic'}
+                    </Badge>
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant={page.is_published ? 'success' : 'secondary'}>
                       {page.is_published ? 'Published' : 'Draft'}
@@ -88,7 +94,11 @@ export function SalePagesPage() {
                         variant="ghost"
                         size="icon"
                         title="Edit"
-                        onClick={() => navigate(`/sale-pages/${page.id}/edit`)}
+                        onClick={() => navigate(
+                          page.template_name === 'blocks'
+                            ? `/sale-pages/${page.id}/edit-blocks`
+                            : `/sale-pages/${page.id}/edit`
+                        )}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>

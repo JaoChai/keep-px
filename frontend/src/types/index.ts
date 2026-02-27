@@ -95,6 +95,34 @@ export interface SalePageContent {
   }
 }
 
+// Block-based content (v2)
+export type BlockType = 'image' | 'text' | 'button'
+export type ButtonStyle = 'line' | 'website' | 'custom'
+
+export interface Block {
+  id: string
+  type: BlockType
+  image_url?: string
+  text?: string
+  button_style?: ButtonStyle
+  button_text?: string
+  button_url?: string
+  button_value?: string
+}
+
+export interface TrackingConfig {
+  cta_event_name: string
+  content_name: string
+  content_value: number
+  currency: string
+}
+
+export interface SalePageContentV2 {
+  version: 2
+  blocks: Block[]
+  tracking: TrackingConfig
+}
+
 export interface SalePage {
   id: string
   customer_id: string
@@ -102,7 +130,7 @@ export interface SalePage {
   name: string
   slug: string
   template_name: string
-  content: SalePageContent
+  content: SalePageContent | SalePageContentV2
   is_published: boolean
   created_at: string
   updated_at: string

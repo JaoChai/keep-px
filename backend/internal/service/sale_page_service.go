@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -85,10 +86,8 @@ func (s *SalePageService) Create(ctx context.Context, customerID string, input C
 		return nil, err
 	}
 
-	// Validate content structure
-	var content domain.SimpleContent
-	if err := json.Unmarshal(input.Content, &content); err != nil {
-		return nil, ErrInvalidContent
+	if err := validateContent(input.Content); err != nil {
+		return nil, err
 	}
 
 	exists, err := s.salePageRepo.SlugExists(ctx, input.Slug)
@@ -188,6 +187,9 @@ func (s *SalePageService) Update(ctx context.Context, customerID, pageID string,
 		page.TemplateName = *input.TemplateName
 	}
 	if input.Content != nil {
+		if err := validateContent(*input.Content); err != nil {
+			return nil, err
+		}
 		page.Content = *input.Content
 	}
 	if input.IsPublished != nil {
@@ -262,4 +264,72 @@ func (s *SalePageService) GetPublishData(ctx context.Context, slug string) (*Sal
 		APIKey:    customer.APIKey,
 		FBPixelID: fbPixelID,
 	}, nil
+}
+
+func validateSafeURL(raw string) error {
+	if raw == "" {
+		return nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("%w: invalid URL", ErrInvalidContent)
+	}
+	if u.Scheme != "" && u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("%w: URL must use http or https scheme", ErrInvalidContent)
+	}
+	return nil
+}
+
+func validateContent(raw json.RawMessage) error {
+	var peek struct {
+		Version int `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &peek); err != nil {
+		return ErrInvalidContent
+	}
+
+	if peek.Version == 2 {
+		var content domain.BlocksContent
+		if err := json.Unmarshal(raw, &content); err != nil {
+			return ErrInvalidContent
+		}
+		if len(content.Blocks) == 0 {
+			return fmt.Errorf("%w: blocks content must have at least one block", ErrInvalidContent)
+		}
+		if len(content.Blocks) > 100 {
+			return fmt.Errorf("%w: too many blocks (max 100)", ErrInvalidContent)
+		}
+		for i, b := range content.Blocks {
+			if b.ID == "" {
+				return fmt.Errorf("%w: block at index %d missing ID", ErrInvalidContent, i)
+			}
+			switch b.Type {
+			case domain.BlockTypeImage:
+				if err := validateSafeURL(b.ImageURL); err != nil {
+					return err
+				}
+			case domain.BlockTypeText:
+				// text can be empty (draft)
+			case domain.BlockTypeButton:
+				if b.ButtonStyle != "line" && b.ButtonStyle != "website" && b.ButtonStyle != "custom" {
+					return fmt.Errorf("%w: block at index %d has invalid button_style", ErrInvalidContent, i)
+				}
+				if b.ButtonStyle == "website" || b.ButtonStyle == "custom" {
+					if err := validateSafeURL(b.ButtonURL); err != nil {
+						return err
+					}
+				}
+			default:
+				return fmt.Errorf("%w: block at index %d has unknown type %q", ErrInvalidContent, i, b.Type)
+			}
+		}
+		return nil
+	}
+
+	// Default: v1 SimpleContent
+	var content domain.SimpleContent
+	if err := json.Unmarshal(raw, &content); err != nil {
+		return ErrInvalidContent
+	}
+	return nil
 }

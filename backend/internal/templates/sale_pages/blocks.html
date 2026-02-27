@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Page.Name}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1a1a2e;
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+        .page-wrapper {
+            max-width: 480px;
+            margin: 0 auto;
+            background: #ffffff;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+        .block-image {
+            width: 100%;
+            display: block;
+            object-fit: cover;
+        }
+        .block-text {
+            padding: 1.25rem 1.5rem;
+            text-align: center;
+            font-size: 0.95rem;
+            color: #4a4a6a;
+            white-space: pre-line;
+        }
+        .block-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: calc(100% - 3rem);
+            margin: 0.5rem 1.5rem;
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Noto Sans Thai', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #ffffff;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .block-button:hover {
+            transform: translateY(-2px);
+        }
+        .block-button--line {
+            background-color: #06C755;
+            box-shadow: 0 4px 12px rgba(6, 199, 85, 0.3);
+        }
+        .block-button--line:hover {
+            box-shadow: 0 6px 16px rgba(6, 199, 85, 0.4);
+        }
+        .block-button--website {
+            background-color: #7c3aed;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+        }
+        .block-button--website:hover {
+            box-shadow: 0 6px 16px rgba(124, 58, 237, 0.4);
+        }
+        .block-button--custom {
+            background-color: #4f46e5;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+        .block-button--custom:hover {
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+        }
+        .block-button svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+        .footer {
+            padding: 1rem 1.5rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        {{range .BlocksContent.Blocks}}
+            {{if eq .Type "image"}}
+            <img src="{{.ImageURL}}" alt="" class="block-image">
+            {{end}}
+
+            {{if eq .Type "text"}}
+            <div class="block-text">{{.Text}}</div>
+            {{end}}
+
+            {{if eq .Type "button"}}
+                {{if eq .ButtonStyle "line"}}
+                <a href="https://line.me/ti/p/~{{.ButtonValue}}" target="_blank" rel="noopener" class="block-button block-button--line" data-track-cta>
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19.365 9.864c.018 0 .032.003.046.007a.096.096 0 0 1 .076.093v.598c0 .044-.028.082-.068.094l-.008.002H17.91v.473h1.501a.098.098 0 0 1 .068.028l.005.006a.09.09 0 0 1 .023.063v.598a.098.098 0 0 1-.096.096H17.31a.098.098 0 0 1-.096-.096V9.964a.098.098 0 0 1 .096-.096h2.055v-.004zm-3.478 0a.098.098 0 0 1 .096.1v.598a.098.098 0 0 1-.096.096h-1.501v.473h1.501a.098.098 0 0 1 .096.096v.598a.098.098 0 0 1-.096.096h-2.052a.1.1 0 0 1-.098-.096V9.964a.098.098 0 0 1 .098-.096h2.052v-.004zM12 3C6.48 3 2 6.58 2 10.94c0 3.49 2.88 6.49 7.03 7.44.27.06.64.18.73.42.08.22.05.56.03.78l-.12.7c-.04.2-.16.78.68.43.84-.36 4.54-2.67 6.19-4.57h.01C18.41 14.15 22 12.72 22 10.94 22 6.58 17.52 3 12 3z"/></svg>
+                    {{.ButtonText}}
+                </a>
+                {{end}}
+
+                {{if eq .ButtonStyle "website"}}
+                <a href="{{.ButtonURL}}" target="_blank" rel="noopener" class="block-button block-button--website" data-track-cta>
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    {{.ButtonText}}
+                </a>
+                {{end}}
+
+                {{if eq .ButtonStyle "custom"}}
+                <a href="{{.ButtonURL}}" target="_blank" rel="noopener" class="block-button block-button--custom" data-track-cta>
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                    {{.ButtonText}}
+                </a>
+                {{end}}
+            {{end}}
+        {{end}}
+
+        <div class="footer">
+            Powered by Pixlinks
+        </div>
+    </div>
+
+    {{if .FBPixelID}}
+    <!-- Meta Pixel Code -->
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window,document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '{{.FBPixelID}}');
+    fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id={{.FBPixelID}}&ev=PageView&noscript=1"
+    /></noscript>
+    <!-- End Meta Pixel Code -->
+    {{end}}
+
+    {{if and .APIKey .Page.PixelID}}
+    <script src="/sdk/pixlinks.min.js"
+            data-pixlinks-key="{{.APIKey}}"
+            data-pixlinks-pixel-id="{{deref .Page.PixelID}}">
+    </script>
+    {{end}}
+
+    <script>
+    (function() {
+        var ctaEventName = '{{.BlocksContent.Tracking.CTAEventName}}' || 'Lead';
+        var contentName = '{{.BlocksContent.Tracking.ContentName}}' || document.title;
+        var contentValue = {{.BlocksContent.Tracking.ContentValue}};
+        var currency = '{{.BlocksContent.Tracking.Currency}}' || 'THB';
+
+        function dualTrack(eventName, params) {
+            if (typeof fbq === 'function') {
+                fbq('track', eventName, params);
+            }
+            if (window.pixlinks) {
+                window.pixlinks.track(eventName, params);
+            }
+        }
+
+        function buildParams(extra) {
+            var params = { content_name: contentName, content_category: 'sale_page' };
+            if (contentValue > 0) {
+                params.value = contentValue;
+                params.currency = currency;
+            }
+            if (extra) {
+                for (var k in extra) { params[k] = extra[k]; }
+            }
+            return params;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            dualTrack('ViewContent', buildParams());
+
+            var ctaButtons = document.querySelectorAll('[data-track-cta]');
+            ctaButtons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    dualTrack(ctaEventName, buildParams());
+                });
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

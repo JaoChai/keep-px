@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { APIResponse, SalePage, SalePageContent } from '@/types'
+import type { APIResponse, SalePage, SalePageContent, SalePageContentV2 } from '@/types'
 
 export function useSalePages() {
   return useQuery({
@@ -20,7 +20,7 @@ export function useCreateSalePage() {
       slug: string
       pixel_id?: string
       template_name: string
-      content: SalePageContent
+      content: SalePageContent | SalePageContentV2
       is_published: boolean
     }) => {
       const { data } = await api.post<APIResponse<SalePage>>('/sale-pages', input)
@@ -44,7 +44,7 @@ export function useUpdateSalePage() {
       slug?: string
       pixel_id?: string
       template_name?: string
-      content?: SalePageContent
+      content?: SalePageContent | SalePageContentV2
       is_published?: boolean
     }) => {
       const { data } = await api.put<APIResponse<SalePage>>(`/sale-pages/${id}`, input)

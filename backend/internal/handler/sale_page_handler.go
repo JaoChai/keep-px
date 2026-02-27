@@ -38,6 +38,9 @@ func NewSalePageHandler(salePageService *service.SalePageService, logger *slog.L
 	tmplMap["simple"] = template.Must(
 		template.New("simple.html").Funcs(funcMap).ParseFS(templates.SalePageTemplates, "sale_pages/simple.html"),
 	)
+	tmplMap["blocks"] = template.Must(
+		template.New("blocks.html").Funcs(funcMap).ParseFS(templates.SalePageTemplates, "sale_pages/blocks.html"),
+	)
 
 	return &SalePageHandler{
 		salePageService: salePageService,
@@ -48,10 +51,11 @@ func NewSalePageHandler(salePageService *service.SalePageService, logger *slog.L
 }
 
 type salePageTemplateData struct {
-	Page      *domain.SalePage
-	Content   *domain.SimpleContent
-	APIKey    string
-	FBPixelID string
+	Page          *domain.SalePage
+	Content       *domain.SimpleContent
+	BlocksContent *domain.BlocksContent
+	APIKey        string
+	FBPixelID     string
 }
 
 func (h *SalePageHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -115,6 +119,10 @@ func (h *SalePageHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, service.ErrSalePageNotOwned) {
 			ErrorJSON(w, http.StatusForbidden, "sale page not owned by you")
+			return
+		}
+		if errors.Is(err, service.ErrInvalidContent) {
+			ErrorJSON(w, http.StatusBadRequest, "invalid page content structure")
 			return
 		}
 		if errors.Is(err, service.ErrInvalidSlug) {
@@ -189,23 +197,49 @@ func (h *SalePageHandler) Preview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.SalePage, apiKey string, fbPixelID string) {
-	var content domain.SimpleContent
-	if err := json.Unmarshal(page.Content, &content); err != nil {
+	td := salePageTemplateData{
+		Page:      page,
+		APIKey:    apiKey,
+		FBPixelID: fbPixelID,
+	}
+
+	// Detect content version
+	var peek struct {
+		Version int `json:"version"`
+	}
+	if err := json.Unmarshal(page.Content, &peek); err != nil {
+		h.logger.Error("failed to peek content version", "error", err, "page_id", page.ID)
 		http.Error(w, "invalid page content", http.StatusInternalServerError)
 		return
 	}
 
-	tmpl, ok := h.templates[page.TemplateName]
-	if !ok {
-		h.logger.Warn("unknown template, falling back to simple", "template_name", page.TemplateName, "page_id", page.ID)
-		tmpl = h.templates["simple"]
+	templateName := page.TemplateName
+	if peek.Version == 2 {
+		var blocks domain.BlocksContent
+		if err := json.Unmarshal(page.Content, &blocks); err != nil {
+			http.Error(w, "invalid page content", http.StatusInternalServerError)
+			return
+		}
+		td.BlocksContent = &blocks
+		templateName = "blocks"
+	} else {
+		var content domain.SimpleContent
+		if err := json.Unmarshal(page.Content, &content); err != nil {
+			http.Error(w, "invalid page content", http.StatusInternalServerError)
+			return
+		}
+		td.Content = &content
 	}
 
-	td := salePageTemplateData{
-		Page:      page,
-		Content:   &content,
-		APIKey:    apiKey,
-		FBPixelID: fbPixelID,
+	tmpl, ok := h.templates[templateName]
+	if !ok {
+		if peek.Version == 2 {
+			h.logger.Error("blocks template not found", "page_id", page.ID)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		h.logger.Warn("unknown template, falling back to simple", "template_name", templateName, "page_id", page.ID)
+		tmpl = h.templates["simple"]
 	}
 
 	var buf bytes.Buffer
@@ -216,7 +250,9 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.Sal
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(buf.Bytes())
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		h.logger.Error("failed to write response", "error", err, "page_id", page.ID)
+	}
 }
 
 func (h *SalePageHandler) renderNotFound(w http.ResponseWriter) {

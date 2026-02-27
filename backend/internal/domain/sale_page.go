@@ -55,3 +55,30 @@ type ContactInfo struct {
 	Phone      string `json:"phone"`
 	WebsiteURL string `json:"website_url"`
 }
+
+// Block-based content (v2)
+
+type BlockType string
+
+const (
+	BlockTypeImage  BlockType = "image"
+	BlockTypeText   BlockType = "text"
+	BlockTypeButton BlockType = "button"
+)
+
+type Block struct {
+	ID          string    `json:"id"`
+	Type        BlockType `json:"type"`
+	ImageURL    string    `json:"image_url,omitempty"`
+	Text        string    `json:"text,omitempty"`
+	ButtonStyle string    `json:"button_style,omitempty"`
+	ButtonText  string    `json:"button_text,omitempty"`
+	ButtonURL   string    `json:"button_url,omitempty"`
+	ButtonValue string    `json:"button_value,omitempty"`
+}
+
+type BlocksContent struct {
+	Version  int            `json:"version"`
+	Blocks   []Block        `json:"blocks"`
+	Tracking TrackingConfig `json:"tracking"`
+}
