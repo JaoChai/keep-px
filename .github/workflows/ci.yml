@@ -119,3 +119,48 @@ jobs:
             fi
           done
           echo "All jobs passed or were skipped"
+
+  deploy-verify:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Railway deploy
+        run: sleep 60
+
+      - name: Verify backend health
+        run: |
+          URL="${{ vars.BACKEND_PROD_URL }}/health"
+          echo "Checking backend at: $URL"
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              BODY=$(curl -s --max-time 10 "$URL")
+              echo "Backend is healthy: $BODY"
+              exit 0
+            fi
+            echo "Attempt $i/10: HTTP $STATUS — retrying in 30s..."
+            sleep 30
+          done
+          echo "Backend health check failed after 10 attempts"
+          exit 1
+
+      - name: Verify frontend
+        run: |
+          URL="${{ vars.FRONTEND_PROD_URL }}"
+          if [ -z "$URL" ]; then
+            echo "FRONTEND_PROD_URL not set, skipping"
+            exit 0
+          fi
+          echo "Checking frontend at: $URL"
+          for i in $(seq 1 5); do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Frontend is serving (HTTP 200)"
+              exit 0
+            fi
+            echo "Attempt $i/5: HTTP $STATUS — retrying in 30s..."
+            sleep 30
+          done
+          echo "Frontend health check failed after 5 attempts"
+          exit 1
