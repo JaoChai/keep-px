@@ -17,17 +17,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [isVerifying, setIsVerifying] = useState(true)
   const [isValid, setIsValid] = useState(false)
 
+  const token = localStorage.getItem('access_token')
+
   useEffect(() => {
-    if (!hasHydrated) return
+    if (!hasHydrated || !token) return
 
-    const token = localStorage.getItem('access_token')
-    if (!token) {
-      setIsVerifying(false)
-      setIsValid(false)
-      return
-    }
-
-    // Always verify token with server and fetch fresh customer data
+    // Verify token with server and fetch fresh customer data
     api
       .get<APIResponse<Customer>>('/auth/me')
       .then(({ data }) => {
@@ -36,17 +31,27 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           setIsValid(true)
         } else {
           logout()
-          setIsValid(false)
         }
       })
       .catch(() => {
         logout()
-        setIsValid(false)
       })
       .finally(() => setIsVerifying(false))
-  }, [hasHydrated]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hasHydrated, token]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!hasHydrated || isVerifying) {
+  if (!hasHydrated) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={{ color: '#666', fontSize: '14px' }}>Loading...</div>
+      </div>
+    )
+  }
+
+  if (!token) {
+    return <Navigate to="/login" replace />
+  }
+
+  if (isVerifying) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <div style={{ color: '#666', fontSize: '14px' }}>Loading...</div>
