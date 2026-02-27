@@ -121,7 +121,7 @@ jobs:
           echo "All jobs passed or were skipped"
 
   deploy-verify:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.ci-gate.result == 'success'
     needs: ci-gate
     runs-on: ubuntu-latest
     steps:
