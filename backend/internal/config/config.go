@@ -23,7 +23,7 @@ type Config struct {
 	CFAccountID     string `env:"CF_ACCOUNT_ID"`
 	CFZoneID        string `env:"CF_ZONE_ID"`
 	CFKVNamespaceID string `env:"CF_KV_NAMESPACE_ID"`
-	CFCNAMETarget   string `env:"CF_CNAME_TARGET" envDefault:"customers.pixlinks.xyz"`
+	CFCNAMETarget   string `env:"CF_CNAME_TARGET" envDefault:"customer.pixlinks.xyz"`
 
 	// S3/R2 Storage
 	S3Endpoint  string `env:"S3_ENDPOINT"`
