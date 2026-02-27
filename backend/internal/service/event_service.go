@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/facebook"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
@@ -40,13 +42,14 @@ type IngestEventInput struct {
 	UserData  json.RawMessage `json:"user_data,omitempty"`
 	SourceURL string          `json:"source_url,omitempty"`
 	EventTime string          `json:"event_time,omitempty"`
+	EventID   string          `json:"event_id,omitempty"`
 }
 
 type IngestBatchInput struct {
 	Events []IngestEventInput `json:"events" validate:"required,min=1,max=100"`
 }
 
-func (s *EventService) Ingest(ctx context.Context, customerID string, input IngestBatchInput) (int, error) {
+func (s *EventService) Ingest(ctx context.Context, customerID string, input IngestBatchInput, clientIP, clientUA string) (int, error) {
 	created := 0
 	for _, eventInput := range input.Events {
 		// Verify pixel belongs to customer
@@ -72,13 +75,28 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 			eventData = json.RawMessage(`{}`)
 		}
 
+		// Strip port from clientIP
+		ip := clientIP
+		if host, _, err := net.SplitHostPort(clientIP); err == nil {
+			ip = host
+		}
+
+		// Generate event_id if not provided
+		eventID := eventInput.EventID
+		if eventID == "" {
+			eventID = uuid.New().String()
+		}
+
 		event := &domain.PixelEvent{
-			PixelID:   eventInput.PixelID,
-			EventName: eventInput.EventName,
-			EventData: eventData,
-			UserData:  eventInput.UserData,
-			SourceURL: eventInput.SourceURL,
-			EventTime: eventTime,
+			PixelID:         eventInput.PixelID,
+			EventName:       eventInput.EventName,
+			EventData:       eventData,
+			UserData:        eventInput.UserData,
+			SourceURL:       eventInput.SourceURL,
+			EventTime:       eventTime,
+			EventID:         eventID,
+			ClientIP:        ip,
+			ClientUserAgent: clientUA,
 		}
 
 		if err := s.eventRepo.Create(ctx, event); err != nil {
@@ -104,14 +122,30 @@ func (s *EventService) forwardToCAPI(ctx context.Context, event *domain.PixelEve
 	if event.UserData != nil {
 		_ = json.Unmarshal(event.UserData, &userData)
 	}
+	if userData == nil {
+		userData = make(map[string]interface{})
+	}
+
+	// Add client context for EMQ score
+	if event.ClientIP != "" {
+		userData["client_ip_address"] = event.ClientIP
+	}
+	if event.ClientUserAgent != "" {
+		userData["client_user_agent"] = event.ClientUserAgent
+	}
+
+	// Hash PII fields
+	userData = facebook.HashUserData(userData)
 
 	capiEvent := facebook.CAPIEvent{
-		EventName:      event.EventName,
-		EventTime:      event.EventTime.Unix(),
-		UserData:       userData,
-		CustomData:     customData,
-		EventSourceURL: event.SourceURL,
-		ActionSource:   "website",
+		EventName:             event.EventName,
+		EventTime:             event.EventTime.Unix(),
+		UserData:              userData,
+		CustomData:            customData,
+		EventSourceURL:        event.SourceURL,
+		ActionSource:          "website",
+		EventID:               event.EventID,
+		DataProcessingOptions: []string{},
 	}
 
 	resp, err := s.capiClient.SendEvent(ctx, pixel.FBPixelID, pixel.FBAccessToken, capiEvent)

@@ -12,11 +12,24 @@ interface EventPayload {
   user_data?: Record<string, unknown>
   source_url?: string
   event_time?: string
+  event_id?: string
 }
 
 interface QueuedEvent {
   payload: EventPayload
   retries: number
+}
+
+function generateEventId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  // Fallback for older browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
 }
 
 const DEFAULT_ENDPOINT = 'https://api.pixlinks.io'
@@ -51,7 +64,7 @@ export class PixlinksTracker {
     this.log('Initialized')
   }
 
-  track(eventName: string, eventData?: Record<string, unknown>, userData?: Record<string, unknown>): void {
+  track(eventName: string, eventData?: Record<string, unknown>, userData?: Record<string, unknown>, eventId?: string): void {
     if (!this.initialized) {
       console.warn('[Pixlinks] Not initialized')
       return
@@ -64,6 +77,7 @@ export class PixlinksTracker {
       user_data: userData,
       source_url: window.location.href,
       event_time: new Date().toISOString(),
+      event_id: eventId || generateEventId(),
     }
 
     this.queue.push({ payload, retries: 0 })

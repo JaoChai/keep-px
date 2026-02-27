@@ -83,4 +83,32 @@ describe('PixlinksTracker', () => {
     expect(mockFetch).toHaveBeenCalledTimes(2)
     tracker.destroy()
   })
+
+  it('includes event_id in payload', () => {
+    const tracker = new PixlinksTracker({ apiKey: 'key123', pixelId: 'px123' })
+    tracker.track('Purchase', { value: 100 })
+    tracker.flush()
+
+    const [, options] = mockFetch.mock.calls[0]
+    const body = JSON.parse(options.body)
+    expect(body.events[0].event_id).toBeDefined()
+    expect(body.events[0].event_id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+    )
+
+    tracker.destroy()
+  })
+
+  it('preserves explicit eventId', () => {
+    const tracker = new PixlinksTracker({ apiKey: 'key123', pixelId: 'px123' })
+    const customId = '11111111-2222-3333-4444-555555555555'
+    tracker.track('Purchase', { value: 100 }, undefined, customId)
+    tracker.flush()
+
+    const [, options] = mockFetch.mock.calls[0]
+    const body = JSON.parse(options.body)
+    expect(body.events[0].event_id).toBe(customId)
+
+    tracker.destroy()
+  })
 })

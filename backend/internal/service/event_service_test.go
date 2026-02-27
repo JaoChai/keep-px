@@ -108,6 +108,55 @@ func TestEventService_Ingest(t *testing.T) {
 			},
 			wantCreated: 0,
 		},
+		{
+			name:       "event_id from input preserved",
+			customerID: "cust-1",
+			input: IngestBatchInput{
+				Events: []IngestEventInput{
+					{
+						PixelID:   "pixel-1",
+						EventName: "Purchase",
+						EventData: json.RawMessage(`{}`),
+						EventID:   "custom-event-id-123",
+					},
+				},
+			},
+			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:         "pixel-1",
+					CustomerID: "cust-1",
+					IsActive:   true,
+				}, nil)
+				er.On("Create", mock.Anything, mock.MatchedBy(func(e *domain.PixelEvent) bool {
+					return e.EventID == "custom-event-id-123"
+				})).Return(nil)
+			},
+			wantCreated: 1,
+		},
+		{
+			name:       "event_id generated when empty",
+			customerID: "cust-1",
+			input: IngestBatchInput{
+				Events: []IngestEventInput{
+					{
+						PixelID:   "pixel-1",
+						EventName: "PageView",
+						EventData: json.RawMessage(`{}`),
+					},
+				},
+			},
+			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:         "pixel-1",
+					CustomerID: "cust-1",
+					IsActive:   true,
+				}, nil)
+				er.On("Create", mock.Anything, mock.MatchedBy(func(e *domain.PixelEvent) bool {
+					return e.EventID != "" && len(e.EventID) == 36
+				})).Return(nil)
+			},
+			wantCreated: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -115,7 +164,7 @@ func TestEventService_Ingest(t *testing.T) {
 			svc, eventRepo, pixelRepo := newTestEventService()
 			tt.setup(eventRepo, pixelRepo)
 
-			created, err := svc.Ingest(context.Background(), tt.customerID, tt.input)
+			created, err := svc.Ingest(context.Background(), tt.customerID, tt.input, "192.168.1.1:12345", "TestAgent/1.0")
 
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantCreated, created)

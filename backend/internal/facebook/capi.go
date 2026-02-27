@@ -25,16 +25,19 @@ func NewCAPIClient(baseURL string) *CAPIClient {
 }
 
 type CAPIEvent struct {
-	EventName      string                 `json:"event_name"`
-	EventTime      int64                  `json:"event_time"`
-	UserData       map[string]interface{} `json:"user_data,omitempty"`
-	CustomData     map[string]interface{} `json:"custom_data,omitempty"`
-	EventSourceURL string                 `json:"event_source_url,omitempty"`
-	ActionSource   string                 `json:"action_source"`
+	EventName             string                 `json:"event_name"`
+	EventTime             int64                  `json:"event_time"`
+	UserData              map[string]interface{} `json:"user_data,omitempty"`
+	CustomData            map[string]interface{} `json:"custom_data,omitempty"`
+	EventSourceURL        string                 `json:"event_source_url,omitempty"`
+	ActionSource          string                 `json:"action_source"`
+	EventID               string                 `json:"event_id,omitempty"`
+	DataProcessingOptions []string               `json:"data_processing_options"`
 }
 
 type CAPIRequest struct {
-	Data []CAPIEvent `json:"data"`
+	Data        []CAPIEvent `json:"data"`
+	AccessToken string      `json:"access_token,omitempty"`
 }
 
 type CAPIResponse struct {
@@ -53,9 +56,12 @@ func (e *CAPIError) Error() string {
 }
 
 func (c *CAPIClient) SendEvents(ctx context.Context, pixelID, accessToken string, events []CAPIEvent) (*CAPIResponse, error) {
-	url := fmt.Sprintf("%s/%s/events?access_token=%s", c.baseURL, pixelID, accessToken)
+	url := fmt.Sprintf("%s/%s/events", c.baseURL, pixelID)
 
-	reqBody := CAPIRequest{Data: events}
+	reqBody := CAPIRequest{
+		Data:        events,
+		AccessToken: accessToken,
+	}
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("marshal request: %w", err)
@@ -95,4 +101,24 @@ func (c *CAPIClient) SendEvents(ctx context.Context, pixelID, accessToken string
 
 func (c *CAPIClient) SendEvent(ctx context.Context, pixelID, accessToken string, event CAPIEvent) (*CAPIResponse, error) {
 	return c.SendEvents(ctx, pixelID, accessToken, []CAPIEvent{event})
+}
+
+func (c *CAPIClient) SendEventsBatch(ctx context.Context, pixelID, accessToken string, events []CAPIEvent) ([]*CAPIResponse, error) {
+	const maxBatchSize = 1000
+	var responses []*CAPIResponse
+
+	for i := 0; i < len(events); i += maxBatchSize {
+		end := i + maxBatchSize
+		if end > len(events) {
+			end = len(events)
+		}
+		batch := events[i:end]
+
+		resp, err := c.SendEvents(ctx, pixelID, accessToken, batch)
+		if err != nil {
+			return responses, fmt.Errorf("batch %d-%d: %w", i, end, err)
+		}
+		responses = append(responses, resp)
+	}
+	return responses, nil
 }
