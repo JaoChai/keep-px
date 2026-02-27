@@ -38,7 +38,10 @@ func (h *EventHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := h.eventService.Ingest(r.Context(), customerID, input)
+	clientIP := r.RemoteAddr
+	clientUA := r.Header.Get("User-Agent")
+
+	created, err := h.eventService.Ingest(r.Context(), customerID, input, clientIP, clientUA)
 	if err != nil {
 		ErrorJSON(w, http.StatusInternalServerError, "ingestion failed")
 		return

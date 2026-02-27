@@ -6,10 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"sync"
-	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/facebook"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
@@ -108,26 +107,24 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 	_ = s.replayRepo.UpdateStatus(ctx, session.ID, "running")
 
 	var replayed, failed int64
-	var mu sync.Mutex
-	sem := make(chan struct{}, 5) // limit concurrency to 5
+	const batchSize = 1000
 
-	var wg sync.WaitGroup
-	for i, event := range events {
-		wg.Add(1)
-		sem <- struct{}{}
+	for i := 0; i < len(events); i += batchSize {
+		end := i + batchSize
+		if end > len(events) {
+			end = len(events)
+		}
+		batch := events[i:end]
 
-		go func(idx int, evt *domain.PixelEvent) {
-			defer wg.Done()
-			defer func() { <-sem }()
-
-			// Rate limit: ~50 events per second
-			time.Sleep(20 * time.Millisecond)
-
+		capiEvents := make([]facebook.CAPIEvent, 0, len(batch))
+		for _, evt := range batch {
 			capiEvt := facebook.CAPIEvent{
-				EventName:      evt.EventName,
-				EventTime:      evt.EventTime.Unix(),
-				EventSourceURL: evt.SourceURL,
-				ActionSource:   "website",
+				EventName:             evt.EventName,
+				EventTime:             evt.EventTime.Unix(),
+				EventSourceURL:        evt.SourceURL,
+				ActionSource:          "website",
+				EventID:               uuid.New().String(),
+				DataProcessingOptions: []string{},
 			}
 
 			if evt.EventData != nil {
@@ -135,32 +132,32 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 				_ = json.Unmarshal(evt.EventData, &cd)
 				capiEvt.CustomData = cd
 			}
+
+			userData := make(map[string]interface{})
 			if evt.UserData != nil {
-				var ud map[string]interface{}
-				_ = json.Unmarshal(evt.UserData, &ud)
-				capiEvt.UserData = ud
+				_ = json.Unmarshal(evt.UserData, &userData)
 			}
+			if evt.ClientIP != "" {
+				userData["client_ip_address"] = evt.ClientIP
+			}
+			if evt.ClientUserAgent != "" {
+				userData["client_user_agent"] = evt.ClientUserAgent
+			}
+			capiEvt.UserData = facebook.HashUserData(userData)
 
-			_, err := s.capiClient.SendEvent(ctx, targetPixel.FBPixelID, targetPixel.FBAccessToken, capiEvt)
-			if err != nil {
-				atomic.AddInt64(&failed, 1)
-				s.logger.Error("replay event failed", "error", err, "event_id", evt.ID)
-			} else {
-				atomic.AddInt64(&replayed, 1)
-			}
+			capiEvents = append(capiEvents, capiEvt)
+		}
 
-			// Update progress every 10 events
-			if (idx+1)%10 == 0 || idx == len(events)-1 {
-				mu.Lock()
-				_ = s.replayRepo.UpdateProgress(ctx, session.ID, int(atomic.LoadInt64(&replayed)), int(atomic.LoadInt64(&failed)))
-				mu.Unlock()
-			}
-		}(i, event)
+		_, err := s.capiClient.SendEvents(ctx, targetPixel.FBPixelID, targetPixel.FBAccessToken, capiEvents)
+		if err != nil {
+			failed += int64(len(batch))
+			s.logger.Error("replay batch failed", "error", err, "batch_start", i, "batch_end", end)
+		} else {
+			replayed += int64(len(batch))
+		}
+
+		_ = s.replayRepo.UpdateProgress(ctx, session.ID, int(replayed), int(failed))
 	}
-
-	wg.Wait()
-
-	_ = s.replayRepo.UpdateProgress(ctx, session.ID, int(replayed), int(failed))
 
 	if failed > 0 && replayed == 0 {
 		_ = s.replayRepo.UpdateStatus(ctx, session.ID, "failed")
