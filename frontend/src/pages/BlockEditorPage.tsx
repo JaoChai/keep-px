@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
-import { ArrowLeft, Copy, Check, ExternalLink, Info, Eye, Pencil } from 'lucide-react'
+import { ArrowLeft, Copy, Check, ExternalLink, Info, Eye, Pencil, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,14 +23,6 @@ const CTA_EVENT_OPTIONS = [
   { value: 'SubmitApplication', label: 'SubmitApplication — ลูกค้าส่งใบสมัคร' },
 ] as const
 
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-}
 
 // Wrapper: handles data loading and v1→v2 redirect
 export function BlockEditorPage() {
@@ -74,7 +66,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
   // Page settings
   const [name, setName] = useState(existingPage?.name ?? '')
   const [slug, setSlug] = useState(existingPage?.slug ?? '')
-  const [slugTouched, setSlugTouched] = useState(isEditing)
+  const [showCustomSlug, setShowCustomSlug] = useState(isEditing)
   const [pixelId, setPixelId] = useState(existingPage?.pixel_id ?? '')
 
   // Page style
@@ -97,9 +89,6 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
 
   const handleNameChange = (value: string) => {
     setName(value)
-    if (!slugTouched) {
-      setSlug(generateSlug(value))
-    }
   }
 
   const buildContent = (): SalePageContentV2 => ({
@@ -118,8 +107,8 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
 
   const onSubmit = async (isPublished: boolean) => {
     setSubmitError(null)
-    if (!name.trim() || !slug.trim()) {
-      setSubmitError('กรุณากรอกชื่อหน้าเพจและ URL')
+    if (!name.trim()) {
+      setSubmitError('กรุณากรอกชื่อหน้าเพจ')
       return
     }
     if (blocks.length === 0) {
@@ -130,21 +119,24 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
       const content = buildContent()
       const payload = {
         name,
-        slug,
+        slug: slug || undefined,
         pixel_id: pixelId || undefined,
         template_name: 'blocks',
         content,
         is_published: isPublished,
       }
 
+      let resultSlug = slug
       if (isEditing && existingPage) {
-        await updateSalePage.mutateAsync({ id: existingPage.id, ...payload })
+        const result = await updateSalePage.mutateAsync({ id: existingPage.id, ...payload })
+        resultSlug = result.slug
       } else {
-        await createSalePage.mutateAsync(payload)
+        const result = await createSalePage.mutateAsync(payload)
+        resultSlug = result.slug
       }
 
       if (isPublished) {
-        setPublishedDialog({ slug })
+        setPublishedDialog({ slug: resultSlug })
       } else {
         navigate('/sale-pages')
       }
@@ -230,19 +222,31 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="page-slug">URL</Label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-neutral-200 bg-neutral-50 text-sm text-neutral-500">
-                    /p/
-                  </span>
-                  <Input
-                    id="page-slug"
-                    className="rounded-l-none"
-                    placeholder="my-page"
-                    value={slug}
-                    onChange={(e) => { setSlug(e.target.value); setSlugTouched(true) }}
-                  />
-                </div>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+                  onClick={() => setShowCustomSlug(!showCustomSlug)}
+                >
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showCustomSlug ? 'rotate-0' : '-rotate-90'}`} />
+                  ตั้ง URL เอง (ไม่บังคับ)
+                </button>
+                {showCustomSlug && (
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-neutral-200 bg-neutral-50 text-sm text-neutral-500">
+                      /p/
+                    </span>
+                    <Input
+                      id="page-slug"
+                      className="rounded-l-none"
+                      placeholder="my-page"
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value)}
+                    />
+                  </div>
+                )}
+                {!showCustomSlug && (
+                  <p className="text-xs text-neutral-400">ระบบจะสร้าง URL ให้อัตโนมัติ</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pixel-select">Pixel (ไม่บังคับ)</Label>
