@@ -140,7 +140,7 @@ func (s *PixelService) Delete(ctx context.Context, customerID, pixelID string) e
 	return s.pixelRepo.Delete(ctx, pixelID)
 }
 
-func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID, userAgent string) (*facebook.CAPIResponse, error) {
+func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID string) (*facebook.CAPIResponse, error) {
 	pixel, err := s.GetByID(ctx, customerID, pixelID)
 	if err != nil {
 		return nil, err
@@ -155,9 +155,11 @@ func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID, 
 		EventTime:             time.Now().Unix(),
 		ActionSource:          "website",
 		EventID:               uuid.NewString(),
+		EventSourceURL:        "https://keepx.io/test",
 		DataProcessingOptions: []string{},
 		UserData: map[string]interface{}{
-			"client_user_agent": userAgent,
+			"client_user_agent": "KeepPX/1.0 (Connection Test)",
+			"external_id":       facebook.HashValue("keepx-test-" + pixel.FBPixelID),
 		},
 	}
 
