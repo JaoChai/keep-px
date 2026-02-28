@@ -4,15 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Keep-PX (codebase name: Pixlinks) is a Facebook Pixel data preservation and replay platform. It captures Facebook Pixel events through a JavaScript SDK, stores them in a database, forwards them to Facebook Conversions API (CAPI), and allows replaying stored events to a new pixel when accounts get banned.
+Keep-PX (codebase name: Pixlinks) is a Facebook Pixel data preservation and replay platform. It captures Facebook Pixel events through built-in sale page templates, stores them in a database, forwards them to Facebook Conversions API (CAPI), and allows replaying stored events to a new pixel when accounts get banned.
 
 ## Monorepo Structure
 
-Three independent packages in one repo — no shared workspace tooling:
+Two independent packages in one repo — no shared workspace tooling:
 
 - **`backend/`** — Go REST API (chi router, pgx/v5, Neon PostgreSQL)
 - **`frontend/`** — React SPA dashboard (Vite, TanStack Query, Zustand, Tailwind CSS v4)
-- **`sdk/`** — Browser JavaScript SDK for event tracking (Rollup, TypeScript)
 
 ## Build & Run Commands
 
@@ -33,14 +32,6 @@ npm install
 npm run dev                    # dev server on :5173 (proxies /api to :8080)
 npm run build                  # tsc + vite build
 npm run lint                   # eslint
-```
-
-### SDK (TypeScript/Rollup)
-```bash
-cd sdk
-npm install
-npm run build                  # outputs dist/pixlinks.min.js (UMD) + dist/pixlinks.esm.js
-npm run dev                    # watch mode
 ```
 
 ### Database Migrations
@@ -76,10 +67,6 @@ Frontend:
 ```bash
 cd frontend && npm run lint && npm run test && npm run build
 ```
-SDK:
-```bash
-cd sdk && npm run test && npm run build
-```
 E2E:
 ```bash
 cd frontend && npm run e2e
@@ -114,7 +101,7 @@ Dependency flow: `handler → service → repository → database`
 
 - **`cmd/server/main.go`** — Entry point. Wires up config, pgxpool, router, graceful shutdown.
 - **`internal/config/`** — Env-based config using `caarlos0/env`. Loads `.env` via godotenv.
-- **`internal/domain/`** — Pure domain structs (Customer, Pixel, PixelEvent, EventRule, ReplaySession). No dependencies.
+- **`internal/domain/`** — Pure domain structs (Customer, Pixel, PixelEvent, ReplaySession). No dependencies.
 - **`internal/repository/interfaces.go`** — Repository interfaces (CustomerRepository, PixelRepository, EventRepository, etc.).
 - **`internal/repository/postgres/`** — pgx/v5 implementations. Hand-written SQL (not using sqlc-generated code in repos — sqlc is set up but repos use direct queries).
 - **`internal/service/`** — Business logic. Each service takes repository interfaces. Sentinel errors (ErrPixelNotFound, etc.) for handler error mapping.
@@ -125,7 +112,7 @@ Dependency flow: `handler → service → repository → database`
 
 ### Authentication — Dual Mode
 - **Dashboard (JWT)**: `POST /api/v1/auth/register|login|refresh` → Bearer token. Customer ID stored in JWT `sub` claim, extracted via `middleware.GetCustomerID(ctx)`.
-- **SDK (API Key)**: `X-API-Key` header → validated against `customers.api_key` column. Used only for event ingestion endpoint.
+- **Sale Pages (API Key)**: `X-API-Key` header → validated against `customers.api_key` column. Used by sale page templates for event ingestion.
 
 ### Key Patterns
 - Ownership verification: Services always check `pixel.CustomerID == customerID` before operations.
@@ -141,11 +128,6 @@ Dependency flow: `handler → service → repository → database`
 - **UI components**: shadcn/ui pattern in `src/components/ui/`
 - **Vite proxy**: `/api` requests proxy to `http://localhost:8080` in dev
 
-### SDK Architecture
-- `PixlinksTracker`: Batched event queue (flush every 2s or at 10 events), retry up to 3 times, sends to `/api/v1/events/ingest`
-- `VisualSetup`: Overlay-based element selector for visual event configuration, communicates with dashboard via postMessage
-- Auto-init from `<script data-pixlinks-key="...">` tag
-
 ## API Routes
 
 | Method | Path | Auth | Description |
@@ -153,17 +135,15 @@ Dependency flow: `handler → service → repository → database`
 | POST | `/api/v1/auth/register` | Public | Register |
 | POST | `/api/v1/auth/login` | Public | Login |
 | POST | `/api/v1/auth/refresh` | Public | Token refresh |
-| POST | `/api/v1/events/ingest` | API Key | SDK event ingestion (batch) |
+| POST | `/api/v1/events/ingest` | API Key | Sale page event ingestion (batch) |
 | GET/POST/PUT/DELETE | `/api/v1/pixels/*` | JWT | Pixel CRUD |
 | GET | `/api/v1/events` | JWT | Event log (paginated) |
-| GET/POST/PUT/DELETE | `/api/v1/pixels/{pixelId}/rules/*` | JWT | Event rules |
 | POST/GET | `/api/v1/replays/*` | JWT | Replay sessions |
 | GET | `/api/v1/analytics/*` | JWT | Dashboard analytics |
-| GET | `/api/v1/proxy?url=` | JWT | HTML proxy for visual setup |
 
 ## Database
 
-PostgreSQL on Neon. 6 tables: `customers`, `pixels`, `pixel_events`, `event_rules`, `replay_sessions`, `refresh_tokens`. All IDs are UUID with `gen_random_uuid()`. Timestamps are `TIMESTAMPTZ`.
+PostgreSQL on Neon. 5 active tables: `customers`, `pixels`, `pixel_events`, `replay_sessions`, `refresh_tokens`. (`event_rules` table exists but is unused.) All IDs are UUID with `gen_random_uuid()`. Timestamps are `TIMESTAMPTZ`.
 
 ## Deployment
 

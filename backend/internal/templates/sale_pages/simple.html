@@ -274,14 +274,6 @@
     <!-- End Meta Pixel Code -->
     {{end}}
 
-    {{if and .APIKey .Page.PixelID}}
-    <script src="/sdk/pixlinks.min.js"
-            data-pixlinks-key="{{.APIKey}}"
-            data-pixlinks-pixel-id="{{deref .Page.PixelID}}"
-            data-endpoint="{{.BaseURL}}">
-    </script>
-    {{end}}
-
     <script>
     (function() {
         var ctaEventName = '{{.Content.Tracking.CTAEventName}}' || 'Lead';
@@ -302,9 +294,28 @@
             if (typeof fbq === 'function') {
                 fbq('track', eventName, params, {eventID: eid});
             }
-            if (window.pixlinks) {
-                window.pixlinks.track(eventName, params, undefined, eid);
-            }
+            {{if and .APIKey .Page.PixelID}}
+            try {
+                fetch('{{.BaseURL}}/api/v1/events/ingest', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': '{{.APIKey}}'
+                    },
+                    body: JSON.stringify({
+                        events: [{
+                            pixel_id: '{{deref .Page.PixelID}}',
+                            event_name: eventName,
+                            event_data: params || {},
+                            source_url: window.location.href,
+                            event_time: new Date().toISOString(),
+                            event_id: eid
+                        }]
+                    }),
+                    keepalive: true
+                });
+            } catch (e) {}
+            {{end}}
         }
 
         function buildParams(extra) {

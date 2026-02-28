@@ -437,7 +437,7 @@ export function EventsPage() {
         <div className="text-center py-12 border border-dashed border-neutral-300 rounded-lg">
           <p className="text-neutral-500">No events recorded yet</p>
           <p className="text-sm text-neutral-400 mt-1">
-            Events will appear here once your SDK starts sending data
+            Events will appear here once your sale pages start receiving traffic
           </p>
         </div>
       ) : (
