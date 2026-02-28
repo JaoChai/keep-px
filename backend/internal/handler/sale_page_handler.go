@@ -42,6 +42,9 @@ func NewSalePageHandler(salePageService *service.SalePageService, baseURL string
 			}
 			return ""
 		},
+		"hasPixels": func(pixels []service.PixelPublishInfo) bool {
+			return len(pixels) > 0
+		},
 	}
 
 	tmplMap := make(map[string]*template.Template)
@@ -67,7 +70,7 @@ type salePageTemplateData struct {
 	BlocksContent *domain.BlocksContent
 	Style         domain.PageStyle
 	APIKey        string
-	FBPixelID     string
+	Pixels        []service.PixelPublishInfo
 	BaseURL       string
 }
 
@@ -108,6 +111,14 @@ func (h *SalePageHandler) Create(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusConflict, "slug is already taken")
 			return
 		}
+		if errors.Is(err, service.ErrPixelNotFound) {
+			ErrorJSON(w, http.StatusBadRequest, "one or more pixels not found")
+			return
+		}
+		if errors.Is(err, service.ErrPixelNotOwned) {
+			ErrorJSON(w, http.StatusForbidden, "one or more pixels not owned by you")
+			return
+		}
 		ErrorJSON(w, http.StatusInternalServerError, "failed to create sale page")
 		return
 	}
@@ -144,6 +155,14 @@ func (h *SalePageHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, service.ErrSlugTaken) {
 			ErrorJSON(w, http.StatusConflict, "slug is already taken")
+			return
+		}
+		if errors.Is(err, service.ErrPixelNotFound) {
+			ErrorJSON(w, http.StatusBadRequest, "one or more pixels not found")
+			return
+		}
+		if errors.Is(err, service.ErrPixelNotOwned) {
+			ErrorJSON(w, http.StatusForbidden, "one or more pixels not owned by you")
 			return
 		}
 		ErrorJSON(w, http.StatusInternalServerError, "failed to update sale page")
@@ -185,7 +204,7 @@ func (h *SalePageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.renderTemplate(w, data.Page, data.APIKey, data.FBPixelID)
+	h.renderTemplate(w, data.Page, data.APIKey, data.Pixels)
 }
 
 func (h *SalePageHandler) Preview(w http.ResponseWriter, r *http.Request) {
@@ -206,15 +225,15 @@ func (h *SalePageHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.renderTemplate(w, page, "", "")
+	h.renderTemplate(w, page, "", nil)
 }
 
-func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.SalePage, apiKey string, fbPixelID string) {
+func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.SalePage, apiKey string, pixels []service.PixelPublishInfo) {
 	td := salePageTemplateData{
-		Page:      page,
-		APIKey:    apiKey,
-		FBPixelID: fbPixelID,
-		BaseURL:   h.baseURL,
+		Page:    page,
+		APIKey:  apiKey,
+		Pixels:  pixels,
+		BaseURL: h.baseURL,
 	}
 
 	// Detect content version

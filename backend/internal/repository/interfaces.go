@@ -24,7 +24,7 @@ type PixelRepository interface {
 }
 
 type EventRepository interface {
-	Create(ctx context.Context, event *domain.PixelEvent) error
+	Create(ctx context.Context, event *domain.PixelEvent) (created bool, err error)
 	GetByID(ctx context.Context, id string) (*domain.PixelEvent, error)
 	ListByPixelID(ctx context.Context, pixelID string, limit, offset int) ([]*domain.PixelEvent, int, error)
 	ListByCustomerID(ctx context.Context, customerID string, pixelID string, limit, offset int) ([]*domain.PixelEvent, int, error)

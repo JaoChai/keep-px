@@ -54,7 +54,7 @@ func NewSalePageService(salePageRepo repository.SalePageRepository, customerRepo
 type CreateSalePageInput struct {
 	Name         string          `json:"name" validate:"required"`
 	Slug         string          `json:"slug" validate:"omitempty,min=2,max=100"`
-	PixelID      *string         `json:"pixel_id,omitempty"`
+	PixelIDs     []string        `json:"pixel_ids,omitempty"`
 	TemplateName string          `json:"template_name" validate:"required"`
 	Content      json.RawMessage `json:"content" validate:"required"`
 	IsPublished  bool            `json:"is_published"`
@@ -63,16 +63,21 @@ type CreateSalePageInput struct {
 type UpdateSalePageInput struct {
 	Name         *string          `json:"name,omitempty"`
 	Slug         *string          `json:"slug,omitempty"`
-	PixelID      *string          `json:"pixel_id,omitempty"`
+	PixelIDs     *[]string        `json:"pixel_ids,omitempty"`
 	TemplateName *string          `json:"template_name,omitempty"`
 	Content      *json.RawMessage `json:"content,omitempty"`
 	IsPublished  *bool            `json:"is_published,omitempty"`
 }
 
-type SalePagePublishData struct {
-	Page     *domain.SalePage
-	APIKey   string
+type PixelPublishInfo struct {
+	PixelID   string
 	FBPixelID string
+}
+
+type SalePagePublishData struct {
+	Page   *domain.SalePage
+	APIKey string
+	Pixels []PixelPublishInfo
 }
 
 func generateRandomSlug() (string, error) {
@@ -95,6 +100,22 @@ func validateSlug(slug string) error {
 	}
 	if reservedSlugs[slug] {
 		return ErrSlugTaken
+	}
+	return nil
+}
+
+func (s *SalePageService) validatePixelOwnership(ctx context.Context, customerID string, pixelIDs []string) error {
+	for _, pid := range pixelIDs {
+		pixel, err := s.pixelRepo.GetByID(ctx, pid)
+		if err != nil {
+			return fmt.Errorf("get pixel: %w", err)
+		}
+		if pixel == nil {
+			return ErrPixelNotFound
+		}
+		if pixel.CustomerID != customerID {
+			return ErrPixelNotOwned
+		}
 	}
 	return nil
 }
@@ -136,14 +157,18 @@ func (s *SalePageService) Create(ctx context.Context, customerID string, input C
 		}
 	}
 
-	var pixelID *string
-	if input.PixelID != nil && *input.PixelID != "" {
-		pixelID = input.PixelID
+	if input.PixelIDs == nil {
+		input.PixelIDs = []string{}
+	}
+	if len(input.PixelIDs) > 0 {
+		if err := s.validatePixelOwnership(ctx, customerID, input.PixelIDs); err != nil {
+			return nil, err
+		}
 	}
 
 	page := &domain.SalePage{
 		CustomerID:   customerID,
-		PixelID:      pixelID,
+		PixelIDs:     input.PixelIDs,
 		Name:         input.Name,
 		Slug:         input.Slug,
 		TemplateName: input.TemplateName,
@@ -214,12 +239,13 @@ func (s *SalePageService) Update(ctx context.Context, customerID, pageID string,
 		}
 		page.Slug = *input.Slug
 	}
-	if input.PixelID != nil {
-		if *input.PixelID == "" {
-			page.PixelID = nil
-		} else {
-			page.PixelID = input.PixelID
+	if input.PixelIDs != nil {
+		if len(*input.PixelIDs) > 0 {
+			if err := s.validatePixelOwnership(ctx, customerID, *input.PixelIDs); err != nil {
+				return nil, err
+			}
 		}
+		page.PixelIDs = *input.PixelIDs
 	}
 	if input.TemplateName != nil {
 		page.TemplateName = *input.TemplateName
@@ -289,18 +315,21 @@ func (s *SalePageService) GetPublishData(ctx context.Context, slug string) (*Sal
 		return nil, fmt.Errorf("customer not found")
 	}
 
-	var fbPixelID string
-	if page.PixelID != nil {
-		pixel, err := s.pixelRepo.GetByID(ctx, *page.PixelID)
+	var pixels []PixelPublishInfo
+	for _, pid := range page.PixelIDs {
+		pixel, err := s.pixelRepo.GetByID(ctx, pid)
 		if err == nil && pixel != nil {
-			fbPixelID = pixel.FBPixelID
+			pixels = append(pixels, PixelPublishInfo{
+				PixelID:   pixel.ID,
+				FBPixelID: pixel.FBPixelID,
+			})
 		}
 	}
 
 	return &SalePagePublishData{
-		Page:      page,
-		APIKey:    customer.APIKey,
-		FBPixelID: fbPixelID,
+		Page:   page,
+		APIKey: customer.APIKey,
+		Pixels: pixels,
 	}, nil
 }
 

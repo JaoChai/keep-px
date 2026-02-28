@@ -18,7 +18,7 @@ export function useCreateSalePage() {
     mutationFn: async (input: {
       name: string
       slug?: string
-      pixel_id?: string
+      pixel_ids?: string[]
       template_name: string
       content: SalePageContent | SalePageContentV2
       is_published: boolean
@@ -42,7 +42,7 @@ export function useUpdateSalePage() {
       id: string
       name?: string
       slug?: string
-      pixel_id?: string
+      pixel_ids?: string[]
       template_name?: string
       content?: SalePageContent | SalePageContentV2
       is_published?: boolean

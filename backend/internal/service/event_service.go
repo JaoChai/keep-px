@@ -109,8 +109,13 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 			ClientUserAgent: client.UserAgent,
 		}
 
-		if err := s.eventRepo.Create(ctx, event); err != nil {
+		inserted, err := s.eventRepo.Create(ctx, event)
+		if err != nil {
 			s.logger.Error("create event failed", "error", err)
+			continue
+		}
+		if !inserted {
+			s.logger.Info("duplicate event skipped", "event_id", event.EventID, "pixel_id", event.PixelID)
 			continue
 		}
 

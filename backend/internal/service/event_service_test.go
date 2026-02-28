@@ -50,9 +50,32 @@ func TestEventService_Ingest(t *testing.T) {
 					CustomerID: "cust-1",
 					IsActive:   true,
 				}, nil)
-				er.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(nil)
+				er.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(true, nil)
 			},
 			wantCreated: 1,
+		},
+		{
+			name:       "duplicate event skipped",
+			customerID: "cust-1",
+			input: IngestBatchInput{
+				Events: []IngestEventInput{
+					{
+						PixelID:   "pixel-1",
+						EventName: "PageView",
+						EventData: json.RawMessage(`{}`),
+						EventID:   "dup-event-id",
+					},
+				},
+			},
+			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:         "pixel-1",
+					CustomerID: "cust-1",
+					IsActive:   true,
+				}, nil)
+				er.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(false, nil)
+			},
+			wantCreated: 0,
 		},
 		{
 			name:       "pixel not found",
@@ -131,7 +154,7 @@ func TestEventService_Ingest(t *testing.T) {
 				}, nil)
 				er.On("Create", mock.Anything, mock.MatchedBy(func(e *domain.PixelEvent) bool {
 					return e.EventID == "custom-event-id-123"
-				})).Return(nil)
+				})).Return(true, nil)
 			},
 			wantCreated: 1,
 		},
@@ -162,7 +185,7 @@ func TestEventService_Ingest(t *testing.T) {
 					return ud["fbp"] == "fb.1.1709150000000.456789" &&
 						ud["fbc"] == "fb.1.1709150000000.test123" &&
 						ud["external_id"] == "usr-ext-001"
-				})).Return(nil)
+				})).Return(true, nil)
 			},
 			wantCreated: 1,
 		},
@@ -186,7 +209,7 @@ func TestEventService_Ingest(t *testing.T) {
 				}, nil)
 				er.On("Create", mock.Anything, mock.MatchedBy(func(e *domain.PixelEvent) bool {
 					return e.EventID != "" && len(e.EventID) == 36
-				})).Return(nil)
+				})).Return(true, nil)
 			},
 			wantCreated: 1,
 		},
@@ -220,7 +243,7 @@ func TestEventService_Ingest_WithFBCookies(t *testing.T) {
 		FBPixelID:     "fb-pixel-1",
 		FBAccessToken: "token-1",
 	}, nil)
-	eventRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(nil)
+	eventRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(true, nil)
 
 	input := IngestBatchInput{
 		Events: []IngestEventInput{
@@ -347,7 +370,7 @@ func TestEventService_Ingest_BackupPixelFanOut(t *testing.T) {
 		FBPixelID:     "fb-pixel-backup",
 		FBAccessToken: "token-backup",
 	}, nil).Maybe()
-	eventRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(nil)
+	eventRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(true, nil)
 
 	input := IngestBatchInput{
 		Events: []IngestEventInput{
