@@ -24,7 +24,7 @@ export class VisualSetup {
     this.config = {
       apiKey: config.apiKey,
       pixelId: config.pixelId || '',
-      endpoint: config.endpoint || 'https://api.pixlinks.io',
+      endpoint: config.endpoint || 'https://pixlinks.xyz',
     }
   }
 
