@@ -108,13 +108,7 @@ func (h *PixelHandler) Test(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	pixelID := chi.URLParam(r, "id")
 
-	clientIP := r.Header.Get("X-Forwarded-For")
-	if clientIP == "" {
-		clientIP = r.RemoteAddr
-	}
-	userAgent := r.UserAgent()
-
-	resp, err := h.pixelService.TestConnection(r.Context(), customerID, pixelID, clientIP, userAgent)
+	resp, err := h.pixelService.TestConnection(r.Context(), customerID, pixelID, r.UserAgent())
 	if err != nil {
 		if errors.Is(err, service.ErrPixelNotFound) {
 			ErrorJSON(w, http.StatusNotFound, "pixel not found")
