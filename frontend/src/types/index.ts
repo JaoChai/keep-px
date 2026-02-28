@@ -15,6 +15,7 @@ export interface Pixel {
   name: string
   is_active: boolean
   status: string
+  backup_pixel_id?: string
   created_at: string
   updated_at: string
 }
@@ -44,6 +45,9 @@ export interface ReplaySession {
   event_types?: string[]
   date_from?: string
   date_to?: string
+  time_mode: string
+  batch_delay_ms: number
+  error_message?: string
   started_at?: string
   completed_at?: string
   created_at: string

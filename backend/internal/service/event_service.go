@@ -117,6 +117,11 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 		// Forward to Facebook CAPI asynchronously
 		go s.forwardToCAPI(context.Background(), event, pixel, client)
 
+		// Fan-out to backup pixel (best-effort, 1 level only)
+		if pixel.BackupPixelID != nil {
+			go s.forwardToBackupPixel(context.Background(), event, *pixel.BackupPixelID, client)
+		}
+
 		created++
 	}
 	return created, nil
@@ -190,6 +195,16 @@ func (s *EventService) forwardToCAPI(ctx context.Context, event *domain.PixelEve
 		_ = s.eventRepo.MarkForwarded(ctx, event.ID, responseCode)
 		s.logger.Info("forwarded to CAPI", "event_id", event.ID, "events_received", resp.EventsReceived)
 	}
+}
+
+func (s *EventService) forwardToBackupPixel(ctx context.Context, event *domain.PixelEvent, backupPixelID string, client ClientContext) {
+	backupPixel, err := s.pixelRepo.GetByID(ctx, backupPixelID)
+	if err != nil || backupPixel == nil || !backupPixel.IsActive {
+		s.logger.Warn("backup pixel not available", "backup_pixel_id", backupPixelID)
+		return
+	}
+	// Don't recurse: backup's backup is NOT forwarded (1 level only)
+	s.forwardToCAPI(ctx, event, backupPixel, client)
 }
 
 func (s *EventService) ListByCustomerID(ctx context.Context, customerID string, pixelID string, page, perPage int) ([]*domain.PixelEvent, int, error) {

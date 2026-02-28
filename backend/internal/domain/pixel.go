@@ -10,6 +10,7 @@ type Pixel struct {
 	Name          string    `json:"name"`
 	IsActive      bool      `json:"is_active"`
 	Status        string    `json:"status"`
+	BackupPixelID *string   `json:"backup_pixel_id,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

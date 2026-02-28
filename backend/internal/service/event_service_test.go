@@ -327,6 +327,50 @@ func TestIsValidFBCookie(t *testing.T) {
 	}
 }
 
+func TestEventService_Ingest_BackupPixelFanOut(t *testing.T) {
+	svc, eventRepo, pixelRepo := newTestEventService()
+
+	backupID := "pixel-backup"
+	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+		ID:            "pixel-1",
+		CustomerID:    "cust-1",
+		IsActive:      true,
+		FBPixelID:     "fb-pixel-1",
+		FBAccessToken: "token-1",
+		BackupPixelID: &backupID,
+	}, nil)
+	// The backup pixel lookup happens in a goroutine — set it up so it doesn't panic
+	pixelRepo.On("GetByID", mock.Anything, "pixel-backup").Return(&domain.Pixel{
+		ID:            "pixel-backup",
+		CustomerID:    "cust-1",
+		IsActive:      true,
+		FBPixelID:     "fb-pixel-backup",
+		FBAccessToken: "token-backup",
+	}, nil).Maybe()
+	eventRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(nil)
+
+	input := IngestBatchInput{
+		Events: []IngestEventInput{
+			{
+				PixelID:   "pixel-1",
+				EventName: "PageView",
+				EventData: json.RawMessage(`{}`),
+			},
+		},
+	}
+
+	created, err := svc.Ingest(context.Background(), "cust-1", input, ClientContext{
+		IP:        "10.0.0.1",
+		UserAgent: "TestAgent/1.0",
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, created)
+	eventRepo.AssertExpectations(t)
+	// Note: backup fan-out is async (goroutine), so we only verify event creation works.
+	// The pixelRepo.GetByID("pixel-backup") call may or may not have completed by now.
+}
+
 func TestEventService_ListByCustomerID(t *testing.T) {
 	tests := []struct {
 		name      string

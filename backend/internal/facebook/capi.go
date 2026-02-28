@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -97,6 +98,15 @@ func (c *CAPIClient) SendEvents(ctx context.Context, pixelID, accessToken string
 	}
 
 	return &capiResp, nil
+}
+
+// IsAuthError checks if the error is a CAPIError with a 401 or 403 status code.
+func IsAuthError(err error) bool {
+	var capiErr *CAPIError
+	if errors.As(err, &capiErr) {
+		return capiErr.StatusCode == 401 || capiErr.StatusCode == 403
+	}
+	return false
 }
 
 func (c *CAPIClient) SendEvent(ctx context.Context, pixelID, accessToken string, event CAPIEvent) (*CAPIResponse, error) {

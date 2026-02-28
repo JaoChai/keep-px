@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { RotateCcw, Play, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react'
+import { RotateCcw, Play, CheckCircle2, XCircle, Clock, Loader2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { toast } from 'sonner'
 import { usePixels } from '@/hooks/use-pixels'
 import { useReplays, useReplaySession, useCreateReplay } from '@/hooks/use-replays'
 
@@ -16,6 +17,8 @@ const replaySchema = z.object({
   target_pixel_id: z.string().min(1, 'Target pixel is required'),
   date_from: z.string().optional(),
   date_to: z.string().optional(),
+  time_mode: z.enum(['original', 'current']),
+  batch_delay_ms: z.number().min(0).max(60000),
 })
 
 type ReplayForm = z.infer<typeof replaySchema>
@@ -42,6 +45,10 @@ export function ReplayPage() {
     formState: { errors, isSubmitting },
   } = useForm<ReplayForm>({
     resolver: zodResolver(replaySchema),
+    defaultValues: {
+      time_mode: 'original',
+      batch_delay_ms: 0,
+    },
   })
 
   const onSubmit = async (formData: ReplayForm) => {
@@ -50,8 +57,13 @@ export function ReplayPage() {
       target_pixel_id: formData.target_pixel_id,
       date_from: formData.date_from ? new Date(formData.date_from).toISOString() : undefined,
       date_to: formData.date_to ? new Date(formData.date_to).toISOString() : undefined,
+      time_mode: formData.time_mode,
+      batch_delay_ms: formData.batch_delay_ms || undefined,
     })
-    setActiveReplayId(result.id)
+    setActiveReplayId(result.session.id)
+    if (result.warning) {
+      toast.warning(result.warning)
+    }
   }
 
   return (
@@ -110,6 +122,30 @@ export function ReplayPage() {
                 <Input type="date" {...register('date_to')} />
               </div>
 
+              <div className="space-y-2">
+                <Label>Time Mode</Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm"
+                  {...register('time_mode')}
+                >
+                  <option value="original">Original (use original event timestamps)</option>
+                  <option value="current">Current (use current time for all events)</option>
+                </select>
+                <p className="text-xs text-neutral-400">Use "Current" if events are older than 7 days to avoid Facebook rejection</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Batch Delay (ms)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={60000}
+                  placeholder="0"
+                  {...register('batch_delay_ms', { valueAsNumber: true })}
+                />
+                <p className="text-xs text-neutral-400">Delay between batches (0-60000ms). Use for warm-up on new pixels.</p>
+              </div>
+
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 <RotateCcw className="h-4 w-4" />
                 {isSubmitting ? 'Starting...' : 'Start Replay'}
@@ -129,6 +165,17 @@ export function ReplayPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {/* Error message */}
+                {activeReplay.status === 'failed' && activeReplay.error_message && (
+                  <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                    <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-red-800">Replay Failed</p>
+                      <p className="text-sm text-red-600 mt-1">{activeReplay.error_message}</p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="w-full bg-neutral-200 rounded-full h-3">
                   <div
                     className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
@@ -152,6 +199,12 @@ export function ReplayPage() {
                     <p className="text-2xl font-bold text-red-600">{activeReplay.failed_events}</p>
                     <p className="text-xs text-neutral-500">Failed</p>
                   </div>
+                </div>
+
+                {/* Replay config info */}
+                <div className="flex gap-3 text-xs text-neutral-400 border-t border-neutral-100 pt-3">
+                  <span>Mode: {activeReplay.time_mode}</span>
+                  {activeReplay.batch_delay_ms > 0 && <span>Delay: {activeReplay.batch_delay_ms}ms</span>}
                 </div>
               </div>
             </CardContent>
@@ -183,6 +236,9 @@ export function ReplayPage() {
                         </p>
                         <p className="text-xs text-neutral-500">
                           {new Date(replay.created_at).toLocaleString()}
+                          {replay.error_message && (
+                            <span className="text-red-500 ml-2">{replay.error_message}</span>
+                          )}
                         </p>
                       </div>
                       {statusBadge(replay.status)}

@@ -78,6 +78,10 @@ func (h *PixelHandler) Update(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusForbidden, "pixel not owned by you")
 			return
 		}
+		if errors.Is(err, service.ErrBackupPixelSelf) {
+			ErrorJSON(w, http.StatusBadRequest, "cannot set pixel as its own backup")
+			return
+		}
 		ErrorJSON(w, http.StatusInternalServerError, "failed to update pixel")
 		return
 	}
