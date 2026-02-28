@@ -140,7 +140,7 @@ func (s *PixelService) Delete(ctx context.Context, customerID, pixelID string) e
 	return s.pixelRepo.Delete(ctx, pixelID)
 }
 
-func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID string) (*facebook.CAPIResponse, error) {
+func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID, clientIP, userAgent string) (*facebook.CAPIResponse, error) {
 	pixel, err := s.GetByID(ctx, customerID, pixelID)
 	if err != nil {
 		return nil, err
@@ -156,6 +156,10 @@ func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID s
 		ActionSource:          "website",
 		EventID:               uuid.NewString(),
 		DataProcessingOptions: []string{},
+		UserData: map[string]interface{}{
+			"client_ip_address": clientIP,
+			"client_user_agent": userAgent,
+		},
 	}
 
 	resp, err := s.capiClient.SendEvent(ctx, pixel.FBPixelID, pixel.FBAccessToken, event)

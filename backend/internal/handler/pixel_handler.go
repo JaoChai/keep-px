@@ -108,7 +108,13 @@ func (h *PixelHandler) Test(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	pixelID := chi.URLParam(r, "id")
 
-	resp, err := h.pixelService.TestConnection(r.Context(), customerID, pixelID)
+	clientIP := r.Header.Get("X-Forwarded-For")
+	if clientIP == "" {
+		clientIP = r.RemoteAddr
+	}
+	userAgent := r.UserAgent()
+
+	resp, err := h.pixelService.TestConnection(r.Context(), customerID, pixelID, clientIP, userAgent)
 	if err != nil {
 		if errors.Is(err, service.ErrPixelNotFound) {
 			ErrorJSON(w, http.StatusNotFound, "pixel not found")
@@ -128,6 +134,7 @@ func (h *PixelHandler) Test(w http.ResponseWriter, r *http.Request) {
 			slog.Error("pixel test connection CAPI error",
 				"pixel_id", pixelID,
 				"fb_status", capiErr.StatusCode,
+				"fb_response", capiErr.Message,
 			)
 			ErrorJSON(w, http.StatusBadGateway, sanitizeCAPIError(capiErr.StatusCode))
 			return
