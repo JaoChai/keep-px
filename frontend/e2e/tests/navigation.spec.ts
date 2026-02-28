@@ -12,8 +12,7 @@ test.describe('Navigation @smoke', () => {
     await expect(sidebar.pixelsLink).toBeVisible()
     await expect(sidebar.salePagesLink).toBeVisible()
     await expect(sidebar.customDomainsLink).toBeVisible()
-    await expect(sidebar.eventLogLink).toBeVisible()
-    await expect(sidebar.realtimeLink).toBeVisible()
+    await expect(sidebar.eventsLink).toBeVisible()
     await expect(sidebar.replayCenterLink).toBeVisible()
     await expect(sidebar.settingsLink).toBeVisible()
     await expect(sidebar.logoutButton).toBeVisible()
@@ -27,8 +26,7 @@ test.describe('Navigation @smoke', () => {
       { name: 'Pixels', url: '/pixels' },
       { name: 'Sale Pages', url: '/sale-pages' },
       { name: 'Custom Domains', url: '/domains' },
-      { name: 'Event Log', url: '/events/log' },
-      { name: 'Realtime', url: '/events/realtime' },
+      { name: 'Events', url: '/events' },
       { name: 'Replay Center', url: '/replay' },
       { name: 'Settings', url: '/settings' },
       { name: 'Dashboard', url: '/dashboard' },
