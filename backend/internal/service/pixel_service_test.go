@@ -353,7 +353,7 @@ func TestPixelService_TestConnection(t *testing.T) {
 
 			svc := NewPixelService(pixelRepo, capiClient, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
-			resp, err := svc.TestConnection(context.Background(), tt.customerID, tt.pixelID, "TestAgent/1.0")
+			resp, err := svc.TestConnection(context.Background(), tt.customerID, tt.pixelID)
 
 			if tt.wantErr != nil {
 				assert.ErrorIs(t, err, tt.wantErr)

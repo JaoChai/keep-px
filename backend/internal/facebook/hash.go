@@ -13,6 +13,13 @@ var piiFields = map[string]bool{
 	"zp": true, "country": true, "external_id": true,
 }
 
+// HashValue normalizes and SHA-256 hashes a single value per Meta CAPI requirements.
+func HashValue(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	hash := sha256.Sum256([]byte(normalized))
+	return fmt.Sprintf("%x", hash)
+}
+
 // HashUserData hashes PII fields in user_data per Meta CAPI requirements.
 // Non-PII fields (client_ip_address, client_user_agent, fbc, fbp) are passed through unchanged.
 func HashUserData(userData map[string]interface{}) map[string]interface{} {
