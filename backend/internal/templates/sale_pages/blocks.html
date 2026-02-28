@@ -176,7 +176,8 @@
     {{if and .APIKey .Page.PixelID}}
     <script src="/sdk/pixlinks.min.js"
             data-pixlinks-key="{{.APIKey}}"
-            data-pixlinks-pixel-id="{{deref .Page.PixelID}}">
+            data-pixlinks-pixel-id="{{deref .Page.PixelID}}"
+            data-endpoint="{{.BaseURL}}">
     </script>
     {{end}}
 

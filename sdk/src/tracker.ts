@@ -32,7 +32,7 @@ function generateEventId(): string {
   })
 }
 
-const DEFAULT_ENDPOINT = 'https://api.pixlinks.io'
+const DEFAULT_ENDPOINT = 'https://pixlinks.xyz'
 const MAX_RETRIES = 3
 const BATCH_INTERVAL = 2000
 const MAX_BATCH_SIZE = 10

@@ -25,7 +25,8 @@ function getSnippet(pixelId: string, apiKey: string): string {
   const sdkUrl = `${window.location.origin}/sdk/pixlinks.min.js`
   return `<script src="${sdkUrl}"
         data-pixlinks-key="${apiKey}"
-        data-pixlinks-pixel-id="${pixelId}">
+        data-pixlinks-pixel-id="${pixelId}"
+        data-endpoint="${window.location.origin}">
 </script>`
 }
 

@@ -8,7 +8,7 @@
   },
   "lint-staged": {
     "frontend/src/**/*.{ts,tsx}": [
-      "eslint --fix --config frontend/eslint.config.js"
+      "npx --prefix frontend eslint --fix --config frontend/eslint.config.js"
     ]
   },
   "scripts": {
