@@ -84,11 +84,29 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *EventHandler) ListRecent(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 
+	pixelID := r.URL.Query().Get("pixel_id")
+	if pixelID != "" {
+		if _, err := uuid.Parse(pixelID); err != nil {
+			ErrorJSON(w, http.StatusBadRequest, "pixel_id must be a valid UUID")
+			return
+		}
+	}
+
 	sinceStr := r.URL.Query().Get("since")
+
+	// Initial load mode: no since parameter — service owns limit clamping
 	if sinceStr == "" {
-		ErrorJSON(w, http.StatusBadRequest, "since parameter is required (RFC3339 format)")
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		events, err := h.eventService.ListLatest(r.Context(), customerID, pixelID, limit)
+		if err != nil {
+			ErrorJSON(w, http.StatusInternalServerError, "failed to fetch latest events")
+			return
+		}
+		JSON(w, http.StatusOK, APIResponse{Data: events})
 		return
 	}
+
+	// Polling mode: since parameter present
 	since, err := time.Parse(time.RFC3339, sinceStr)
 	if err != nil {
 		ErrorJSON(w, http.StatusBadRequest, "since parameter must be in RFC3339 format")
@@ -99,14 +117,6 @@ func (h *EventHandler) ListRecent(w http.ResponseWriter, r *http.Request) {
 	maxLookback := time.Now().Add(-5 * time.Minute)
 	if since.Before(maxLookback) {
 		since = maxLookback
-	}
-
-	pixelID := r.URL.Query().Get("pixel_id")
-	if pixelID != "" {
-		if _, err := uuid.Parse(pixelID); err != nil {
-			ErrorJSON(w, http.StatusBadRequest, "pixel_id must be a valid UUID")
-			return
-		}
 	}
 
 	events, err := h.eventService.ListRecent(r.Context(), customerID, since, pixelID)

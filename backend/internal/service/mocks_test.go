@@ -131,6 +131,14 @@ func (m *MockEventRepo) GetEventsForReplay(ctx context.Context, pixelID string, 
 	}
 	return args.Get(0).([]*domain.PixelEvent), args.Error(1)
 }
+func (m *MockEventRepo) ListLatestByCustomerID(ctx context.Context, customerID string, pixelID string, limit int) ([]*domain.RealtimeEvent, error) {
+	args := m.Called(ctx, customerID, pixelID, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.RealtimeEvent), args.Error(1)
+}
+
 func (m *MockEventRepo) ListRecentByCustomerID(ctx context.Context, customerID string, since time.Time, pixelID string, limit int) ([]*domain.RealtimeEvent, error) {
 	args := m.Called(ctx, customerID, since, pixelID, limit)
 	if args.Get(0) == nil {

@@ -271,3 +271,57 @@ func TestEventService_ListRecent_WithPixelIDFilter(t *testing.T) {
 	assert.Equal(t, "px-2", events[0].PixelID)
 	eventRepo.AssertExpectations(t)
 }
+
+func TestEventService_ListLatest_Success(t *testing.T) {
+	svc, eventRepo, _ := newTestEventService()
+
+	eventRepo.On("ListLatestByCustomerID", mock.Anything, "cust-1", "", 100).Return([]*domain.RealtimeEvent{
+		{ID: "evt-1", PixelID: "px-1", PixelName: "My Pixel", EventName: "PageView"},
+		{ID: "evt-2", PixelID: "px-1", PixelName: "My Pixel", EventName: "Purchase"},
+	}, nil)
+
+	events, err := svc.ListLatest(context.Background(), "cust-1", "", 100)
+
+	assert.NoError(t, err)
+	assert.Len(t, events, 2)
+	assert.Equal(t, "evt-1", events[0].ID)
+	eventRepo.AssertExpectations(t)
+}
+
+func TestEventService_ListLatest_DefaultLimit(t *testing.T) {
+	svc, eventRepo, _ := newTestEventService()
+
+	eventRepo.On("ListLatestByCustomerID", mock.Anything, "cust-1", "", 100).Return([]*domain.RealtimeEvent{}, nil)
+
+	events, err := svc.ListLatest(context.Background(), "cust-1", "", 0)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, events)
+	assert.Len(t, events, 0)
+	eventRepo.AssertExpectations(t)
+}
+
+func TestEventService_ListLatest_ClampMaxLimit(t *testing.T) {
+	svc, eventRepo, _ := newTestEventService()
+
+	eventRepo.On("ListLatestByCustomerID", mock.Anything, "cust-1", "px-1", 200).Return([]*domain.RealtimeEvent{}, nil)
+
+	events, err := svc.ListLatest(context.Background(), "cust-1", "px-1", 500)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, events)
+	eventRepo.AssertExpectations(t)
+}
+
+func TestEventService_ListLatest_EmptyResult(t *testing.T) {
+	svc, eventRepo, _ := newTestEventService()
+
+	eventRepo.On("ListLatestByCustomerID", mock.Anything, "cust-1", "", 100).Return(nil, nil)
+
+	events, err := svc.ListLatest(context.Background(), "cust-1", "", 100)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, events)
+	assert.Len(t, events, 0)
+	eventRepo.AssertExpectations(t)
+}
