@@ -9,9 +9,6 @@ test.describe('Pixels', () => {
     const pixelName = `Test Pixel ${Date.now()}`
     await pixelsPage.createPixel(pixelName, '123456789012345', 'EAAtest123token')
 
-    // Snippet dialog appears after creation - close it
-    await page.getByRole('button', { name: 'Done' }).click()
-
     await expect(page.getByText(pixelName)).toBeVisible()
   })
 
@@ -22,10 +19,6 @@ test.describe('Pixels', () => {
     // Create a pixel first
     const originalName = `Edit Test ${Date.now()}`
     await pixelsPage.createPixel(originalName, '123456789012345', 'EAAtest123token')
-    await page.getByRole('button', { name: 'Done' }).click()
-
-    // Wait for snippet dialog to fully close
-    await expect(page.getByRole('button', { name: 'Done' })).not.toBeVisible()
 
     // Click edit button on the pixel row
     const pixelRow = page.locator('tr', { hasText: originalName })
@@ -54,7 +47,6 @@ test.describe('Pixels', () => {
     // Create a pixel first
     const pixelName = `Delete Test ${Date.now()}`
     await pixelsPage.createPixel(pixelName, '123456789012345', 'EAAtest123token')
-    await page.getByRole('button', { name: 'Done' }).click()
 
     // Click delete button
     const pixelRow = page.locator('tr', { hasText: pixelName })
