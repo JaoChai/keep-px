@@ -1,4 +1,4 @@
-import { chromium, type FullConfig } from '@playwright/test'
+import { chromium } from '@playwright/test'
 import { TEST_USER } from '../fixtures/test-data'
 import path from 'path'
 import fs from 'fs'
@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-async function globalSetup(_config: FullConfig) {
+async function globalSetup() {
   const authDir = path.resolve(__dirname, '../.auth')
   if (!fs.existsSync(authDir)) {
     fs.mkdirSync(authDir, { recursive: true })
