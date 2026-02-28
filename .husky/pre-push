@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+
+echo "Running pre-push quality gates..."
+
+# Detect changed files compared to remote
+CHANGED_FILES=$(git diff --name-only @{push}.. 2>/dev/null || git diff --name-only HEAD~1)
+
+BACKEND_CHANGED=false
+FRONTEND_CHANGED=false
+SDK_CHANGED=false
+
+echo "$CHANGED_FILES" | grep -q "^backend/" && BACKEND_CHANGED=true
+echo "$CHANGED_FILES" | grep -q "^frontend/" && FRONTEND_CHANGED=true
+echo "$CHANGED_FILES" | grep -q "^sdk/" && SDK_CHANGED=true
+
+EXIT_CODE=0
+
+if [ "$BACKEND_CHANGED" = true ]; then
+  echo "Backend changed -- running quality gates..."
+  (cd backend && go vet ./... && go test -race ./...) || EXIT_CODE=1
+fi
+
+if [ "$FRONTEND_CHANGED" = true ]; then
+  echo "Frontend changed -- running quality gates..."
+  (cd frontend && npm run lint && npm run test && npm run build) || EXIT_CODE=1
+fi
+
+if [ "$SDK_CHANGED" = true ]; then
+  echo "SDK changed -- running quality gates..."
+  (cd sdk && npm run test && npm run build) || EXIT_CODE=1
+fi
+
+if [ "$BACKEND_CHANGED" = false ] && [ "$FRONTEND_CHANGED" = false ] && [ "$SDK_CHANGED" = false ]; then
+  echo "No package changes detected, skipping quality gates"
+fi
+
+exit $EXIT_CODE
