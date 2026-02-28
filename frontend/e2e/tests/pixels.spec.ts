@@ -34,10 +34,11 @@ test.describe('Pixels', () => {
     // Wait for edit dialog to appear
     await expect(page.getByRole('heading', { name: 'Edit Pixel' })).toBeVisible()
 
-    // Update name
+    // Update name (must also fill access token — schema requires it)
     const updatedName = `Updated ${Date.now()}`
     await pixelsPage.nameInput.clear()
     await pixelsPage.nameInput.fill(updatedName)
+    await pixelsPage.accessTokenInput.fill('EAAtest123token')
     await pixelsPage.saveButton.click()
 
     // Wait for edit dialog to close before asserting
