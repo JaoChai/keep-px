@@ -136,6 +136,37 @@ func TestEventService_Ingest(t *testing.T) {
 			wantCreated: 1,
 		},
 		{
+			name:       "sdk user_data fields pass through to stored event",
+			customerID: "cust-1",
+			input: IngestBatchInput{
+				Events: []IngestEventInput{
+					{
+						PixelID:   "pixel-1",
+						EventName: "PageView",
+						EventData: json.RawMessage(`{}`),
+						UserData:  json.RawMessage(`{"fbp":"fb.1.1709150000000.456789","fbc":"fb.1.1709150000000.test123","external_id":"usr-ext-001"}`),
+					},
+				},
+			},
+			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:         "pixel-1",
+					CustomerID: "cust-1",
+					IsActive:   true,
+				}, nil)
+				er.On("Create", mock.Anything, mock.MatchedBy(func(e *domain.PixelEvent) bool {
+					var ud map[string]interface{}
+					if err := json.Unmarshal(e.UserData, &ud); err != nil {
+						return false
+					}
+					return ud["fbp"] == "fb.1.1709150000000.456789" &&
+						ud["fbc"] == "fb.1.1709150000000.test123" &&
+						ud["external_id"] == "usr-ext-001"
+				})).Return(nil)
+			},
+			wantCreated: 1,
+		},
+		{
 			name:       "event_id generated when empty",
 			customerID: "cust-1",
 			input: IngestBatchInput{
@@ -167,7 +198,7 @@ func TestEventService_Ingest(t *testing.T) {
 			tt.setup(eventRepo, pixelRepo)
 
 			created, err := svc.Ingest(context.Background(), tt.customerID, tt.input, ClientContext{
-				IP:        "192.168.1.1:12345",
+				IP:        "192.168.1.1",
 				UserAgent: "TestAgent/1.0",
 			})
 
