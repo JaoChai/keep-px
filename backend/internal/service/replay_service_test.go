@@ -285,7 +285,10 @@ func TestReplayService_ExecuteReplay_TimeModeCurrentUsesNow(t *testing.T) {
 	var capturedEvents []facebook.CAPIEvent
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req facebook.CAPIRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("failed to decode request: %v", err)
+			return
+		}
 		capturedEvents = append(capturedEvents, req.Data...)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(facebook.CAPIResponse{EventsReceived: len(req.Data)})
