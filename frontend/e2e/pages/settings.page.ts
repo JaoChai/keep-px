@@ -12,7 +12,7 @@ export class SettingsPage {
     this.page = page
     this.heading = page.getByRole('heading', { name: 'Settings' })
     this.profileSection = page.getByText('Profile')
-    this.apiKeySection = page.getByText('API Key')
+    this.apiKeySection = page.getByText('API Key', { exact: true })
     // Labels lack htmlFor — use CSS sibling combinator with Playwright text matching
     this.nameInput = page.locator('label:has-text("Name") + input').first()
     this.emailInput = page.locator('label:has-text("Email") + input')

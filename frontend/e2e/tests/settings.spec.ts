@@ -17,6 +17,6 @@ test.describe('Settings', () => {
     await settingsPage.goto()
 
     await expect(settingsPage.apiKeySection).toBeVisible()
-    await expect(page.getByText('Use this key in your SDK integration')).toBeVisible()
+    await expect(page.getByText('API key for event ingestion')).toBeVisible()
   })
 })
