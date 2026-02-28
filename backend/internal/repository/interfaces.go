@@ -34,15 +34,6 @@ type EventRepository interface {
 	ListRecentByCustomerID(ctx context.Context, customerID string, since time.Time, pixelID string, limit int) ([]*domain.RealtimeEvent, error)
 }
 
-type EventRuleRepository interface {
-	Create(ctx context.Context, rule *domain.EventRule) error
-	GetByID(ctx context.Context, id string) (*domain.EventRule, error)
-	ListByPixelID(ctx context.Context, pixelID string) ([]*domain.EventRule, error)
-	ListActiveByPixelID(ctx context.Context, pixelID string) ([]*domain.EventRule, error)
-	Update(ctx context.Context, rule *domain.EventRule) error
-	Delete(ctx context.Context, id string) error
-}
-
 type ReplaySessionRepository interface {
 	Create(ctx context.Context, session *domain.ReplaySession) error
 	GetByID(ctx context.Context, id string) (*domain.ReplaySession, error)

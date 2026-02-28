@@ -7,11 +7,9 @@ CHANGED_FILES=$(git diff --name-only @{push}.. 2>/dev/null || git diff --name-on
 
 BACKEND_CHANGED=false
 FRONTEND_CHANGED=false
-SDK_CHANGED=false
 
 echo "$CHANGED_FILES" | grep -q "^backend/" && BACKEND_CHANGED=true
 echo "$CHANGED_FILES" | grep -q "^frontend/" && FRONTEND_CHANGED=true
-echo "$CHANGED_FILES" | grep -q "^sdk/" && SDK_CHANGED=true
 
 EXIT_CODE=0
 
@@ -25,12 +23,7 @@ if [ "$FRONTEND_CHANGED" = true ]; then
   (cd frontend && npm run lint && npm run test && npm run build) || EXIT_CODE=1
 fi
 
-if [ "$SDK_CHANGED" = true ]; then
-  echo "SDK changed -- running quality gates..."
-  (cd sdk && npm run test && npm run build) || EXIT_CODE=1
-fi
-
-if [ "$BACKEND_CHANGED" = false ] && [ "$FRONTEND_CHANGED" = false ] && [ "$SDK_CHANGED" = false ]; then
+if [ "$BACKEND_CHANGED" = false ] && [ "$FRONTEND_CHANGED" = false ]; then
   echo "No package changes detected, skipping quality gates"
 fi
 

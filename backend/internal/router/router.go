@@ -32,7 +32,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	refreshTokenRepo := postgres.NewRefreshTokenRepo(pool)
 	pixelRepo := postgres.NewPixelRepo(pool)
 	eventRepo := postgres.NewEventRepo(pool)
-	eventRuleRepo := postgres.NewEventRuleRepo(pool)
 	replaySessionRepo := postgres.NewReplaySessionRepo(pool)
 	salePageRepo := postgres.NewSalePageRepo(pool)
 	customDomainRepo := postgres.NewCustomDomainRepo(pool)
@@ -50,7 +49,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger)
 	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger)
-	ruleService := service.NewRuleService(eventRuleRepo, pixelRepo)
 	replayService := service.NewReplayService(replaySessionRepo, eventRepo, pixelRepo, capiClient, logger)
 	analyticsService := service.NewAnalyticsService(pool)
 	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo)
@@ -64,10 +62,8 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	authHandler := handler.NewAuthHandler(authService, logger)
 	pixelHandler := handler.NewPixelHandler(pixelService)
 	eventHandler := handler.NewEventHandler(eventService)
-	ruleHandler := handler.NewRuleHandler(ruleService)
 	replayHandler := handler.NewReplayHandler(replayService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService)
-	proxyHandler := handler.NewProxyHandler()
 	salePageHandler := handler.NewSalePageHandler(salePageService, cfg.BaseURL, logger)
 	customDomainHandler := handler.NewCustomDomainHandler(customDomainService, cfg.CFCNAMETarget, logger)
 	uploadHandler := handler.NewUploadHandler(storageService)
@@ -81,13 +77,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 		r.Get("/p/{slug}", salePageHandler.Serve)
 	})
 
-	// Public SDK route (no auth, with caching)
-	sdkHandler := handler.NewSDKHandler()
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.RateLimit(cfg.RateLimitRPS))
-		r.Get("/sdk/pixlinks.min.js", sdkHandler.ServeSDK)
-	})
-
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(middleware.RateLimit(cfg.RateLimitRPS))
@@ -98,7 +87,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 			r.Post("/refresh", authHandler.Refresh)
 		})
 
-		// SDK routes (API key auth)
+		// Event ingestion (API key auth)
 		r.Route("/events", func(r chi.Router) {
 			r.Use(middleware.APIKeyAuth(customerRepo))
 			r.Post("/ingest", eventHandler.Ingest)
@@ -124,16 +113,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 			r.Get("/events", eventHandler.List)
 			r.Get("/events/recent", eventHandler.ListRecent)
 			r.Get("/events/{id}", eventHandler.GetByID)
-
-			// Event rules - Phase 5
-			r.Route("/pixels/{pixelId}/rules", func(r chi.Router) {
-				r.Get("/", ruleHandler.ListByPixel)
-				r.Post("/", ruleHandler.Create)
-			})
-			r.Route("/rules", func(r chi.Router) {
-				r.Put("/{id}", ruleHandler.Update)
-				r.Delete("/{id}", ruleHandler.Delete)
-			})
 
 			// Replay routes - Phase 6
 			r.Route("/replays", func(r chi.Router) {
@@ -167,8 +146,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 			// Upload
 			r.Post("/uploads/image", uploadHandler.UploadImage)
 
-			// Proxy (for visual event setup)
-			r.Get("/proxy", proxyHandler.Proxy)
 		})
 	})
 

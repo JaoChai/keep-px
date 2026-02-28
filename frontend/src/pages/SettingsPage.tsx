@@ -52,7 +52,7 @@ export function SettingsPage() {
               <Key className="h-4 w-4" />
               API Key
             </CardTitle>
-            <CardDescription>Use this key in your SDK integration</CardDescription>
+            <CardDescription>API key for event ingestion</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">
@@ -66,7 +66,7 @@ export function SettingsPage() {
               </Button>
             </div>
             <p className="text-xs text-neutral-400 mt-2">
-              Go to <a href="/pixels" className="text-blue-500 hover:underline">Pixels</a> and click the <code className="bg-neutral-100 px-1 rounded">&lt;/&gt;</code> button to get a ready-to-use snippet for each pixel.
+              This key is used by sale page templates to send events to your pixels.
             </p>
           </CardContent>
         </Card>

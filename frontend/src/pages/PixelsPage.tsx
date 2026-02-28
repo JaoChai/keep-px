@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Pencil, Trash2, Code, Copy, Check, Zap } from 'lucide-react'
+import { Plus, Pencil, Trash2, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { usePixels, useCreatePixel, useUpdatePixel, useDeletePixel, useTestPixel } from '@/hooks/use-pixels'
-import { useAuthStore } from '@/stores/auth-store'
 import type { Pixel } from '@/types'
 
 const pixelSchema = z.object({
@@ -21,28 +20,15 @@ const pixelSchema = z.object({
 
 type PixelForm = z.infer<typeof pixelSchema>
 
-function getSnippet(pixelId: string, apiKey: string): string {
-  const sdkUrl = `${window.location.origin}/sdk/pixlinks.min.js`
-  return `<script src="${sdkUrl}"
-        data-pixlinks-key="${apiKey}"
-        data-pixlinks-pixel-id="${pixelId}"
-        data-endpoint="${window.location.origin}">
-</script>`
-}
-
 export function PixelsPage() {
   const { data: pixels, isLoading } = usePixels()
   const createPixel = useCreatePixel()
   const updatePixel = useUpdatePixel()
   const deletePixel = useDeletePixel()
   const testPixel = useTestPixel()
-  const customer = useAuthStore((s) => s.customer)
-
   const [showDialog, setShowDialog] = useState(false)
   const [editingPixel, setEditingPixel] = useState<Pixel | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [snippetPixel, setSnippetPixel] = useState<Pixel | null>(null)
-  const [copiedSnippet, setCopiedSnippet] = useState(false)
 
   const {
     register,
@@ -75,17 +61,8 @@ export function PixelsPage() {
       })
       setShowDialog(false)
     } else {
-      const pixel = await createPixel.mutateAsync(data)
+      await createPixel.mutateAsync(data)
       setShowDialog(false)
-      setSnippetPixel(pixel)
-    }
-  }
-
-  const copySnippet = () => {
-    if (snippetPixel && customer?.api_key) {
-      navigator.clipboard.writeText(getSnippet(snippetPixel.id, customer.api_key))
-      setCopiedSnippet(true)
-      setTimeout(() => setCopiedSnippet(false), 2000)
     }
   }
 
@@ -175,9 +152,6 @@ export function PixelsPage() {
                           <Zap className="h-4 w-4" />
                         )}
                       </Button>
-                      <Button variant="ghost" size="icon" title="Get Code" onClick={() => setSnippetPixel(pixel)}>
-                        <Code className="h-4 w-4" />
-                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(pixel)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -245,40 +219,6 @@ export function PixelsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Snippet Dialog */}
-      <Dialog open={!!snippetPixel} onOpenChange={() => { setSnippetPixel(null); setCopiedSnippet(false) }}>
-        <DialogContent onClose={() => { setSnippetPixel(null); setCopiedSnippet(false) }}>
-          <DialogHeader>
-            <DialogTitle>
-              <div className="flex items-center gap-2">
-                <Code className="h-5 w-5" />
-                Get Code — {snippetPixel?.name}
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-neutral-500 mt-2">
-            Add this snippet to your website's <code className="bg-neutral-100 px-1 rounded">&lt;head&gt;</code> tag to start tracking events.
-          </p>
-          <div className="relative mt-3">
-            <pre className="bg-neutral-900 text-neutral-100 text-sm p-4 rounded-lg overflow-x-auto">
-              <code>{snippetPixel && customer?.api_key ? getSnippet(snippetPixel.id, customer.api_key) : ''}</code>
-            </pre>
-            <Button
-              variant="outline"
-              size="icon"
-              className="absolute top-2 right-2 h-8 w-8 bg-neutral-800 border-neutral-700 hover:bg-neutral-700 text-neutral-300"
-              onClick={copySnippet}
-            >
-              {copiedSnippet ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setSnippetPixel(null); setCopiedSnippet(false) }}>
-              Done
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

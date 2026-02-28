@@ -147,43 +147,6 @@ func (m *MockEventRepo) ListRecentByCustomerID(ctx context.Context, customerID s
 	return args.Get(0).([]*domain.RealtimeEvent), args.Error(1)
 }
 
-// MockEventRuleRepo
-type MockEventRuleRepo struct{ mock.Mock }
-
-func (m *MockEventRuleRepo) Create(ctx context.Context, r *domain.EventRule) error {
-	args := m.Called(ctx, r)
-	return args.Error(0)
-}
-func (m *MockEventRuleRepo) GetByID(ctx context.Context, id string) (*domain.EventRule, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.EventRule), args.Error(1)
-}
-func (m *MockEventRuleRepo) ListByPixelID(ctx context.Context, pixelID string) ([]*domain.EventRule, error) {
-	args := m.Called(ctx, pixelID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*domain.EventRule), args.Error(1)
-}
-func (m *MockEventRuleRepo) ListActiveByPixelID(ctx context.Context, pixelID string) ([]*domain.EventRule, error) {
-	args := m.Called(ctx, pixelID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*domain.EventRule), args.Error(1)
-}
-func (m *MockEventRuleRepo) Update(ctx context.Context, r *domain.EventRule) error {
-	args := m.Called(ctx, r)
-	return args.Error(0)
-}
-func (m *MockEventRuleRepo) Delete(ctx context.Context, id string) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
 // MockReplaySessionRepo
 type MockReplaySessionRepo struct{ mock.Mock }
 
