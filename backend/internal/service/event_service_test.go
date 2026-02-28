@@ -301,6 +301,7 @@ func TestEventService_ListByCustomerID(t *testing.T) {
 		name      string
 		page      int
 		perPage   int
+		pixelID   string
 		setup     func(*MockEventRepo)
 		wantLen   int
 		wantTotal int
@@ -309,8 +310,9 @@ func TestEventService_ListByCustomerID(t *testing.T) {
 			name:    "success with results",
 			page:    1,
 			perPage: 10,
+			pixelID: "",
 			setup: func(er *MockEventRepo) {
-				er.On("ListByCustomerID", mock.Anything, "cust-1", 10, 0).Return([]*domain.PixelEvent{
+				er.On("ListByCustomerID", mock.Anything, "cust-1", "", 10, 0).Return([]*domain.PixelEvent{
 					{ID: "evt-1", EventName: "PageView"},
 					{ID: "evt-2", EventName: "Purchase"},
 				}, 2, nil)
@@ -322,11 +324,25 @@ func TestEventService_ListByCustomerID(t *testing.T) {
 			name:    "defaults for invalid page values",
 			page:    0,
 			perPage: 0,
+			pixelID: "",
 			setup: func(er *MockEventRepo) {
-				er.On("ListByCustomerID", mock.Anything, "cust-1", 50, 0).Return([]*domain.PixelEvent{}, 0, nil)
+				er.On("ListByCustomerID", mock.Anything, "cust-1", "", 50, 0).Return([]*domain.PixelEvent{}, 0, nil)
 			},
 			wantLen:   0,
 			wantTotal: 0,
+		},
+		{
+			name:    "with pixel_id filter",
+			page:    1,
+			perPage: 50,
+			pixelID: "px-1",
+			setup: func(er *MockEventRepo) {
+				er.On("ListByCustomerID", mock.Anything, "cust-1", "px-1", 50, 0).Return([]*domain.PixelEvent{
+					{ID: "evt-1", EventName: "PageView"},
+				}, 1, nil)
+			},
+			wantLen:   1,
+			wantTotal: 1,
 		},
 	}
 
@@ -335,7 +351,7 @@ func TestEventService_ListByCustomerID(t *testing.T) {
 			svc, eventRepo, _ := newTestEventService()
 			tt.setup(eventRepo)
 
-			events, total, err := svc.ListByCustomerID(context.Background(), "cust-1", tt.page, tt.perPage)
+			events, total, err := svc.ListByCustomerID(context.Background(), "cust-1", tt.pixelID, tt.page, tt.perPage)
 
 			assert.NoError(t, err)
 			assert.Len(t, events, tt.wantLen)

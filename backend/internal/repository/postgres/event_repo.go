@@ -91,10 +91,11 @@ func (r *EventRepo) ListByPixelID(ctx context.Context, pixelID string, limit, of
 	return events, total, rows.Err()
 }
 
-func (r *EventRepo) ListByCustomerID(ctx context.Context, customerID string, limit, offset int) ([]*domain.PixelEvent, int, error) {
+func (r *EventRepo) ListByCustomerID(ctx context.Context, customerID string, pixelID string, limit, offset int) ([]*domain.PixelEvent, int, error) {
 	var total int
 	err := r.pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM pixel_events pe JOIN pixels p ON p.id = pe.pixel_id WHERE p.customer_id = $1`, customerID,
+		`SELECT COUNT(*) FROM pixel_events pe JOIN pixels p ON p.id = pe.pixel_id
+		 WHERE p.customer_id = $1 AND ($2::text = '' OR pe.pixel_id = $2::uuid)`, customerID, pixelID,
 	).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -104,7 +105,8 @@ func (r *EventRepo) ListByCustomerID(ctx context.Context, customerID string, lim
 		`SELECT pe.id, pe.pixel_id, pe.event_name, pe.event_data, pe.user_data, pe.source_url, pe.event_time, pe.forwarded_to_capi, pe.capi_response_code, pe.created_at, pe.event_id, pe.client_ip, pe.client_user_agent
 		 FROM pixel_events pe JOIN pixels p ON p.id = pe.pixel_id
 		 WHERE p.customer_id = $1
-		 ORDER BY pe.event_time DESC LIMIT $2 OFFSET $3`, customerID, limit, offset,
+		   AND ($2::text = '' OR pe.pixel_id = $2::uuid)
+		 ORDER BY pe.event_time DESC LIMIT $3 OFFSET $4`, customerID, pixelID, limit, offset,
 	)
 	if err != nil {
 		return nil, 0, err

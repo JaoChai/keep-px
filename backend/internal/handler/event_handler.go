@@ -70,6 +70,14 @@ func (h *EventHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 
+	pixelID := r.URL.Query().Get("pixel_id")
+	if pixelID != "" {
+		if _, err := uuid.Parse(pixelID); err != nil {
+			ErrorJSON(w, http.StatusBadRequest, "pixel_id must be a valid UUID")
+			return
+		}
+	}
+
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	perPage, _ := strconv.Atoi(r.URL.Query().Get("per_page"))
 	if page < 1 {
@@ -79,7 +87,7 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 		perPage = 50
 	}
 
-	events, total, err := h.eventService.ListByCustomerID(r.Context(), customerID, page, perPage)
+	events, total, err := h.eventService.ListByCustomerID(r.Context(), customerID, pixelID, page, perPage)
 	if err != nil {
 		ErrorJSON(w, http.StatusInternalServerError, "failed to list events")
 		return
