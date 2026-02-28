@@ -39,7 +39,10 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const authPaths = ['/auth/login', '/auth/register', '/auth/refresh']
+    const isAuthRequest = authPaths.some((path) => originalRequest.url?.includes(path))
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true
 
       if (isRefreshing) {
@@ -85,7 +88,6 @@ api.interceptors.response.use(
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         useAuthStore.getState().logout()
-        window.location.href = '/login'
       } finally {
         isRefreshing = false
       }
