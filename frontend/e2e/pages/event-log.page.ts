@@ -10,7 +10,7 @@ export class EventLogPage {
 
   constructor(page: Page) {
     this.page = page
-    this.heading = page.getByRole('heading', { name: 'Event Log' })
+    this.heading = page.getByRole('heading', { name: 'Events' })
     this.eventTable = page.locator('table')
     this.emptyState = page.getByText('No events recorded yet')
     this.previousButton = page.getByRole('button', { name: 'Previous' })
@@ -18,6 +18,6 @@ export class EventLogPage {
   }
 
   async goto() {
-    await this.page.goto('/events/log')
+    await this.page.goto('/events?mode=history')
   }
 }

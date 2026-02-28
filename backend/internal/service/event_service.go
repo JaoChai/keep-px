@@ -192,7 +192,7 @@ func (s *EventService) forwardToCAPI(ctx context.Context, event *domain.PixelEve
 	}
 }
 
-func (s *EventService) ListByCustomerID(ctx context.Context, customerID string, page, perPage int) ([]*domain.PixelEvent, int, error) {
+func (s *EventService) ListByCustomerID(ctx context.Context, customerID string, pixelID string, page, perPage int) ([]*domain.PixelEvent, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -201,7 +201,7 @@ func (s *EventService) ListByCustomerID(ctx context.Context, customerID string, 
 	}
 	offset := (page - 1) * perPage
 
-	events, total, err := s.eventRepo.ListByCustomerID(ctx, customerID, perPage, offset)
+	events, total, err := s.eventRepo.ListByCustomerID(ctx, customerID, pixelID, perPage, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list events: %w", err)
 	}
