@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -165,12 +166,132 @@ func TestEventService_Ingest(t *testing.T) {
 			svc, eventRepo, pixelRepo := newTestEventService()
 			tt.setup(eventRepo, pixelRepo)
 
-			created, err := svc.Ingest(context.Background(), tt.customerID, tt.input, "192.168.1.1:12345", "TestAgent/1.0")
+			created, err := svc.Ingest(context.Background(), tt.customerID, tt.input, ClientContext{
+				IP:        "192.168.1.1:12345",
+				UserAgent: "TestAgent/1.0",
+			})
 
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantCreated, created)
 			eventRepo.AssertExpectations(t)
 			pixelRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestEventService_Ingest_WithFBCookies(t *testing.T) {
+	svc, eventRepo, pixelRepo := newTestEventService()
+
+	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+		ID:            "pixel-1",
+		CustomerID:    "cust-1",
+		IsActive:      true,
+		FBPixelID:     "fb-pixel-1",
+		FBAccessToken: "token-1",
+	}, nil)
+	eventRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(nil)
+
+	input := IngestBatchInput{
+		Events: []IngestEventInput{
+			{
+				PixelID:   "pixel-1",
+				EventName: "PageView",
+				EventData: json.RawMessage(`{}`),
+			},
+		},
+	}
+
+	created, err := svc.Ingest(context.Background(), "cust-1", input, ClientContext{
+		IP:        "10.0.0.1",
+		UserAgent: "TestAgent/1.0",
+		FBC:       "fb.1.1709150000000.test123",
+		FBP:       "fb.1.1709150000000.456789",
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, created)
+	eventRepo.AssertExpectations(t)
+	pixelRepo.AssertExpectations(t)
+}
+
+func TestExtractFBClid(t *testing.T) {
+	tests := []struct {
+		name     string
+		inputURL string
+		expected string
+	}{
+		{
+			name:     "URL with fbclid",
+			inputURL: "https://example.com?fbclid=abc123",
+			expected: "abc123",
+		},
+		{
+			name:     "URL without fbclid",
+			inputURL: "https://example.com?utm=test",
+			expected: "",
+		},
+		{
+			name:     "empty URL",
+			inputURL: "",
+			expected: "",
+		},
+		{
+			name:     "malformed URL",
+			inputURL: "://bad",
+			expected: "",
+		},
+		{
+			name:     "fbclid with empty value",
+			inputURL: "https://example.com?fbclid=",
+			expected: "",
+		},
+		{
+			name:     "fbclid among multiple params",
+			inputURL: "https://example.com?utm_source=fb&fbclid=xyz789&ref=home",
+			expected: "xyz789",
+		},
+		{
+			name:     "non-http scheme rejected",
+			inputURL: "javascript:void(0)?fbclid=evil",
+			expected: "",
+		},
+		{
+			name:     "http scheme accepted",
+			inputURL: "http://example.com?fbclid=abc123",
+			expected: "abc123",
+		},
+		{
+			name:     "relative URL rejected (no scheme)",
+			inputURL: "/path?fbclid=abc",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractFBClid(tt.inputURL)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestIsValidFBCookie(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		expected bool
+	}{
+		{"valid fbc", "fb.1.1709150000000.test123", true},
+		{"valid fbp", "fb.1.1709150000000.456789", true},
+		{"empty string", "", false},
+		{"no fb prefix", "notfb.1.123.abc", false},
+		{"too long", "fb." + strings.Repeat("x", 500), false},
+		{"just fb.", "fb.", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, isValidFBCookie(tt.value))
 		})
 	}
 }
