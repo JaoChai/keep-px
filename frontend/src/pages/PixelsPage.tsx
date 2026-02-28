@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Pencil, Trash2, Zap } from 'lucide-react'
+import { Plus, Pencil, Trash2, Zap, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -118,6 +118,7 @@ export function PixelsPage() {
                 <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Name</th>
                 <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Pixel ID</th>
                 <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Status</th>
+                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Backup</th>
                 <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Created</th>
                 <th className="text-right text-sm font-medium text-neutral-500 px-4 py-3">Actions</th>
               </tr>
@@ -133,6 +134,16 @@ export function PixelsPage() {
                         {pixel.is_active ? 'Active' : 'Paused'}
                       </Badge>
                     </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    {pixel.backup_pixel_id ? (
+                      <Badge variant="outline" className="gap-1">
+                        <Shield className="h-3 w-3" />
+                        {pixels?.find(p => p.id === pixel.backup_pixel_id)?.name || 'Unknown'}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-neutral-400">None</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-neutral-500">
                     {new Date(pixel.created_at).toLocaleDateString()}
@@ -191,6 +202,27 @@ export function PixelsPage() {
               <Input id="fb_access_token" type="password" placeholder="EAAxxxxxxx..." {...register('fb_access_token')} />
               {errors.fb_access_token && <p className="text-sm text-red-500">{errors.fb_access_token.message}</p>}
             </div>
+            {editingPixel && (
+              <div className="space-y-2">
+                <Label>Backup Pixel</Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm"
+                  defaultValue={editingPixel.backup_pixel_id || ''}
+                  onChange={(e) => {
+                    updatePixel.mutate({
+                      id: editingPixel.id,
+                      backup_pixel_id: e.target.value,
+                    })
+                  }}
+                >
+                  <option value="">No backup</option>
+                  {pixels?.filter(p => p.id !== editingPixel.id).map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.fb_pixel_id})</option>
+                  ))}
+                </select>
+                <p className="text-xs text-neutral-400">Events will also be forwarded to the backup pixel via CAPI</p>
+              </div>
+            )}
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>Cancel</Button>
               <Button type="submit" disabled={isSubmitting}>

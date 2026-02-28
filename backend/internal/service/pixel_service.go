@@ -22,6 +22,7 @@ var (
 	ErrPixelNotFound      = errors.New("pixel not found")
 	ErrPixelNotOwned      = errors.New("pixel not owned by customer")
 	ErrPixelNoAccessToken = errors.New("pixel has no access token configured")
+	ErrBackupPixelSelf    = errors.New("cannot set pixel as its own backup")
 )
 
 type PixelService struct {
@@ -49,6 +50,7 @@ type UpdatePixelInput struct {
 	FBAccessToken *string `json:"fb_access_token,omitempty"`
 	Name          *string `json:"name,omitempty"`
 	IsActive      *bool   `json:"is_active,omitempty"`
+	BackupPixelID *string `json:"backup_pixel_id,omitempty"`
 }
 
 func (s *PixelService) Create(ctx context.Context, customerID string, input CreatePixelInput) (*domain.Pixel, error) {
@@ -117,6 +119,30 @@ func (s *PixelService) Update(ctx context.Context, customerID, pixelID string, i
 			pixel.Status = pixelStatusPaused
 		} else {
 			pixel.Status = pixelStatusActive
+		}
+	}
+
+	if input.BackupPixelID != nil {
+		if *input.BackupPixelID == "" {
+			// Clear backup
+			pixel.BackupPixelID = nil
+		} else {
+			// Validate: not self
+			if *input.BackupPixelID == pixelID {
+				return nil, ErrBackupPixelSelf
+			}
+			// Validate: backup exists and owned by same customer
+			backupPixel, err := s.pixelRepo.GetByID(ctx, *input.BackupPixelID)
+			if err != nil {
+				return nil, fmt.Errorf("get backup pixel: %w", err)
+			}
+			if backupPixel == nil {
+				return nil, ErrPixelNotFound
+			}
+			if backupPixel.CustomerID != customerID {
+				return nil, ErrPixelNotOwned
+			}
+			pixel.BackupPixelID = input.BackupPixelID
 		}
 	}
 

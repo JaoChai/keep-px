@@ -40,6 +40,7 @@ type ReplaySessionRepository interface {
 	ListByCustomerID(ctx context.Context, customerID string) ([]*domain.ReplaySession, error)
 	UpdateProgress(ctx context.Context, id string, replayed, failed int) error
 	UpdateStatus(ctx context.Context, id string, status string) error
+	UpdateStatusWithError(ctx context.Context, id string, status string, errorMsg string) error
 }
 
 type SalePageRepository interface {

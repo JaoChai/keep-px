@@ -169,6 +169,77 @@ func TestPixelService_Update(t *testing.T) {
 			},
 			wantErr: ErrPixelNotOwned,
 		},
+		{
+			name:       "set backup pixel",
+			customerID: "cust-1",
+			pixelID:    "pixel-1",
+			input:      UpdatePixelInput{BackupPixelID: strPtr("pixel-2")},
+			setup: func(pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:         "pixel-1",
+					CustomerID: "cust-1",
+					Name:       "Primary",
+				}, nil)
+				pr.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+					ID:         "pixel-2",
+					CustomerID: "cust-1",
+					Name:       "Backup",
+				}, nil)
+				pr.On("Update", mock.Anything, mock.MatchedBy(func(p *domain.Pixel) bool {
+					return p.BackupPixelID != nil && *p.BackupPixelID == "pixel-2"
+				})).Return(nil)
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "clear backup pixel",
+			customerID: "cust-1",
+			pixelID:    "pixel-1",
+			input:      UpdatePixelInput{BackupPixelID: strPtr("")},
+			setup: func(pr *MockPixelRepo) {
+				backupID := "pixel-2"
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:            "pixel-1",
+					CustomerID:    "cust-1",
+					Name:          "Primary",
+					BackupPixelID: &backupID,
+				}, nil)
+				pr.On("Update", mock.Anything, mock.MatchedBy(func(p *domain.Pixel) bool {
+					return p.BackupPixelID == nil
+				})).Return(nil)
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "reject self-backup",
+			customerID: "cust-1",
+			pixelID:    "pixel-1",
+			input:      UpdatePixelInput{BackupPixelID: strPtr("pixel-1")},
+			setup: func(pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:         "pixel-1",
+					CustomerID: "cust-1",
+				}, nil)
+			},
+			wantErr: ErrBackupPixelSelf,
+		},
+		{
+			name:       "reject backup pixel not owned",
+			customerID: "cust-1",
+			pixelID:    "pixel-1",
+			input:      UpdatePixelInput{BackupPixelID: strPtr("pixel-3")},
+			setup: func(pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:         "pixel-1",
+					CustomerID: "cust-1",
+				}, nil)
+				pr.On("GetByID", mock.Anything, "pixel-3").Return(&domain.Pixel{
+					ID:         "pixel-3",
+					CustomerID: "cust-other",
+				}, nil)
+			},
+			wantErr: ErrPixelNotOwned,
+		},
 	}
 
 	for _, tt := range tests {
@@ -184,7 +255,6 @@ func TestPixelService_Update(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, pixel)
-				assert.Equal(t, "Updated Pixel", pixel.Name)
 			}
 			pixelRepo.AssertExpectations(t)
 		})

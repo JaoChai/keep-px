@@ -176,3 +176,7 @@ func (m *MockReplaySessionRepo) UpdateStatus(ctx context.Context, id string, sta
 	args := m.Called(ctx, id, status)
 	return args.Error(0)
 }
+func (m *MockReplaySessionRepo) UpdateStatusWithError(ctx context.Context, id string, status string, errorMsg string) error {
+	args := m.Called(ctx, id, status, errorMsg)
+	return args.Error(0)
+}

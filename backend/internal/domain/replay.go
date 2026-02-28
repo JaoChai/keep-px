@@ -14,6 +14,9 @@ type ReplaySession struct {
 	EventTypes     []string   `json:"event_types,omitempty"`
 	DateFrom       *time.Time `json:"date_from,omitempty"`
 	DateTo         *time.Time `json:"date_to,omitempty"`
+	TimeMode       string     `json:"time_mode"`
+	BatchDelayMs   int        `json:"batch_delay_ms"`
+	ErrorMessage   string     `json:"error_message,omitempty"`
 	StartedAt      *time.Time `json:"started_at,omitempty"`
 	CompletedAt    *time.Time `json:"completed_at,omitempty"`
 	CreatedAt      time.Time  `json:"created_at"`

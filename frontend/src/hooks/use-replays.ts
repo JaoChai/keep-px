@@ -39,9 +39,11 @@ export function useCreateReplay() {
       event_types?: string[]
       date_from?: string
       date_to?: string
+      time_mode?: string
+      batch_delay_ms?: number
     }) => {
       const { data } = await api.post<APIResponse<ReplaySession>>('/replays', input)
-      return data.data!
+      return { session: data.data!, warning: data.message }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['replays'] })

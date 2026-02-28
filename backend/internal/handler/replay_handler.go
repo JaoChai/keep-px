@@ -37,7 +37,7 @@ func (h *ReplayHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.replayService.Create(r.Context(), customerID, input)
+	result, err := h.replayService.Create(r.Context(), customerID, input)
 	if err != nil {
 		if errors.Is(err, service.ErrPixelNotFound) {
 			ErrorJSON(w, http.StatusNotFound, "pixel not found")
@@ -46,7 +46,7 @@ func (h *ReplayHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ErrorJSON(w, http.StatusInternalServerError, "failed to create replay session")
 		return
 	}
-	JSON(w, http.StatusCreated, APIResponse{Data: session})
+	JSON(w, http.StatusCreated, APIResponse{Data: result.Session, Message: result.Warning})
 }
 
 func (h *ReplayHandler) List(w http.ResponseWriter, r *http.Request) {
