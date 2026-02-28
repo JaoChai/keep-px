@@ -180,6 +180,23 @@ func (s *EventService) ListByCustomerID(ctx context.Context, customerID string, 
 	return events, total, nil
 }
 
+func (s *EventService) ListLatest(ctx context.Context, customerID, pixelID string, limit int) ([]*domain.RealtimeEvent, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	events, err := s.eventRepo.ListLatestByCustomerID(ctx, customerID, pixelID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list latest events: %w", err)
+	}
+	if events == nil {
+		return []*domain.RealtimeEvent{}, nil
+	}
+	return events, nil
+}
+
 const realtimeEventLimit = 50
 
 func (s *EventService) ListRecent(ctx context.Context, customerID string, since time.Time, pixelID string) ([]*domain.RealtimeEvent, error) {

@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Pause, Play, Trash2, Check, X, Zap, CheckCircle, Tag, Hash } from 'lucide-react'
+import { Pause, Play, Trash2, Check, X, Zap, CheckCircle, Tag, Hash, RefreshCw } from 'lucide-react'
 import { useRealtimeEvents } from '@/hooks/use-realtime-events'
 import { useRealtimeStats } from '@/hooks/use-realtime-stats'
 import { usePixels } from '@/hooks/use-pixels'
@@ -73,7 +73,7 @@ function getEventColor(name: string): string {
 }
 
 export function RealtimeEventsPage() {
-  const { events, isLive, isPaused, togglePause, clear, pixelId, setPixelId } =
+  const { events, isLive, isPaused, isLoading, togglePause, clear, refresh, pixelId, setPixelId } =
     useRealtimeEvents()
   const { stats, timeBuckets, eventTypeCounts } = useRealtimeStats(events)
   const { data: pixels } = usePixels()
@@ -103,6 +103,10 @@ export function RealtimeEventsPage() {
           <Button variant="outline" size="sm" onClick={clear}>
             <Trash2 className="h-4 w-4 mr-1" />
             Clear
+          </Button>
+          <Button variant="outline" size="sm" onClick={refresh} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
         </div>
       </div>
@@ -225,13 +229,22 @@ export function RealtimeEventsPage() {
       {/* Event Table */}
       {events.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-neutral-300 rounded-lg">
-          <div className="animate-pulse mb-3">
-            <div className="inline-block h-3 w-3 rounded-full bg-emerald-400" />
-          </div>
-          <p className="text-neutral-500">Waiting for events...</p>
-          <p className="text-sm text-neutral-400 mt-1">
-            New events will appear here in realtime
-          </p>
+          {isLoading ? (
+            <>
+              <RefreshCw className="h-6 w-6 animate-spin text-indigo-500 mx-auto mb-3" />
+              <p className="text-neutral-500">Loading recent events...</p>
+            </>
+          ) : (
+            <>
+              <div className="animate-pulse mb-3">
+                <div className="inline-block h-3 w-3 rounded-full bg-emerald-400" />
+              </div>
+              <p className="text-neutral-500">Waiting for events...</p>
+              <p className="text-sm text-neutral-400 mt-1">
+                New events will appear here in realtime
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="border border-neutral-200 rounded-lg overflow-hidden">
