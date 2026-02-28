@@ -43,7 +43,20 @@ func (h *EventHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 	clientIP := r.RemoteAddr
 	clientUA := r.Header.Get("User-Agent")
 
-	created, err := h.eventService.Ingest(r.Context(), customerID, input, clientIP, clientUA)
+	var fbc, fbp string
+	if c, err := r.Cookie("_fbc"); err == nil {
+		fbc = c.Value
+	}
+	if c, err := r.Cookie("_fbp"); err == nil {
+		fbp = c.Value
+	}
+
+	created, err := h.eventService.Ingest(r.Context(), customerID, input, service.ClientContext{
+		IP:        clientIP,
+		UserAgent: clientUA,
+		FBC:       fbc,
+		FBP:       fbp,
+	})
 	if err != nil {
 		ErrorJSON(w, http.StatusInternalServerError, "ingestion failed")
 		return

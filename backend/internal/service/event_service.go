@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,6 +37,14 @@ func NewEventService(
 	}
 }
 
+// ClientContext holds HTTP request data for enriching CAPI user_data.
+type ClientContext struct {
+	IP        string
+	UserAgent string
+	FBC       string // _fbc cookie (Facebook Click ID)
+	FBP       string // _fbp cookie (Facebook Browser ID)
+}
+
 type IngestEventInput struct {
 	PixelID   string          `json:"pixel_id" validate:"required"`
 	EventName string          `json:"event_name" validate:"required"`
@@ -49,7 +59,7 @@ type IngestBatchInput struct {
 	Events []IngestEventInput `json:"events" validate:"required,min=1,max=100"`
 }
 
-func (s *EventService) Ingest(ctx context.Context, customerID string, input IngestBatchInput, clientIP, clientUA string) (int, error) {
+func (s *EventService) Ingest(ctx context.Context, customerID string, input IngestBatchInput, client ClientContext) (int, error) {
 	created := 0
 	for _, eventInput := range input.Events {
 		// Verify pixel belongs to customer
@@ -75,9 +85,9 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 			eventData = json.RawMessage(`{}`)
 		}
 
-		// Strip port from clientIP
-		ip := clientIP
-		if host, _, err := net.SplitHostPort(clientIP); err == nil {
+		// Strip port from client IP
+		ip := client.IP
+		if host, _, err := net.SplitHostPort(client.IP); err == nil {
 			ip = host
 		}
 
@@ -96,7 +106,7 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 			EventTime:       eventTime,
 			EventID:         eventID,
 			ClientIP:        ip,
-			ClientUserAgent: clientUA,
+			ClientUserAgent: client.UserAgent,
 		}
 
 		if err := s.eventRepo.Create(ctx, event); err != nil {
@@ -105,14 +115,14 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 		}
 
 		// Forward to Facebook CAPI asynchronously
-		go s.forwardToCAPI(context.Background(), event, pixel)
+		go s.forwardToCAPI(context.Background(), event, pixel, client)
 
 		created++
 	}
 	return created, nil
 }
 
-func (s *EventService) forwardToCAPI(ctx context.Context, event *domain.PixelEvent, pixel *domain.Pixel) {
+func (s *EventService) forwardToCAPI(ctx context.Context, event *domain.PixelEvent, pixel *domain.Pixel, client ClientContext) {
 	var customData map[string]interface{}
 	if event.EventData != nil {
 		_ = json.Unmarshal(event.EventData, &customData)
@@ -132,6 +142,27 @@ func (s *EventService) forwardToCAPI(ctx context.Context, event *domain.PixelEve
 	}
 	if event.ClientUserAgent != "" {
 		userData["client_user_agent"] = event.ClientUserAgent
+	}
+
+	// Facebook Click ID — priority: SDK > cookie > fbclid in URL
+	if _, exists := userData["fbc"]; !exists {
+		if isValidFBCookie(client.FBC) {
+			userData["fbc"] = client.FBC
+		} else if fbclid := extractFBClid(event.SourceURL); fbclid != "" {
+			userData["fbc"] = fmt.Sprintf("fb.1.%d.%s", event.EventTime.UnixMilli(), fbclid)
+		}
+	}
+
+	// Facebook Browser ID — priority: SDK > cookie
+	if _, exists := userData["fbp"]; !exists {
+		if isValidFBCookie(client.FBP) {
+			userData["fbp"] = client.FBP
+		}
+	}
+
+	// Default country for Thailand
+	if _, exists := userData["country"]; !exists {
+		userData["country"] = defaultCountry
 	}
 
 	// Hash PII fields
@@ -197,7 +228,12 @@ func (s *EventService) ListLatest(ctx context.Context, customerID, pixelID strin
 	return events, nil
 }
 
-const realtimeEventLimit = 50
+const (
+	realtimeEventLimit = 50
+	maxFBCookieLen     = 500 // max length for _fbc/_fbp cookie values
+	maxFBClidLen       = 200 // max length for fbclid URL parameter
+	defaultCountry     = "th" // Pixlinks v1 operates in Thailand only
+)
 
 func (s *EventService) ListRecent(ctx context.Context, customerID string, since time.Time, pixelID string) ([]*domain.RealtimeEvent, error) {
 	events, err := s.eventRepo.ListRecentByCustomerID(ctx, customerID, since, pixelID, realtimeEventLimit)
@@ -216,4 +252,29 @@ func (s *EventService) GetByID(ctx context.Context, id string) (*domain.PixelEve
 		return nil, fmt.Errorf("get event: %w", err)
 	}
 	return event, nil
+}
+
+// isValidFBCookie checks that a Facebook cookie value has the expected "fb." prefix
+// and does not exceed the maximum allowed length.
+func isValidFBCookie(value string) bool {
+	return value != "" && len(value) <= maxFBCookieLen && strings.HasPrefix(value, "fb.")
+}
+
+// extractFBClid extracts the fbclid query parameter from an HTTP(S) URL.
+func extractFBClid(rawURL string) string {
+	if rawURL == "" {
+		return ""
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return ""
+	}
+	fbclid := u.Query().Get("fbclid")
+	if len(fbclid) > maxFBClidLen {
+		return ""
+	}
+	return fbclid
 }
