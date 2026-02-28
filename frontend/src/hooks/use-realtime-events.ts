@@ -26,7 +26,7 @@ export function useRealtimeEvents() {
       )
       return data.data ?? []
     },
-    refetchInterval: isPaused ? false : 5000,
+    refetchInterval: isPaused ? false : 2000,
   })
 
   useEffect(() => {
