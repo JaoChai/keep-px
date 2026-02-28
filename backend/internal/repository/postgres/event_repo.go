@@ -176,3 +176,36 @@ func (r *EventRepo) GetEventsForReplay(ctx context.Context, pixelID string, even
 	}
 	return events, rows.Err()
 }
+
+func (r *EventRepo) ListRecentByCustomerID(ctx context.Context, customerID string, since time.Time, pixelID string, limit int) ([]*domain.RealtimeEvent, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT pe.id, pe.pixel_id, p.name AS pixel_name, pe.event_name,
+		        pe.source_url, pe.forwarded_to_capi, pe.event_time, pe.created_at
+		 FROM pixel_events pe
+		 JOIN pixels p ON p.id = pe.pixel_id
+		 WHERE p.customer_id = $1
+		   AND pe.created_at > $2
+		   AND ($3::text = '' OR pe.pixel_id = $3::uuid)
+		 ORDER BY pe.created_at ASC
+		 LIMIT $4`,
+		customerID, since, pixelID, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*domain.RealtimeEvent
+	for rows.Next() {
+		e := &domain.RealtimeEvent{}
+		var sourceURL *string
+		if err := rows.Scan(&e.ID, &e.PixelID, &e.PixelName, &e.EventName, &sourceURL, &e.ForwardedToCAPI, &e.EventTime, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		if sourceURL != nil {
+			e.SourceURL = *sourceURL
+		}
+		events = append(events, e)
+	}
+	return events, rows.Err()
+}

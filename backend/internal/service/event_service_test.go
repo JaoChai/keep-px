@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -221,4 +222,52 @@ func TestEventService_ListByCustomerID(t *testing.T) {
 			eventRepo.AssertExpectations(t)
 		})
 	}
+}
+
+func TestEventService_ListRecent_Success(t *testing.T) {
+	svc, eventRepo, _ := newTestEventService()
+	since := time.Now().Add(-5 * time.Minute)
+
+	eventRepo.On("ListRecentByCustomerID", mock.Anything, "cust-1", since, "", 50).Return([]*domain.RealtimeEvent{
+		{ID: "evt-1", PixelID: "px-1", PixelName: "My Pixel", EventName: "PageView", CreatedAt: since.Add(time.Second)},
+		{ID: "evt-2", PixelID: "px-1", PixelName: "My Pixel", EventName: "Purchase", CreatedAt: since.Add(2 * time.Second)},
+	}, nil)
+
+	events, err := svc.ListRecent(context.Background(), "cust-1", since, "")
+
+	assert.NoError(t, err)
+	assert.Len(t, events, 2)
+	assert.Equal(t, "evt-1", events[0].ID)
+	assert.Equal(t, "evt-2", events[1].ID)
+	eventRepo.AssertExpectations(t)
+}
+
+func TestEventService_ListRecent_EmptyResult(t *testing.T) {
+	svc, eventRepo, _ := newTestEventService()
+	since := time.Now()
+
+	eventRepo.On("ListRecentByCustomerID", mock.Anything, "cust-1", since, "", 50).Return(nil, nil)
+
+	events, err := svc.ListRecent(context.Background(), "cust-1", since, "")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, events)
+	assert.Len(t, events, 0)
+	eventRepo.AssertExpectations(t)
+}
+
+func TestEventService_ListRecent_WithPixelIDFilter(t *testing.T) {
+	svc, eventRepo, _ := newTestEventService()
+	since := time.Now().Add(-10 * time.Minute)
+
+	eventRepo.On("ListRecentByCustomerID", mock.Anything, "cust-1", since, "px-2", 50).Return([]*domain.RealtimeEvent{
+		{ID: "evt-3", PixelID: "px-2", PixelName: "Other Pixel", EventName: "AddToCart", CreatedAt: since.Add(time.Second)},
+	}, nil)
+
+	events, err := svc.ListRecent(context.Background(), "cust-1", since, "px-2")
+
+	assert.NoError(t, err)
+	assert.Len(t, events, 1)
+	assert.Equal(t, "px-2", events[0].PixelID)
+	eventRepo.AssertExpectations(t)
 }

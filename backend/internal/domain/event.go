@@ -5,6 +5,17 @@ import (
 	"time"
 )
 
+type RealtimeEvent struct {
+	ID              string    `json:"id"`
+	PixelID         string    `json:"pixel_id"`
+	PixelName       string    `json:"pixel_name"`
+	EventName       string    `json:"event_name"`
+	SourceURL       string    `json:"source_url,omitempty"`
+	ForwardedToCAPI bool      `json:"forwarded_to_capi"`
+	EventTime       time.Time `json:"event_time"`
+	CreatedAt       time.Time `json:"created_at"`
+}
+
 type PixelEvent struct {
 	ID               string          `json:"id"`
 	PixelID          string          `json:"pixel_id"`

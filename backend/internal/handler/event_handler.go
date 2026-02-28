@@ -5,9 +5,11 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
 	"github.com/jaochai/pixlinks/backend/internal/service"
@@ -77,6 +79,43 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 		PerPage:    perPage,
 		TotalPages: int(math.Ceil(float64(total) / float64(perPage))),
 	})
+}
+
+func (h *EventHandler) ListRecent(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
+
+	sinceStr := r.URL.Query().Get("since")
+	if sinceStr == "" {
+		ErrorJSON(w, http.StatusBadRequest, "since parameter is required (RFC3339 format)")
+		return
+	}
+	since, err := time.Parse(time.RFC3339, sinceStr)
+	if err != nil {
+		ErrorJSON(w, http.StatusBadRequest, "since parameter must be in RFC3339 format")
+		return
+	}
+
+	// Clamp since to max 5 minutes ago to prevent expensive historical scans
+	maxLookback := time.Now().Add(-5 * time.Minute)
+	if since.Before(maxLookback) {
+		since = maxLookback
+	}
+
+	pixelID := r.URL.Query().Get("pixel_id")
+	if pixelID != "" {
+		if _, err := uuid.Parse(pixelID); err != nil {
+			ErrorJSON(w, http.StatusBadRequest, "pixel_id must be a valid UUID")
+			return
+		}
+	}
+
+	events, err := h.eventService.ListRecent(r.Context(), customerID, since, pixelID)
+	if err != nil {
+		ErrorJSON(w, http.StatusInternalServerError, "failed to fetch recent events")
+		return
+	}
+
+	JSON(w, http.StatusOK, APIResponse{Data: events})
 }
 
 func (h *EventHandler) GetByID(w http.ResponseWriter, r *http.Request) {

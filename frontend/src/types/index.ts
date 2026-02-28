@@ -161,6 +161,17 @@ export interface CustomDomain {
   updated_at: string
 }
 
+export interface RealtimeEvent {
+  id: string
+  pixel_id: string
+  pixel_name: string
+  event_name: string
+  source_url?: string
+  forwarded_to_capi: boolean
+  event_time: string
+  created_at: string
+}
+
 export interface AuthTokens {
   access_token: string
   refresh_token: string
