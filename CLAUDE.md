@@ -80,7 +80,13 @@ SDK:
 ```bash
 cd sdk && npm run test && npm run build
 ```
+E2E:
+```bash
+cd frontend && npm run e2e
+```
 Run only gates for packages you changed. Do NOT push code that fails.
+
+Hooks run automatically — `pre-commit` (lint-staged), `commit-msg` (commitlint), `pre-push` (quality gates per changed package).
 
 ### Code Review (MUST Run Before Creating PR)
 - Backend changes: run `/go-review`.
@@ -93,6 +99,7 @@ Run only gates for packages you changed. Do NOT push code that fails.
 
 ### After Merge
 - Check `deploy-verify` job in GitHub Actions to confirm deploy succeeded.
+- `post-deploy-e2e` runs smoke tests (`@smoke` tag) against production after deploy.
 - If failed, check Railway logs immediately.
 
 ### Commit Messages
