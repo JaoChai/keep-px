@@ -21,7 +21,7 @@ export class PixelsPage {
   constructor(page: Page) {
     this.page = page
     this.heading = page.getByRole('heading', { name: 'Pixels' })
-    this.addPixelButton = page.getByRole('button', { name: 'Add Pixel' })
+    this.addPixelButton = page.getByRole('button', { name: 'Add Pixel' }).first()
     this.pixelTable = page.locator('table')
     this.emptyState = page.getByText('No pixels yet')
 
@@ -29,7 +29,7 @@ export class PixelsPage {
     this.nameInput = page.getByLabel('Name')
     this.pixelIdInput = page.getByLabel('Facebook Pixel ID')
     this.accessTokenInput = page.getByLabel('Access Token')
-    this.saveButton = page.getByRole('button', { name: /Add Pixel|Save Changes/ })
+    this.saveButton = page.locator('form').getByRole('button', { name: /Add Pixel|Save Changes/ })
     this.cancelButton = page.getByRole('button', { name: 'Cancel' })
 
     this.deleteConfirmButton = page.getByRole('button', { name: 'Delete' })
