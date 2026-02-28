@@ -24,15 +24,24 @@ test.describe('Pixels', () => {
     await pixelsPage.createPixel(originalName, '123456789012345', 'EAAtest123token')
     await page.getByRole('button', { name: 'Done' }).click()
 
+    // Wait for snippet dialog to fully close
+    await expect(page.getByRole('button', { name: 'Done' })).not.toBeVisible()
+
     // Click edit button on the pixel row
     const pixelRow = page.locator('tr', { hasText: originalName })
     await pixelRow.getByRole('button').filter({ has: page.locator('[class*="lucide-pencil"]') }).click()
+
+    // Wait for edit dialog to appear
+    await expect(page.getByRole('heading', { name: 'Edit Pixel' })).toBeVisible()
 
     // Update name
     const updatedName = `Updated ${Date.now()}`
     await pixelsPage.nameInput.clear()
     await pixelsPage.nameInput.fill(updatedName)
-    await page.getByRole('button', { name: 'Save Changes' }).click()
+    await pixelsPage.saveButton.click()
+
+    // Wait for edit dialog to close before asserting
+    await expect(page.getByRole('heading', { name: 'Edit Pixel' })).not.toBeVisible()
 
     await expect(page.getByText(updatedName)).toBeVisible()
   })
