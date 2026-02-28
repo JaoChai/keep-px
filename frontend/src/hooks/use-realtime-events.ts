@@ -12,7 +12,7 @@ export function useRealtimeEvents() {
   const [pixelId, setPixelIdState] = useState<string | null>(null)
   const sinceRef = useRef<string>('')
   const processedIdsRef = useRef<Set<string>>(new Set())
-  // Track generation to allow reset/refresh without state in effects
+  // Generation counter: bumping it creates a new query key, resetting the initial load
   const [generation, setGeneration] = useState(0)
 
   // Query 1: Initial load — fetch latest 100 events (no `since` param)
@@ -24,30 +24,30 @@ export function useRealtimeEvents() {
       const { data } = await api.get<APIResponse<RealtimeEvent[]>>(
         `/events/recent?${params.toString()}`
       )
-      const events = data.data ?? []
-
-      // Set up refs for dedup and cursor (side-effect safe in queryFn)
-      const ids = new Set<string>()
-      for (const e of events) {
-        ids.add(e.id)
-      }
-      processedIdsRef.current = ids
-
-      const lastEvent = events[events.length - 1]
-      if (lastEvent) {
-        sinceRef.current = lastEvent.created_at
-      } else {
-        sinceRef.current = new Date().toISOString()
-      }
-
-      return events
+      return data.data ?? []
     },
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   })
 
-  // Derive isInitialLoaded from query status — no setState needed
+  // Derive isInitialLoaded from query status — no useState needed
   const isInitialLoaded = initialQuery.isSuccess && !!initialQuery.data
+
+  // Initialize dedup refs and cursor from initial load data (refs only, no setState)
+  // Backend returns events in ASC order — last element is the newest
+  useEffect(() => {
+    const data = initialQuery.data
+    if (!data) return
+
+    const ids = new Set<string>()
+    for (const e of data) {
+      ids.add(e.id)
+    }
+    processedIdsRef.current = ids
+
+    const lastEvent = data[data.length - 1]
+    sinceRef.current = lastEvent ? lastEvent.created_at : new Date().toISOString()
+  }, [initialQuery.data])
 
   // Derive initial events (reversed for newest-first display) from query cache
   const initialEvents = useMemo(() => {
@@ -55,7 +55,7 @@ export function useRealtimeEvents() {
     return [...initialQuery.data].reverse()
   }, [initialQuery.data])
 
-  // Query 2: Polling — fetch incremental events using `since` cursor
+  // Query 2: Polling — fetch incremental events using `since` cursor (2s interval)
   const pollingQuery = useQuery({
     queryKey: ['realtime-events-polling', pixelId],
     queryFn: async () => {
@@ -106,7 +106,8 @@ export function useRealtimeEvents() {
     sinceRef.current = ''
     processedIdsRef.current = new Set()
     setGeneration((g) => g + 1)
-    queryClient.removeQueries({ queryKey: ['realtime-events-polling', id] })
+    // Remove ALL polling variants (old pixel key), not just the new one
+    queryClient.removeQueries({ queryKey: ['realtime-events-polling'] })
   }, [queryClient])
 
   const togglePause = useCallback(() => setIsPaused((p) => !p), [])
@@ -115,7 +116,6 @@ export function useRealtimeEvents() {
     setPolledEvents([])
     sinceRef.current = new Date().toISOString()
     processedIdsRef.current = new Set()
-    // Remove initial query cache so events list is empty
     queryClient.removeQueries({ queryKey: ['realtime-events-initial'] })
     setGeneration((g) => g + 1)
   }, [queryClient])

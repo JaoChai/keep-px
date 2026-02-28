@@ -94,15 +94,9 @@ func (h *EventHandler) ListRecent(w http.ResponseWriter, r *http.Request) {
 
 	sinceStr := r.URL.Query().Get("since")
 
-	// Initial load mode: no since parameter
+	// Initial load mode: no since parameter — service owns limit clamping
 	if sinceStr == "" {
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-		if limit <= 0 {
-			limit = 50
-		}
-		if limit > 200 {
-			limit = 200
-		}
 		events, err := h.eventService.ListLatest(r.Context(), customerID, pixelID, limit)
 		if err != nil {
 			ErrorJSON(w, http.StatusInternalServerError, "failed to fetch latest events")
