@@ -11,8 +11,6 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { SalePagesPage } from '@/pages/SalePagesPage'
 import { SalePageEditorPage } from '@/pages/SalePageEditorPage'
 import { BlockEditorPage } from '@/pages/BlockEditorPage'
-import { CustomDomainsPage } from '@/pages/CustomDomainsPage'
-
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -38,7 +36,6 @@ export const router = createBrowserRouter([
       { path: 'sale-pages/new-classic', element: <SalePageEditorPage /> },
       { path: 'sale-pages/:id/edit', element: <SalePageEditorPage /> },
       { path: 'sale-pages/:id/edit-blocks', element: <BlockEditorPage /> },
-      { path: 'domains', element: <CustomDomainsPage /> },
       { path: 'events', element: <EventsPage /> },
       { path: 'events/log', element: <Navigate to="/events?mode=history" replace /> },
       { path: 'events/realtime', element: <Navigate to="/events?mode=live" replace /> },
