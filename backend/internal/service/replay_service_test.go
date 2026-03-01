@@ -61,7 +61,7 @@ func TestReplayService_Create(t *testing.T) {
 					FBPixelID:     "fb-2",
 					FBAccessToken: "token-2",
 				}, nil)
-				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 					Return([]*domain.PixelEvent{
 						{ID: "evt-1", EventName: "PageView", EventTime: time.Now().Add(-1 * time.Hour)},
 					}, nil)
@@ -95,7 +95,7 @@ func TestReplayService_Create(t *testing.T) {
 					FBPixelID:     "fb-2",
 					FBAccessToken: "token-2",
 				}, nil)
-				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 					Return([]*domain.PixelEvent{
 						{ID: "evt-1", EventName: "PageView", EventTime: time.Now().Add(-1 * time.Hour)},
 					}, nil)
@@ -129,7 +129,7 @@ func TestReplayService_Create(t *testing.T) {
 					FBPixelID:     "fb-2",
 					FBAccessToken: "token-2",
 				}, nil)
-				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 					Return([]*domain.PixelEvent{
 						{ID: "evt-1", EventName: "PageView", EventTime: time.Now().Add(-1 * time.Hour)},
 					}, nil)
@@ -162,7 +162,7 @@ func TestReplayService_Create(t *testing.T) {
 					FBPixelID:     "fb-2",
 					FBAccessToken: "token-2",
 				}, nil)
-				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 					Return([]*domain.PixelEvent{
 						{ID: "evt-1", EventName: "PageView", EventTime: time.Now().Add(-10 * 24 * time.Hour)},
 						{ID: "evt-2", EventName: "Purchase", EventTime: time.Now().Add(-1 * time.Hour)},
@@ -711,12 +711,16 @@ func TestReplayService_Preview(t *testing.T) {
 			},
 			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
-					ID:         "pixel-1",
-					CustomerID: "cust-1",
+					ID:            "pixel-1",
+					CustomerID:    "cust-1",
+					FBPixelID:     "fb-1",
+					FBAccessToken: "token-1",
 				}, nil)
 				pr.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
-					ID:         "pixel-2",
-					CustomerID: "cust-1",
+					ID:            "pixel-2",
+					CustomerID:    "cust-1",
+					FBPixelID:     "fb-2",
+					FBAccessToken: "token-2",
 				}, nil)
 				er.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
 					Return(42, nil)
@@ -739,12 +743,16 @@ func TestReplayService_Preview(t *testing.T) {
 			},
 			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
-					ID:         "pixel-1",
-					CustomerID: "cust-1",
+					ID:            "pixel-1",
+					CustomerID:    "cust-1",
+					FBPixelID:     "fb-1",
+					FBAccessToken: "token-1",
 				}, nil)
 				pr.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
-					ID:         "pixel-2",
-					CustomerID: "cust-1",
+					ID:            "pixel-2",
+					CustomerID:    "cust-1",
+					FBPixelID:     "fb-2",
+					FBAccessToken: "token-2",
 				}, nil)
 				er.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
 					Return(0, nil)
@@ -819,7 +827,7 @@ func TestReplayService_Retry(t *testing.T) {
 					FBPixelID:     "fb-2",
 					FBAccessToken: "token-2",
 				}, nil)
-				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 					Return([]*domain.PixelEvent{
 						{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
 					}, nil)
@@ -852,7 +860,7 @@ func TestReplayService_Retry(t *testing.T) {
 					FBPixelID:     "fb-2",
 					FBAccessToken: "token-2",
 				}, nil)
-				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 					Return([]*domain.PixelEvent{
 						{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
 					}, nil)
@@ -946,7 +954,7 @@ func TestReplayService_Create_SemaphoreBlock(t *testing.T) {
 	pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
 		ID: "pixel-2", CustomerID: "cust-1", FBPixelID: "fb-2", FBAccessToken: "token-2",
 	}, nil)
-	eventRepo.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+	eventRepo.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 		Return([]*domain.PixelEvent{
 			{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
 		}, nil)
@@ -990,7 +998,7 @@ func TestReplayService_Create_ShutdownDuringSemWait(t *testing.T) {
 	pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
 		ID: "pixel-2", CustomerID: "cust-1", FBPixelID: "fb-2", FBAccessToken: "token-2",
 	}, nil)
-	eventRepo.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+	eventRepo.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 		Return([]*domain.PixelEvent{
 			{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
 		}, nil)
@@ -1139,4 +1147,180 @@ func TestReplayService_ExecuteReplay_DefaultDelay(t *testing.T) {
 	assert.GreaterOrEqual(t, elapsed, 150*time.Millisecond) // allow small tolerance
 	assert.Equal(t, 2, callCount) // 2 CAPI calls (2 batches)
 	replayRepo.AssertExpectations(t)
+}
+
+func TestReplayService_Create_SamePixel(t *testing.T) {
+	svc, _, _, pixelRepo := newTestReplayService()
+	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+		ID: "pixel-1", CustomerID: "cust-1", FBPixelID: "fb-1", FBAccessToken: "token-1",
+	}, nil)
+
+	input := CreateReplayInput{SourcePixelID: "pixel-1", TargetPixelID: "pixel-1"}
+	result, err := svc.Create(context.Background(), "cust-1", input)
+
+	assert.ErrorIs(t, err, ErrReplaySamePixel)
+	assert.Nil(t, result)
+}
+
+func TestReplayService_Create_NoCredentials(t *testing.T) {
+	svc, _, _, pixelRepo := newTestReplayService()
+	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+		ID: "pixel-1", CustomerID: "cust-1", FBPixelID: "fb-1", FBAccessToken: "token-1",
+	}, nil)
+	pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+		ID: "pixel-2", CustomerID: "cust-1", FBPixelID: "", FBAccessToken: "",
+	}, nil)
+
+	input := CreateReplayInput{SourcePixelID: "pixel-1", TargetPixelID: "pixel-2"}
+	result, err := svc.Create(context.Background(), "cust-1", input)
+
+	assert.ErrorIs(t, err, ErrPixelNoCredentials)
+	assert.Nil(t, result)
+}
+
+func TestReplayService_Preview_SamePixel(t *testing.T) {
+	svc, _, _, pixelRepo := newTestReplayService()
+	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+		ID: "pixel-1", CustomerID: "cust-1", FBPixelID: "fb-1", FBAccessToken: "token-1",
+	}, nil)
+
+	input := CreateReplayInput{SourcePixelID: "pixel-1", TargetPixelID: "pixel-1"}
+	result, err := svc.Preview(context.Background(), "cust-1", input)
+
+	assert.ErrorIs(t, err, ErrReplaySamePixel)
+	assert.Nil(t, result)
+}
+
+func TestReplayService_Preview_NoCredentials(t *testing.T) {
+	svc, _, _, pixelRepo := newTestReplayService()
+	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+		ID: "pixel-1", CustomerID: "cust-1", FBPixelID: "fb-1", FBAccessToken: "token-1",
+	}, nil)
+	pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+		ID: "pixel-2", CustomerID: "cust-1", FBPixelID: "", FBAccessToken: "",
+	}, nil)
+
+	input := CreateReplayInput{SourcePixelID: "pixel-1", TargetPixelID: "pixel-2"}
+	result, err := svc.Preview(context.Background(), "cust-1", input)
+
+	assert.ErrorIs(t, err, ErrPixelNoCredentials)
+	assert.Nil(t, result)
+}
+
+func TestReplayService_Retry_NoCredentials(t *testing.T) {
+	svc, replayRepo, _, pixelRepo := newTestReplayService()
+	replayRepo.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
+		ID:            "session-1",
+		CustomerID:    "cust-1",
+		SourcePixelID: "pixel-1",
+		TargetPixelID: "pixel-2",
+		Status:        "failed",
+	}, nil)
+	pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+		ID: "pixel-2", CustomerID: "cust-1", FBPixelID: "", FBAccessToken: "",
+	}, nil)
+
+	session, err := svc.Retry(context.Background(), "cust-1", "session-1")
+
+	assert.ErrorIs(t, err, ErrPixelNoCredentials)
+	assert.Nil(t, session)
+}
+
+func TestReplayService_Preview_MaxEventsWarning(t *testing.T) {
+	svc, _, eventRepo, pixelRepo := newTestReplayService()
+	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+		ID: "pixel-1", CustomerID: "cust-1", FBPixelID: "fb-1", FBAccessToken: "token-1",
+	}, nil)
+	pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+		ID: "pixel-2", CustomerID: "cust-1", FBPixelID: "fb-2", FBAccessToken: "token-2",
+	}, nil)
+	eventRepo.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+		Return(100001, nil)
+	eventRepo.On("GetEventsForReplayPreview", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), 10).
+		Return([]*domain.PixelEvent{
+			{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
+		}, nil)
+
+	input := CreateReplayInput{SourcePixelID: "pixel-1", TargetPixelID: "pixel-2", TimeMode: "current"}
+	result, err := svc.Preview(context.Background(), "cust-1", input)
+
+	assert.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, maxReplayEvents, result.TotalEvents)
+	assert.Contains(t, result.Warning, "100001 events found")
+	assert.Contains(t, result.Warning, "only first 100000 will be replayed")
+}
+
+func TestReplayService_GetEventTypes(t *testing.T) {
+	tests := []struct {
+		name       string
+		customerID string
+		pixelID    string
+		setup      func(*MockEventRepo, *MockPixelRepo)
+		wantTypes  []string
+		wantErr    error
+	}{
+		{
+			name:       "success",
+			customerID: "cust-1",
+			pixelID:    "pixel-1",
+			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID: "pixel-1", CustomerID: "cust-1",
+				}, nil)
+				er.On("GetDistinctEventTypes", mock.Anything, "pixel-1").Return([]string{"PageView", "Purchase"}, nil)
+			},
+			wantTypes: []string{"PageView", "Purchase"},
+		},
+		{
+			name:       "empty returns empty slice",
+			customerID: "cust-1",
+			pixelID:    "pixel-1",
+			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID: "pixel-1", CustomerID: "cust-1",
+				}, nil)
+				er.On("GetDistinctEventTypes", mock.Anything, "pixel-1").Return(nil, nil)
+			},
+			wantTypes: []string{},
+		},
+		{
+			name:       "pixel not found",
+			customerID: "cust-1",
+			pixelID:    "nonexistent",
+			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
+			},
+			wantErr: ErrPixelNotFound,
+		},
+		{
+			name:       "pixel not owned",
+			customerID: "cust-2",
+			pixelID:    "pixel-1",
+			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID: "pixel-1", CustomerID: "cust-1",
+				}, nil)
+			},
+			wantErr: ErrPixelNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, _, eventRepo, pixelRepo := newTestReplayService()
+			tt.setup(eventRepo, pixelRepo)
+
+			types, err := svc.GetEventTypes(context.Background(), tt.customerID, tt.pixelID)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, types)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.wantTypes, types)
+			}
+			pixelRepo.AssertExpectations(t)
+		})
+	}
 }

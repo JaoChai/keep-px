@@ -111,6 +111,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 				r.Post("/", replayHandler.Create)
 				r.Get("/", replayHandler.List)
 				r.Post("/preview", replayHandler.Preview)
+				r.Get("/event-types", replayHandler.EventTypes)
 				r.Get("/{id}", replayHandler.GetByID)
 				r.Post("/{id}/cancel", replayHandler.Cancel)
 				r.Post("/{id}/retry", replayHandler.Retry)

@@ -150,7 +150,7 @@ func (r *EventRepo) MarkForwarded(ctx context.Context, id string, responseCode i
 	return err
 }
 
-func (r *EventRepo) GetEventsForReplay(ctx context.Context, pixelID string, eventTypes []string, from, to *time.Time) ([]*domain.PixelEvent, error) {
+func (r *EventRepo) GetEventsForReplay(ctx context.Context, pixelID string, eventTypes []string, from, to *time.Time, createdBefore *time.Time) ([]*domain.PixelEvent, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, pixel_id, event_name, event_data, user_data, source_url, event_time, forwarded_to_capi, capi_response_code, capi_events_received, created_at, event_id, client_ip, client_user_agent
 		 FROM pixel_events
@@ -158,9 +158,10 @@ func (r *EventRepo) GetEventsForReplay(ctx context.Context, pixelID string, even
 		   AND ($2::text[] IS NULL OR event_name = ANY($2::text[]))
 		   AND ($3::timestamptz IS NULL OR event_time >= $3)
 		   AND ($4::timestamptz IS NULL OR event_time <= $4)
+		   AND ($5::timestamptz IS NULL OR created_at < $5)
 		 ORDER BY event_time ASC
 		 LIMIT 100000`,
-		pixelID, eventTypes, from, to,
+		pixelID, eventTypes, from, to, createdBefore,
 	)
 	if err != nil {
 		return nil, err
@@ -191,12 +192,14 @@ func (r *EventRepo) GetEventsForReplay(ctx context.Context, pixelID string, even
 func (r *EventRepo) CountEventsForReplay(ctx context.Context, pixelID string, eventTypes []string, from, to *time.Time) (int, error) {
 	var count int
 	err := r.pool.QueryRow(ctx,
-		`SELECT COUNT(*)
-		 FROM pixel_events
-		 WHERE pixel_id = $1
-		   AND ($2::text[] IS NULL OR event_name = ANY($2::text[]))
-		   AND ($3::timestamptz IS NULL OR event_time >= $3)
-		   AND ($4::timestamptz IS NULL OR event_time <= $4)`,
+		`SELECT COUNT(*) FROM (
+		   SELECT 1 FROM pixel_events
+		   WHERE pixel_id = $1
+		     AND ($2::text[] IS NULL OR event_name = ANY($2::text[]))
+		     AND ($3::timestamptz IS NULL OR event_time >= $3)
+		     AND ($4::timestamptz IS NULL OR event_time <= $4)
+		   LIMIT 100001
+		 ) sub`,
 		pixelID, eventTypes, from, to,
 	).Scan(&count)
 	return count, err
@@ -238,6 +241,24 @@ func (r *EventRepo) GetEventsForReplayPreview(ctx context.Context, pixelID strin
 		events = append(events, e)
 	}
 	return events, rows.Err()
+}
+
+func (r *EventRepo) GetDistinctEventTypes(ctx context.Context, pixelID string) ([]string, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT DISTINCT event_name FROM pixel_events WHERE pixel_id = $1 ORDER BY event_name`, pixelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var types []string
+	for rows.Next() {
+		var t string
+		if err := rows.Scan(&t); err != nil {
+			return nil, err
+		}
+		types = append(types, t)
+	}
+	return types, rows.Err()
 }
 
 func (r *EventRepo) ListLatestByCustomerID(ctx context.Context, customerID string, pixelID string, limit int) ([]*domain.RealtimeEvent, error) {

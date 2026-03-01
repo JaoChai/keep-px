@@ -43,6 +43,14 @@ func (h *ReplayHandler) Create(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "pixel not found")
 			return
 		}
+		if errors.Is(err, service.ErrReplaySamePixel) {
+			ErrorJSON(w, http.StatusBadRequest, "source and target pixel cannot be the same")
+			return
+		}
+		if errors.Is(err, service.ErrPixelNoCredentials) {
+			ErrorJSON(w, http.StatusUnprocessableEntity, "target pixel has no Facebook credentials configured")
+			return
+		}
 		ErrorJSON(w, http.StatusInternalServerError, "failed to create replay session")
 		return
 	}
@@ -115,6 +123,14 @@ func (h *ReplayHandler) Preview(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "pixel not found")
 			return
 		}
+		if errors.Is(err, service.ErrReplaySamePixel) {
+			ErrorJSON(w, http.StatusBadRequest, "source and target pixel cannot be the same")
+			return
+		}
+		if errors.Is(err, service.ErrPixelNoCredentials) {
+			ErrorJSON(w, http.StatusUnprocessableEntity, "target pixel has no Facebook credentials configured")
+			return
+		}
 		ErrorJSON(w, http.StatusInternalServerError, "failed to preview replay")
 		return
 	}
@@ -139,8 +155,31 @@ func (h *ReplayHandler) Retry(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "pixel not found")
 			return
 		}
+		if errors.Is(err, service.ErrPixelNoCredentials) {
+			ErrorJSON(w, http.StatusUnprocessableEntity, "target pixel has no Facebook credentials configured")
+			return
+		}
 		ErrorJSON(w, http.StatusInternalServerError, "failed to retry replay session")
 		return
 	}
 	JSON(w, http.StatusCreated, APIResponse{Data: session})
+}
+
+func (h *ReplayHandler) EventTypes(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
+	pixelID := r.URL.Query().Get("pixel_id")
+	if pixelID == "" {
+		ErrorJSON(w, http.StatusBadRequest, "pixel_id is required")
+		return
+	}
+	types, err := h.replayService.GetEventTypes(r.Context(), customerID, pixelID)
+	if err != nil {
+		if errors.Is(err, service.ErrPixelNotFound) {
+			ErrorJSON(w, http.StatusNotFound, "pixel not found")
+			return
+		}
+		ErrorJSON(w, http.StatusInternalServerError, "failed to get event types")
+		return
+	}
+	JSON(w, http.StatusOK, APIResponse{Data: types})
 }

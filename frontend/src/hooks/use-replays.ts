@@ -91,3 +91,14 @@ export function useReplayPreview() {
     },
   })
 }
+
+export function useEventTypes(pixelId: string | undefined) {
+  return useQuery({
+    queryKey: ['event-types', pixelId],
+    queryFn: async () => {
+      const { data } = await api.get<APIResponse<string[]>>(`/replays/event-types?pixel_id=${pixelId}`)
+      return data.data!
+    },
+    enabled: !!pixelId,
+  })
+}
