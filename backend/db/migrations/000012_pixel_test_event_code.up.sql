@@ -1,1 +1,1 @@
-ALTER TABLE pixels ADD COLUMN test_event_code VARCHAR(255);
+ALTER TABLE pixels ADD COLUMN IF NOT EXISTS test_event_code VARCHAR(255);
