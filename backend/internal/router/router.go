@@ -8,7 +8,6 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/jaochai/pixlinks/backend/internal/cloudflare"
 	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/facebook"
 	"github.com/jaochai/pixlinks/backend/internal/handler"
@@ -34,16 +33,8 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	eventRepo := postgres.NewEventRepo(pool)
 	replaySessionRepo := postgres.NewReplaySessionRepo(pool)
 	salePageRepo := postgres.NewSalePageRepo(pool)
-	customDomainRepo := postgres.NewCustomDomainRepo(pool)
-
 	// Facebook CAPI client
 	capiClient := facebook.NewCAPIClient(cfg.FBGraphAPIURL)
-
-	// Cloudflare client (optional)
-	var cfClient *cloudflare.Client
-	if cfg.CFAPIToken != "" {
-		cfClient = cloudflare.NewClient(cfg.CFAPIToken, cfg.CFAccountID, cfg.CFZoneID, cfg.CFKVNamespaceID)
-	}
 
 	// Services
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
@@ -52,7 +43,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	replayService := service.NewReplayService(replaySessionRepo, eventRepo, pixelRepo, capiClient, logger)
 	analyticsService := service.NewAnalyticsService(pool)
 	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo)
-	customDomainService := service.NewCustomDomainService(customDomainRepo, salePageRepo, cfClient, cfg.CFCNAMETarget)
 
 	// Storage
 	storageService := service.NewStorageService(cfg)
@@ -65,7 +55,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	replayHandler := handler.NewReplayHandler(replayService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService)
 	salePageHandler := handler.NewSalePageHandler(salePageService, cfg.BaseURL, logger)
-	customDomainHandler := handler.NewCustomDomainHandler(customDomainService, cfg.CFCNAMETarget, logger)
 	uploadHandler := handler.NewUploadHandler(storageService)
 
 	// Health check
@@ -128,15 +117,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 				r.Put("/{id}", salePageHandler.Update)
 				r.Delete("/{id}", salePageHandler.Delete)
 				r.Get("/{id}/preview", salePageHandler.Preview)
-			})
-
-			// Custom domain routes
-			r.Route("/domains", func(r chi.Router) {
-				r.Get("/", customDomainHandler.List)
-				r.Post("/", customDomainHandler.Create)
-				r.Get("/{id}", customDomainHandler.GetByID)
-				r.Post("/{id}/verify", customDomainHandler.Verify)
-				r.Delete("/{id}", customDomainHandler.Delete)
 			})
 
 			// Analytics routes

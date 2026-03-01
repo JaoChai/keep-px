@@ -6,7 +6,6 @@ export class SidebarPage {
   readonly dashboardLink: Locator
   readonly pixelsLink: Locator
   readonly salePagesLink: Locator
-  readonly customDomainsLink: Locator
   readonly eventsLink: Locator
   readonly replayCenterLink: Locator
   readonly settingsLink: Locator
@@ -18,7 +17,6 @@ export class SidebarPage {
     this.dashboardLink = page.getByRole('link', { name: 'Dashboard' })
     this.pixelsLink = page.getByRole('link', { name: 'Pixels' })
     this.salePagesLink = page.getByRole('link', { name: 'Sale Pages' })
-    this.customDomainsLink = page.getByRole('link', { name: 'Custom Domains' })
     this.eventsLink = page.getByRole('link', { name: 'Events' })
     this.replayCenterLink = page.getByRole('link', { name: 'Replay Center' })
     this.settingsLink = page.getByRole('link', { name: 'Settings' })

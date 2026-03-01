@@ -18,13 +18,6 @@ type Config struct {
 	CORSAllowedOrigins []string      `env:"CORS_ALLOWED_ORIGINS" envSeparator:"," envDefault:"http://localhost:5173"`
 	RateLimitRPS       int           `env:"RATE_LIMIT_RPS" envDefault:"100"`
 
-	// Cloudflare (Custom Domains)
-	CFAPIToken      string `env:"CF_API_TOKEN"`
-	CFAccountID     string `env:"CF_ACCOUNT_ID"`
-	CFZoneID        string `env:"CF_ZONE_ID"`
-	CFKVNamespaceID string `env:"CF_KV_NAMESPACE_ID"`
-	CFCNAMETarget   string `env:"CF_CNAME_TARGET" envDefault:"customer.pixlinks.xyz"`
-
 	// Public base URL for sale pages
 	BaseURL string `env:"BASE_URL" envDefault:"https://pixlinks.xyz"`
 

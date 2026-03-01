@@ -11,7 +11,6 @@ test.describe('Navigation @smoke', () => {
     await expect(sidebar.dashboardLink).toBeVisible()
     await expect(sidebar.pixelsLink).toBeVisible()
     await expect(sidebar.salePagesLink).toBeVisible()
-    await expect(sidebar.customDomainsLink).toBeVisible()
     await expect(sidebar.eventsLink).toBeVisible()
     await expect(sidebar.replayCenterLink).toBeVisible()
     await expect(sidebar.settingsLink).toBeVisible()
@@ -25,7 +24,6 @@ test.describe('Navigation @smoke', () => {
     const routes = [
       { name: 'Pixels', url: '/pixels' },
       { name: 'Sale Pages', url: '/sale-pages' },
-      { name: 'Custom Domains', url: '/domains' },
       { name: 'Events', url: '/events' },
       { name: 'Replay Center', url: '/replay' },
       { name: 'Settings', url: '/settings' },

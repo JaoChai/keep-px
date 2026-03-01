@@ -53,16 +53,6 @@ type SalePageRepository interface {
 	SlugExists(ctx context.Context, slug string) (bool, error)
 }
 
-type CustomDomainRepository interface {
-	Create(ctx context.Context, d *domain.CustomDomain) error
-	GetByID(ctx context.Context, id string) (*domain.CustomDomain, error)
-	GetByDomain(ctx context.Context, domainName string) (*domain.CustomDomain, error)
-	ListByCustomerID(ctx context.Context, customerID string) ([]*domain.CustomDomain, error)
-	ListBySalePageID(ctx context.Context, salePageID string) ([]*domain.CustomDomain, error)
-	Update(ctx context.Context, d *domain.CustomDomain) error
-	Delete(ctx context.Context, id string) error
-}
-
 type RefreshTokenRepository interface {
 	Create(ctx context.Context, customerID, tokenHash string, expiresAt time.Time) error
 	GetByTokenHash(ctx context.Context, tokenHash string) (customerID string, expiresAt time.Time, err error)
