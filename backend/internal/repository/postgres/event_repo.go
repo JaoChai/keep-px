@@ -17,13 +17,21 @@ func NewEventRepo(pool *pgxpool.Pool) *EventRepo {
 	return &EventRepo{pool: pool}
 }
 
-func (r *EventRepo) Create(ctx context.Context, e *domain.PixelEvent) error {
-	return r.pool.QueryRow(ctx,
+func (r *EventRepo) Create(ctx context.Context, e *domain.PixelEvent) (bool, error) {
+	err := r.pool.QueryRow(ctx,
 		`INSERT INTO pixel_events (pixel_id, event_name, event_data, user_data, source_url, event_time, event_id, client_ip, client_user_agent)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		 ON CONFLICT (pixel_id, event_id) WHERE event_id IS NOT NULL DO NOTHING
 		 RETURNING id, forwarded_to_capi, created_at`,
 		e.PixelID, e.EventName, e.EventData, e.UserData, e.SourceURL, e.EventTime, e.EventID, e.ClientIP, e.ClientUserAgent,
 	).Scan(&e.ID, &e.ForwardedToCAPI, &e.CreatedAt)
+	if err == pgx.ErrNoRows {
+		return false, nil // duplicate, skipped
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (r *EventRepo) GetByID(ctx context.Context, id string) (*domain.PixelEvent, error) {

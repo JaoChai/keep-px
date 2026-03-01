@@ -64,7 +64,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
   const [name, setName] = useState(existingPage?.name ?? '')
   const [slug, setSlug] = useState(existingPage?.slug ?? '')
   const [showCustomSlug, setShowCustomSlug] = useState(isEditing)
-  const [pixelId, setPixelId] = useState(existingPage?.pixel_id ?? '')
+  const [selectedPixelIds, setSelectedPixelIds] = useState<string[]>(existingPage?.pixel_ids ?? [])
 
   // Page style
   const [pageStyle, setPageStyle] = useState<PageStyle>(v2?.style ?? {})
@@ -117,7 +117,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
       const payload = {
         name,
         slug: slug || undefined,
-        pixel_id: pixelId || undefined,
+        pixel_ids: selectedPixelIds,
         template_name: 'blocks',
         content,
         is_published: isPublished,
@@ -246,20 +246,29 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pixel-select">Pixel (ไม่บังคับ)</Label>
-                <select
-                  id="pixel-select"
-                  className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600"
-                  value={pixelId}
-                  onChange={(e) => setPixelId(e.target.value)}
-                >
-                  <option value="">ไม่เลือก pixel</option>
+                <Label>Pixels (ไม่บังคับ)</Label>
+                <div className="max-h-40 overflow-y-auto border border-neutral-200 rounded-md p-2 space-y-1">
+                  {(!pixels || pixels.length === 0) && (
+                    <p className="text-xs text-neutral-400">No pixels available</p>
+                  )}
                   {pixels?.map((pixel) => (
-                    <option key={pixel.id} value={pixel.id}>
+                    <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-neutral-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedPixelIds.includes(pixel.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPixelIds(prev => [...prev, pixel.id])
+                          } else {
+                            setSelectedPixelIds(prev => prev.filter(id => id !== pixel.id))
+                          }
+                        }}
+                        className="rounded border-neutral-300"
+                      />
                       {pixel.name} ({pixel.fb_pixel_id})
-                    </option>
+                    </label>
                   ))}
-                </select>
+                </div>
               </div>
             </div>
           </Collapsible>

@@ -95,9 +95,9 @@ func (m *MockPixelRepo) Delete(ctx context.Context, id string) error {
 // MockEventRepo
 type MockEventRepo struct{ mock.Mock }
 
-func (m *MockEventRepo) Create(ctx context.Context, e *domain.PixelEvent) error {
+func (m *MockEventRepo) Create(ctx context.Context, e *domain.PixelEvent) (bool, error) {
 	args := m.Called(ctx, e)
-	return args.Error(0)
+	return args.Bool(0), args.Error(1)
 }
 func (m *MockEventRepo) GetByID(ctx context.Context, id string) (*domain.PixelEvent, error) {
 	args := m.Called(ctx, id)

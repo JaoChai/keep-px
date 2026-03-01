@@ -8,7 +8,7 @@ import (
 type SalePage struct {
 	ID           string          `json:"id"`
 	CustomerID   string          `json:"customer_id"`
-	PixelID      *string         `json:"pixel_id"`
+	PixelIDs     []string        `json:"pixel_ids"`
 	Name         string          `json:"name"`
 	Slug         string          `json:"slug"`
 	TemplateName string          `json:"template_name"`

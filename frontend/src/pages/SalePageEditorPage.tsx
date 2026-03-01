@@ -30,7 +30,6 @@ const salePageSchema = z.object({
     (val) => val === '' || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(val),
     'ใช้ได้เฉพาะตัวอักษรภาษาอังกฤษพิมพ์เล็ก ตัวเลข และเครื่องหมาย -'
   ),
-  pixel_id: z.string().optional(),
   hero_title: z.string(),
   hero_subtitle: z.string(),
   hero_image_url: z.string(),
@@ -84,7 +83,6 @@ export function SalePageEditorPage() {
     defaultValues: {
       name: '',
       slug: '',
-      pixel_id: '',
       hero_title: '',
       hero_subtitle: '',
       hero_image_url: '',
@@ -102,6 +100,8 @@ export function SalePageEditorPage() {
     },
   })
 
+  const [selectedPixelIds, setSelectedPixelIds] = useState<string[]>([])
+
   // Load existing data when editing — redirect to blocks editor if v2
   useEffect(() => {
     if (existingPage) {
@@ -111,10 +111,10 @@ export function SalePageEditorPage() {
       }
       const c = existingPage.content as SalePageContent
       const featuresList = c.body.features.length > 0 ? c.body.features : ['']
+      setSelectedPixelIds(existingPage.pixel_ids ?? [])
       reset({
         name: existingPage.name,
         slug: existingPage.slug,
-        pixel_id: existingPage.pixel_id ?? '',
         hero_title: c.hero.title,
         hero_subtitle: c.hero.subtitle,
         hero_image_url: c.hero.image_url,
@@ -214,7 +214,7 @@ export function SalePageEditorPage() {
     const payload = {
       name: data.name,
       slug: data.slug || undefined,
-      pixel_id: data.pixel_id ?? '',
+      pixel_ids: selectedPixelIds,
       template_name: 'simple',
       content,
       is_published: isPublished,
@@ -314,19 +314,29 @@ export function SalePageEditorPage() {
                 {errors.slug && <p className="text-sm text-red-500">{errors.slug.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pixel_id">Pixel (optional)</Label>
-                <select
-                  id="pixel_id"
-                  className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600"
-                  {...register('pixel_id')}
-                >
-                  <option value="">No pixel</option>
+                <Label>Pixels (optional)</Label>
+                <div className="max-h-40 overflow-y-auto border border-neutral-200 rounded-md p-2 space-y-1">
+                  {(!pixels || pixels.length === 0) && (
+                    <p className="text-xs text-neutral-400">No pixels available</p>
+                  )}
                   {pixels?.map((pixel) => (
-                    <option key={pixel.id} value={pixel.id}>
+                    <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-neutral-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedPixelIds.includes(pixel.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPixelIds(prev => [...prev, pixel.id])
+                          } else {
+                            setSelectedPixelIds(prev => prev.filter(id => id !== pixel.id))
+                          }
+                        }}
+                        className="rounded border-neutral-300"
+                      />
                       {pixel.name} ({pixel.fb_pixel_id})
-                    </option>
+                    </label>
                   ))}
-                </select>
+                </div>
               </div>
             </CardContent>
           </Card>

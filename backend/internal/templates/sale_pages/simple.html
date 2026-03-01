@@ -316,7 +316,19 @@
 
         function dualTrack(eventName, params) {
             var eid = genId();
-            {{if and .APIKey .Page.PixelID}}
+            {{if and .APIKey (hasPixels .Pixels)}}
+            var pixelIDs = [{{range $i, $p := .Pixels}}{{if $i}},{{end}}'{{$p.PixelID}}'{{end}}];
+            var events = pixelIDs.map(function(pid) {
+                return {
+                    pixel_id: pid,
+                    event_name: eventName,
+                    event_data: params || {},
+                    user_data: getUserData(),
+                    source_url: window.location.href,
+                    event_time: new Date().toISOString(),
+                    event_id: eid + '-' + pid.substr(0, 8)
+                };
+            });
             try {
                 fetch('{{.BaseURL}}/api/v1/events/ingest', {
                     method: 'POST',
@@ -324,17 +336,7 @@
                         'Content-Type': 'application/json',
                         'X-API-Key': '{{.APIKey}}'
                     },
-                    body: JSON.stringify({
-                        events: [{
-                            pixel_id: '{{deref .Page.PixelID}}',
-                            event_name: eventName,
-                            event_data: params || {},
-                            user_data: getUserData(),
-                            source_url: window.location.href,
-                            event_time: new Date().toISOString(),
-                            event_id: eid
-                        }]
-                    }),
+                    body: JSON.stringify({ events: events }),
                     keepalive: true
                 });
             } catch (e) {}

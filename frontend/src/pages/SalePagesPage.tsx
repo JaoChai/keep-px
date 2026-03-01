@@ -15,10 +15,11 @@ export function SalePagesPage() {
 
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  const getPixelName = (pixelId: string | null) => {
-    if (!pixelId || !pixels) return '-'
-    const pixel = pixels.find((p) => p.id === pixelId)
-    return pixel?.name ?? '-'
+  const getPixelNames = (pixelIds: string[]) => {
+    if (!pixelIds?.length || !pixels) return '-'
+    return pixelIds
+      .map(pid => pixels.find(p => p.id === pid)?.name ?? '?')
+      .join(', ')
   }
 
   const handleDelete = async (id: string) => {
@@ -76,7 +77,7 @@ export function SalePagesPage() {
                       /p/{page.slug}
                     </a>
                   </td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{getPixelName(page.pixel_id)}</td>
+                  <td className="px-4 py-3 text-sm text-neutral-600">{getPixelNames(page.pixel_ids)}</td>
                   <td className="px-4 py-3">
                     <Badge variant={page.template_name === 'blocks' ? 'default' : 'secondary'}>
                       {page.template_name === 'blocks' ? 'Blocks' : 'Classic'}

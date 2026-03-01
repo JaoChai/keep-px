@@ -127,7 +127,7 @@ export interface SalePageContentV2 {
 export interface SalePage {
   id: string
   customer_id: string
-  pixel_id: string | null
+  pixel_ids: string[]
   name: string
   slug: string
   template_name: string
