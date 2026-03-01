@@ -23,6 +23,8 @@ var (
 
 var ErrInvalidDateFormat = errors.New("invalid date format, expected RFC3339")
 
+const timeModeOriginal = "original"
+
 type ReplayService struct {
 	replayRepo  repository.ReplaySessionRepository
 	eventRepo   repository.EventRepository
@@ -120,12 +122,12 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 	// Default TimeMode to "original"
 	timeMode := input.TimeMode
 	if timeMode == "" {
-		timeMode = "original"
+		timeMode = timeModeOriginal
 	}
 
 	// Warn about old events when using original time mode
 	var warning string
-	if timeMode == "original" && len(events) > 0 {
+	if timeMode == timeModeOriginal && len(events) > 0 {
 		var oldest time.Time
 		for _, evt := range events {
 			if oldest.IsZero() || evt.EventTime.Before(oldest) {
@@ -398,11 +400,11 @@ func (s *ReplayService) Preview(ctx context.Context, customerID string, input Cr
 	// Default TimeMode
 	timeMode := input.TimeMode
 	if timeMode == "" {
-		timeMode = "original"
+		timeMode = timeModeOriginal
 	}
 
 	var warning string
-	if timeMode == "original" && len(sampleEvents) > 0 {
+	if timeMode == timeModeOriginal && len(sampleEvents) > 0 {
 		var oldest time.Time
 		for _, evt := range sampleEvents {
 			if oldest.IsZero() || evt.EventTime.Before(oldest) {
