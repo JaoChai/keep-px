@@ -37,8 +37,9 @@ type CAPIEvent struct {
 }
 
 type CAPIRequest struct {
-	Data        []CAPIEvent `json:"data"`
-	AccessToken string      `json:"access_token,omitempty"`
+	Data          []CAPIEvent `json:"data"`
+	AccessToken   string      `json:"access_token,omitempty"`
+	TestEventCode string      `json:"test_event_code,omitempty"`
 }
 
 type CAPIResponse struct {
@@ -56,12 +57,13 @@ func (e *CAPIError) Error() string {
 	return fmt.Sprintf("facebook CAPI error (status %d): %s", e.StatusCode, e.Message)
 }
 
-func (c *CAPIClient) SendEvents(ctx context.Context, pixelID, accessToken string, events []CAPIEvent) (*CAPIResponse, error) {
+func (c *CAPIClient) SendEvents(ctx context.Context, pixelID, accessToken, testEventCode string, events []CAPIEvent) (*CAPIResponse, error) {
 	url := fmt.Sprintf("%s/%s/events", c.baseURL, pixelID)
 
 	reqBody := CAPIRequest{
-		Data:        events,
-		AccessToken: accessToken,
+		Data:          events,
+		AccessToken:   accessToken,
+		TestEventCode: testEventCode,
 	}
 	body, err := json.Marshal(reqBody)
 	if err != nil {
@@ -109,11 +111,11 @@ func IsAuthError(err error) bool {
 	return false
 }
 
-func (c *CAPIClient) SendEvent(ctx context.Context, pixelID, accessToken string, event CAPIEvent) (*CAPIResponse, error) {
-	return c.SendEvents(ctx, pixelID, accessToken, []CAPIEvent{event})
+func (c *CAPIClient) SendEvent(ctx context.Context, pixelID, accessToken, testEventCode string, event CAPIEvent) (*CAPIResponse, error) {
+	return c.SendEvents(ctx, pixelID, accessToken, testEventCode, []CAPIEvent{event})
 }
 
-func (c *CAPIClient) SendEventsBatch(ctx context.Context, pixelID, accessToken string, events []CAPIEvent) ([]*CAPIResponse, error) {
+func (c *CAPIClient) SendEventsBatch(ctx context.Context, pixelID, accessToken, testEventCode string, events []CAPIEvent) ([]*CAPIResponse, error) {
 	const maxBatchSize = 1000
 	var responses []*CAPIResponse
 
@@ -124,7 +126,7 @@ func (c *CAPIClient) SendEventsBatch(ctx context.Context, pixelID, accessToken s
 		}
 		batch := events[i:end]
 
-		resp, err := c.SendEvents(ctx, pixelID, accessToken, batch)
+		resp, err := c.SendEvents(ctx, pixelID, accessToken, testEventCode, batch)
 		if err != nil {
 			return responses, fmt.Errorf("batch %d-%d: %w", i, end, err)
 		}

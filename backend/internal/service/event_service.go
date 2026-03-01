@@ -189,15 +189,21 @@ func (s *EventService) forwardToCAPI(ctx context.Context, event *domain.PixelEve
 		DataProcessingOptions: []string{},
 	}
 
-	resp, err := s.capiClient.SendEvent(ctx, pixel.FBPixelID, pixel.FBAccessToken, capiEvent)
+	testEventCode := ""
+	if pixel.TestEventCode != nil {
+		testEventCode = *pixel.TestEventCode
+	}
+
+	resp, err := s.capiClient.SendEvent(ctx, pixel.FBPixelID, pixel.FBAccessToken, testEventCode, capiEvent)
 	if err != nil {
 		s.logger.Error("forward to CAPI failed", "error", err, "event_id", event.ID)
 		return
 	}
 
-	responseCode := 200
 	if resp != nil {
-		_ = s.eventRepo.MarkForwarded(ctx, event.ID, responseCode)
+		if err := s.eventRepo.MarkForwarded(ctx, event.ID, 200, resp.EventsReceived); err != nil {
+			s.logger.Error("mark forwarded failed", "error", err, "event_id", event.ID)
+		}
 		s.logger.Info("forwarded to CAPI", "event_id", event.ID, "events_received", resp.EventsReceived)
 	}
 }

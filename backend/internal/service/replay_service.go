@@ -185,7 +185,9 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 			capiEvents = append(capiEvents, capiEvt)
 		}
 
-		_, err := s.capiClient.SendEvents(ctx, targetPixel.FBPixelID, targetPixel.FBAccessToken, capiEvents)
+		// Replay sends to the live endpoint; test_event_code is intentionally
+		// omitted so replayed events do not appear in FB Test Events tool.
+		_, err := s.capiClient.SendEvents(ctx, targetPixel.FBPixelID, targetPixel.FBAccessToken, "", capiEvents)
 		if err != nil {
 			lastErr = err
 			// Fail-fast on auth error (any batch) — token is invalid, no point continuing
