@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -18,12 +19,16 @@ import (
 )
 
 func newTestReplayService() (*ReplayService, *MockReplaySessionRepo, *MockEventRepo, *MockPixelRepo) {
+	return newTestReplayServiceWithConcurrency(5)
+}
+
+func newTestReplayServiceWithConcurrency(maxConcurrent int) (*ReplayService, *MockReplaySessionRepo, *MockEventRepo, *MockPixelRepo) {
 	replayRepo := new(MockReplaySessionRepo)
 	eventRepo := new(MockEventRepo)
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, maxConcurrent)
 	return svc, replayRepo, eventRepo, pixelRepo
 }
 
@@ -254,7 +259,7 @@ func TestReplayService_ExecuteReplay_AuthErrorFailFast(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -309,7 +314,7 @@ func TestReplayService_ExecuteReplay_TimeModeCurrentUsesNow(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
 
 	oldTime := time.Now().Add(-30 * 24 * time.Hour) // 30 days ago
 	session := &domain.ReplaySession{
@@ -361,7 +366,7 @@ func TestReplayService_ExecuteReplay_BatchDelay(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -412,7 +417,7 @@ func TestReplayService_ExecuteReplay_NonAuthErrorContinues(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -459,7 +464,7 @@ func TestReplayService_ExecuteReplay_CancellationCheck(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -928,4 +933,210 @@ func TestReplayService_Retry(t *testing.T) {
 			replayRepo.AssertExpectations(t)
 		})
 	}
+}
+
+func TestReplayService_Create_SemaphoreBlock(t *testing.T) {
+	// Use maxConcurrent=1 to test semaphore blocking
+	svc, replayRepo, eventRepo, pixelRepo := newTestReplayServiceWithConcurrency(1)
+
+	// Set up pixel mocks
+	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+		ID: "pixel-1", CustomerID: "cust-1", FBPixelID: "fb-1", FBAccessToken: "token-1",
+	}, nil)
+	pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+		ID: "pixel-2", CustomerID: "cust-1", FBPixelID: "fb-2", FBAccessToken: "token-2",
+	}, nil)
+	eventRepo.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+		Return([]*domain.PixelEvent{
+			{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
+		}, nil)
+	replayRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.ReplaySession")).Return(nil)
+	replayRepo.On("UpdateStatus", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
+	replayRepo.On("UpdateProgress", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil).Maybe()
+	replayRepo.On("UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
+	replayRepo.On("GetStatus", mock.Anything, mock.AnythingOfType("string")).Return("running", nil).Maybe()
+	replayRepo.On("UpdateFailedBatches", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil).Maybe()
+
+	// Fill the semaphore (cap=1)
+	svc.sem <- struct{}{}
+
+	input := CreateReplayInput{SourcePixelID: "pixel-1", TargetPixelID: "pixel-2"}
+	result, err := svc.Create(context.Background(), "cust-1", input)
+	assert.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Give goroutine a moment to start and block on semaphore
+	time.Sleep(50 * time.Millisecond)
+
+	// Release semaphore so goroutine can proceed
+	<-svc.sem
+
+	// Wait for background goroutine to finish
+	svc.Shutdown()
+}
+
+func TestReplayService_Create_ShutdownDuringSemWait(t *testing.T) {
+	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
+	replayRepo := new(MockReplaySessionRepo)
+	eventRepo := new(MockEventRepo)
+	pixelRepo := new(MockPixelRepo)
+	capiClient := facebook.NewCAPIClient("http://localhost:9999")
+	logger := slog.Default()
+	svc := NewReplayService(shutdownCtx, replayRepo, eventRepo, pixelRepo, capiClient, logger, 1)
+
+	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+		ID: "pixel-1", CustomerID: "cust-1", FBPixelID: "fb-1", FBAccessToken: "token-1",
+	}, nil)
+	pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+		ID: "pixel-2", CustomerID: "cust-1", FBPixelID: "fb-2", FBAccessToken: "token-2",
+	}, nil)
+	eventRepo.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+		Return([]*domain.PixelEvent{
+			{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
+		}, nil)
+	replayRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.ReplaySession")).Return(nil)
+	replayRepo.On("UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), "failed", "server shutdown before replay started").Return(nil)
+
+	// Fill the semaphore so goroutine will block
+	svc.sem <- struct{}{}
+
+	input := CreateReplayInput{SourcePixelID: "pixel-1", TargetPixelID: "pixel-2"}
+	result, err := svc.Create(context.Background(), "cust-1", input)
+	assert.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Give goroutine a moment to start waiting on semaphore
+	time.Sleep(50 * time.Millisecond)
+
+	// Cancel shutdown context → goroutine should exit with "failed"
+	shutdownCancel()
+	svc.Shutdown()
+
+	// Verify UpdateStatusWithError was called with fresh context (not the cancelled one)
+	replayRepo.AssertCalled(t, "UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), "failed", "server shutdown before replay started")
+
+	// Release the occupied semaphore slot
+	<-svc.sem
+}
+
+func TestReplayService_SendBatchWithRetry_RateLimit(t *testing.T) {
+	callCount := 0
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount <= 2 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			w.Write([]byte(`{"error":"rate limited"}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(facebook.CAPIResponse{EventsReceived: 1})
+	}))
+	defer fakeServer.Close()
+
+	capiClient := facebook.NewCAPIClient(fakeServer.URL)
+	svc := &ReplayService{capiClient: capiClient, logger: slog.Default()}
+
+	resp, err := svc.sendBatchWithRetry(context.Background(), "pixel-1", "token-1", []facebook.CAPIEvent{
+		{EventName: "PageView", EventTime: time.Now().Unix()},
+	})
+
+	assert.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, 1, resp.EventsReceived)
+	assert.Equal(t, 3, callCount) // 2 retries + 1 success
+}
+
+func TestReplayService_SendBatchWithRetry_AuthFailFast(t *testing.T) {
+	callCount := 0
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"invalid token"}`))
+	}))
+	defer fakeServer.Close()
+
+	capiClient := facebook.NewCAPIClient(fakeServer.URL)
+	svc := &ReplayService{capiClient: capiClient, logger: slog.Default()}
+
+	resp, err := svc.sendBatchWithRetry(context.Background(), "pixel-1", "token-1", []facebook.CAPIEvent{
+		{EventName: "PageView", EventTime: time.Now().Unix()},
+	})
+
+	assert.Error(t, err)
+	assert.True(t, facebook.IsAuthError(err))
+	assert.Nil(t, resp)
+	assert.Equal(t, 1, callCount) // no retry on auth error
+}
+
+func TestReplayService_SendBatchWithRetry_MaxRetries(t *testing.T) {
+	callCount := 0
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte(`{"error":"rate limited"}`))
+	}))
+	defer fakeServer.Close()
+
+	capiClient := facebook.NewCAPIClient(fakeServer.URL)
+	svc := &ReplayService{capiClient: capiClient, logger: slog.Default()}
+
+	resp, err := svc.sendBatchWithRetry(context.Background(), "pixel-1", "token-1", []facebook.CAPIEvent{
+		{EventName: "PageView", EventTime: time.Now().Unix()},
+	})
+
+	assert.Error(t, err)
+	assert.True(t, facebook.IsRateLimitError(err))
+	assert.Nil(t, resp)
+	assert.Equal(t, maxRetries+1, callCount) // initial + 3 retries
+}
+
+func TestReplayService_ExecuteReplay_DefaultDelay(t *testing.T) {
+	// Verify that batch_delay_ms=0 uses defaultBatchDelay (200ms)
+	callCount := 0
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(facebook.CAPIResponse{EventsReceived: 1})
+	}))
+	defer fakeServer.Close()
+
+	replayRepo := new(MockReplaySessionRepo)
+	eventRepo := new(MockEventRepo)
+	pixelRepo := new(MockPixelRepo)
+	capiClient := facebook.NewCAPIClient(fakeServer.URL)
+	logger := slog.Default()
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
+
+	session := &domain.ReplaySession{
+		ID:           "session-1",
+		CustomerID:   "cust-1",
+		TotalEvents:  2,
+		TimeMode:     "original",
+		BatchDelayMs: 0, // should use defaultBatchDelay
+	}
+	targetPixel := &domain.Pixel{
+		ID: "pixel-2", FBPixelID: "fb-2", FBAccessToken: "token-2",
+	}
+
+	// Create 1001 events to force 2 batches (1000 + 1)
+	events := make([]*domain.PixelEvent, 1001)
+	for i := range events {
+		events[i] = &domain.PixelEvent{
+			ID: fmt.Sprintf("evt-%d", i), EventName: "PageView", EventTime: time.Now(),
+		}
+	}
+
+	replayRepo.On("UpdateStatus", mock.Anything, "session-1", "running").Return(nil)
+	replayRepo.On("GetStatus", mock.Anything, "session-1").Return("running", nil)
+	replayRepo.On("UpdateProgress", mock.Anything, "session-1", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil)
+	replayRepo.On("UpdateStatus", mock.Anything, "session-1", "completed").Return(nil)
+
+	start := time.Now()
+	svc.executeReplay(context.Background(), session, targetPixel, events)
+	elapsed := time.Since(start)
+
+	// Should have at least ~200ms delay between batches
+	assert.GreaterOrEqual(t, elapsed, 150*time.Millisecond) // allow small tolerance
+	assert.Equal(t, 2, callCount) // 2 CAPI calls (2 batches)
+	replayRepo.AssertExpectations(t)
 }

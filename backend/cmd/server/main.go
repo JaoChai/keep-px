@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
+	"github.com/jaochai/pixlinks/backend/internal/repository/postgres"
 	"github.com/jaochai/pixlinks/backend/internal/router"
 )
 
@@ -63,6 +64,15 @@ func main() {
 	if err := runMigrations(cfg.DatabaseURL, logger); err != nil {
 		logger.Error("failed to run migrations", "error", err)
 		os.Exit(1)
+	}
+
+	// Recover orphaned replay sessions from previous crash/restart
+	replaySessionRepo := postgres.NewReplaySessionRepo(pool)
+	recovered, err := replaySessionRepo.RecoverOrphanedSessions(context.Background())
+	if err != nil {
+		logger.Error("failed to recover orphaned replay sessions", "error", err)
+	} else if recovered > 0 {
+		logger.Warn("recovered orphaned replay sessions", "count", recovered)
 	}
 
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())

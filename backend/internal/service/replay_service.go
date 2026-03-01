@@ -25,6 +25,11 @@ var ErrInvalidDateFormat = errors.New("invalid date format, expected RFC3339")
 
 const timeModeOriginal = "original"
 
+const (
+	maxRetries        = 3
+	defaultBatchDelay = 200 * time.Millisecond
+)
+
 type ReplayService struct {
 	replayRepo  repository.ReplaySessionRepository
 	eventRepo   repository.EventRepository
@@ -33,6 +38,7 @@ type ReplayService struct {
 	logger      *slog.Logger
 	shutdownCtx context.Context
 	wg          sync.WaitGroup
+	sem         chan struct{} // concurrent replay limiter
 }
 
 func NewReplayService(
@@ -42,7 +48,11 @@ func NewReplayService(
 	pixelRepo repository.PixelRepository,
 	capiClient *facebook.CAPIClient,
 	logger *slog.Logger,
+	maxConcurrentReplays int,
 ) *ReplayService {
+	if maxConcurrentReplays <= 0 {
+		maxConcurrentReplays = 5
+	}
 	return &ReplayService{
 		replayRepo:  replayRepo,
 		eventRepo:   eventRepo,
@@ -50,6 +60,7 @@ func NewReplayService(
 		capiClient:  capiClient,
 		logger:      logger,
 		shutdownCtx: shutdownCtx,
+		sem:         make(chan struct{}, maxConcurrentReplays),
 	}
 }
 
@@ -157,14 +168,51 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 		return nil, fmt.Errorf("create replay session: %w", err)
 	}
 
-	// Start replay in background
+	// Start replay in background (semaphore-limited)
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		s.executeReplay(s.shutdownCtx, session, targetPixel, events)
+		select {
+		case s.sem <- struct{}{}:
+			defer func() { <-s.sem }()
+			s.executeReplay(s.shutdownCtx, session, targetPixel, events)
+		case <-s.shutdownCtx.Done():
+			s.logger.Warn("replay skipped due to shutdown", "session_id", session.ID)
+			writeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := s.replayRepo.UpdateStatusWithError(writeCtx, session.ID, "failed", "server shutdown before replay started"); err != nil {
+				s.logger.Error("failed to mark session failed on shutdown", "error", err, "session_id", session.ID)
+			}
+		}
 	}()
 
 	return &CreateReplayResult{Session: session, Warning: warning}, nil
+}
+
+func (s *ReplayService) sendBatchWithRetry(ctx context.Context, pixelID, accessToken string, events []facebook.CAPIEvent) (*facebook.CAPIResponse, error) {
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		resp, err := s.capiClient.SendEvents(ctx, pixelID, accessToken, "", events)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+		if facebook.IsAuthError(err) {
+			return nil, err // fail fast
+		}
+		if facebook.IsRateLimitError(err) && attempt < maxRetries {
+			backoff := time.Duration(1<<uint(attempt)) * time.Second // 1s, 2s, 4s
+			s.logger.Warn("CAPI rate limited, retrying", "attempt", attempt+1, "backoff", backoff)
+			select {
+			case <-time.After(backoff):
+				continue
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+		break // other errors don't retry
+	}
+	return nil, lastErr
 }
 
 func (s *ReplayService) executeReplay(ctx context.Context, session *domain.ReplaySession, targetPixel *domain.Pixel, events []*domain.PixelEvent) {
@@ -241,7 +289,7 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 
 		// Replay sends to the live endpoint; test_event_code is intentionally
 		// omitted so replayed events do not appear in FB Test Events tool.
-		_, err = s.capiClient.SendEvents(ctx, targetPixel.FBPixelID, targetPixel.FBAccessToken, "", capiEvents)
+		_, err = s.sendBatchWithRetry(ctx, targetPixel.FBPixelID, targetPixel.FBAccessToken, capiEvents)
 		if err != nil {
 			lastErr = err
 			// Fail-fast on auth error (any batch) — token is invalid, no point continuing
@@ -264,8 +312,16 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 		}
 
 		// Batch delay between batches (skip after the last batch)
-		if session.BatchDelayMs > 0 && end < len(events) {
-			time.Sleep(time.Duration(session.BatchDelayMs) * time.Millisecond)
+		delay := time.Duration(session.BatchDelayMs) * time.Millisecond
+		if delay == 0 {
+			delay = defaultBatchDelay
+		}
+		if end < len(events) {
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return
+			}
 		}
 	}
 
@@ -491,11 +547,22 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 		return nil, fmt.Errorf("create retry replay session: %w", err)
 	}
 
-	// Start replay in background
+	// Start replay in background (semaphore-limited)
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		s.executeReplay(s.shutdownCtx, newSession, targetPixel, retryEvents)
+		select {
+		case s.sem <- struct{}{}:
+			defer func() { <-s.sem }()
+			s.executeReplay(s.shutdownCtx, newSession, targetPixel, retryEvents)
+		case <-s.shutdownCtx.Done():
+			s.logger.Warn("replay skipped due to shutdown", "session_id", newSession.ID)
+			writeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := s.replayRepo.UpdateStatusWithError(writeCtx, newSession.ID, "failed", "server shutdown before replay started"); err != nil {
+				s.logger.Error("failed to mark session failed on shutdown", "error", err, "session_id", newSession.ID)
+			}
+		}
 	}()
 
 	return newSession, nil

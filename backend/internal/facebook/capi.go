@@ -111,6 +111,15 @@ func IsAuthError(err error) bool {
 	return false
 }
 
+// IsRateLimitError checks if the error is a CAPIError with a 429 status code.
+func IsRateLimitError(err error) bool {
+	var capiErr *CAPIError
+	if errors.As(err, &capiErr) {
+		return capiErr.StatusCode == 429
+	}
+	return false
+}
+
 func (c *CAPIClient) SendEvent(ctx context.Context, pixelID, accessToken, testEventCode string, event CAPIEvent) (*CAPIResponse, error) {
 	return c.SendEvents(ctx, pixelID, accessToken, testEventCode, []CAPIEvent{event})
 }
