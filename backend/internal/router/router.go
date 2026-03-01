@@ -43,7 +43,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger)
 	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger)
-	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger)
+	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5)
 	analyticsService := service.NewAnalyticsService(pool)
 	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo)
 

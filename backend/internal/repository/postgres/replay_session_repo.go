@@ -127,3 +127,19 @@ func (r *ReplaySessionRepo) UpdateFailedBatches(ctx context.Context, id string, 
 	)
 	return err
 }
+
+func (r *ReplaySessionRepo) RecoverOrphanedSessions(ctx context.Context) (int, error) {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE replay_sessions
+		 SET status = 'failed',
+		     error_message = CASE
+		         WHEN status = 'running' THEN 'server restarted during replay'
+		         ELSE 'server restarted before replay started'
+		     END,
+		     completed_at = NOW()
+		 WHERE status IN ('running', 'pending')`)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
+}

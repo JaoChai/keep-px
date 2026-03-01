@@ -206,3 +206,7 @@ func (m *MockReplaySessionRepo) CancelSession(ctx context.Context, id string) (*
 	}
 	return args.Get(0).(*domain.ReplaySession), args.Error(1)
 }
+func (m *MockReplaySessionRepo) RecoverOrphanedSessions(ctx context.Context) (int, error) {
+	args := m.Called(ctx)
+	return args.Int(0), args.Error(1)
+}

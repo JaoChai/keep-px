@@ -46,6 +46,7 @@ type ReplaySessionRepository interface {
 	GetStatus(ctx context.Context, id string) (string, error)
 	UpdateFailedBatches(ctx context.Context, id string, failedBatchRanges []byte) error
 	CancelSession(ctx context.Context, id string) (*domain.ReplaySession, error)
+	RecoverOrphanedSessions(ctx context.Context) (int, error)
 }
 
 type SalePageRepository interface {
