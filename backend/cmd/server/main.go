@@ -65,7 +65,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := router.New(cfg, logger, pool)
+	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
+	handler, cleanupReplay := router.New(cfg, logger, pool, shutdownCtx)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
@@ -88,12 +89,19 @@ func main() {
 	<-quit
 
 	logger.Info("shutting down server...")
+
+	// Signal background goroutines to stop
+	shutdownCancel()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Error("server forced shutdown", "error", err)
 	}
+
+	// Wait for background replay goroutines to finish
+	cleanupReplay()
 
 	logger.Info("server stopped")
 }

@@ -131,6 +131,17 @@ func (m *MockEventRepo) GetEventsForReplay(ctx context.Context, pixelID string, 
 	}
 	return args.Get(0).([]*domain.PixelEvent), args.Error(1)
 }
+func (m *MockEventRepo) CountEventsForReplay(ctx context.Context, pixelID string, types []string, from, to *time.Time) (int, error) {
+	args := m.Called(ctx, pixelID, types, from, to)
+	return args.Int(0), args.Error(1)
+}
+func (m *MockEventRepo) GetEventsForReplayPreview(ctx context.Context, pixelID string, types []string, from, to *time.Time, limit int) ([]*domain.PixelEvent, error) {
+	args := m.Called(ctx, pixelID, types, from, to, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.PixelEvent), args.Error(1)
+}
 func (m *MockEventRepo) ListLatestByCustomerID(ctx context.Context, customerID string, pixelID string, limit int) ([]*domain.RealtimeEvent, error) {
 	args := m.Called(ctx, customerID, pixelID, limit)
 	if args.Get(0) == nil {
@@ -179,4 +190,19 @@ func (m *MockReplaySessionRepo) UpdateStatus(ctx context.Context, id string, sta
 func (m *MockReplaySessionRepo) UpdateStatusWithError(ctx context.Context, id string, status string, errorMsg string) error {
 	args := m.Called(ctx, id, status, errorMsg)
 	return args.Error(0)
+}
+func (m *MockReplaySessionRepo) GetStatus(ctx context.Context, id string) (string, error) {
+	args := m.Called(ctx, id)
+	return args.String(0), args.Error(1)
+}
+func (m *MockReplaySessionRepo) UpdateFailedBatches(ctx context.Context, id string, failedBatchRanges []byte) error {
+	args := m.Called(ctx, id, failedBatchRanges)
+	return args.Error(0)
+}
+func (m *MockReplaySessionRepo) CancelSession(ctx context.Context, id string) (*domain.ReplaySession, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ReplaySession), args.Error(1)
 }

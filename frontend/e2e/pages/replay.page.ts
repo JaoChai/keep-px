@@ -7,7 +7,7 @@ export class ReplayPage {
   readonly targetPixelSelect: Locator
   readonly dateFromInput: Locator
   readonly dateToInput: Locator
-  readonly startReplayButton: Locator
+  readonly previewButton: Locator
   readonly replayHistory: Locator
 
   constructor(page: Page) {
@@ -18,7 +18,7 @@ export class ReplayPage {
     this.targetPixelSelect = page.locator('label:has-text("Target Pixel") + select')
     this.dateFromInput = page.locator('label:has-text("Date From") + input')
     this.dateToInput = page.locator('label:has-text("Date To") + input')
-    this.startReplayButton = page.getByRole('button', { name: 'Start Replay' })
+    this.previewButton = page.getByRole('button', { name: 'Preview' })
     this.replayHistory = page.getByText('Replay History')
   }
 
