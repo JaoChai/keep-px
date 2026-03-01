@@ -1,0 +1,1 @@
+ALTER TABLE pixel_events ALTER COLUMN event_id TYPE VARCHAR(64);
