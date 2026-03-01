@@ -40,9 +40,10 @@ func NewPixelService(pixelRepo repository.PixelRepository, capiClient *facebook.
 }
 
 type CreatePixelInput struct {
-	FBPixelID     string `json:"fb_pixel_id" validate:"required"`
-	FBAccessToken string `json:"fb_access_token" validate:"required"`
-	Name          string `json:"name" validate:"required"`
+	FBPixelID     string  `json:"fb_pixel_id" validate:"required"`
+	FBAccessToken string  `json:"fb_access_token" validate:"required"`
+	Name          string  `json:"name" validate:"required"`
+	TestEventCode *string `json:"test_event_code,omitempty"`
 }
 
 type UpdatePixelInput struct {
@@ -51,6 +52,7 @@ type UpdatePixelInput struct {
 	Name          *string `json:"name,omitempty"`
 	IsActive      *bool   `json:"is_active,omitempty"`
 	BackupPixelID *string `json:"backup_pixel_id,omitempty"`
+	TestEventCode *string `json:"test_event_code,omitempty"`
 }
 
 func (s *PixelService) Create(ctx context.Context, customerID string, input CreatePixelInput) (*domain.Pixel, error) {
@@ -59,6 +61,7 @@ func (s *PixelService) Create(ctx context.Context, customerID string, input Crea
 		FBPixelID:     input.FBPixelID,
 		FBAccessToken: input.FBAccessToken,
 		Name:          input.Name,
+		TestEventCode: input.TestEventCode,
 	}
 
 	if err := s.pixelRepo.Create(ctx, pixel); err != nil {
@@ -119,6 +122,14 @@ func (s *PixelService) Update(ctx context.Context, customerID, pixelID string, i
 			pixel.Status = pixelStatusPaused
 		} else {
 			pixel.Status = pixelStatusActive
+		}
+	}
+
+	if input.TestEventCode != nil {
+		if *input.TestEventCode == "" {
+			pixel.TestEventCode = nil
+		} else {
+			pixel.TestEventCode = input.TestEventCode
 		}
 	}
 
@@ -189,7 +200,12 @@ func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID s
 		},
 	}
 
-	resp, err := s.capiClient.SendEvent(ctx, pixel.FBPixelID, pixel.FBAccessToken, event)
+	testEventCode := ""
+	if pixel.TestEventCode != nil {
+		testEventCode = *pixel.TestEventCode
+	}
+
+	resp, err := s.capiClient.SendEvent(ctx, pixel.FBPixelID, pixel.FBAccessToken, testEventCode, event)
 	if err != nil {
 		s.logger.WarnContext(ctx, "pixel test connection failed",
 			slog.String("pixel_id", pixelID),

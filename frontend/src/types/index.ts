@@ -16,6 +16,7 @@ export interface Pixel {
   is_active: boolean
   status: string
   backup_pixel_id?: string
+  test_event_code?: string
   created_at: string
   updated_at: string
 }

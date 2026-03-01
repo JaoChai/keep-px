@@ -120,8 +120,8 @@ func (m *MockEventRepo) ListByCustomerID(ctx context.Context, customerID string,
 	}
 	return args.Get(0).([]*domain.PixelEvent), args.Int(1), args.Error(2)
 }
-func (m *MockEventRepo) MarkForwarded(ctx context.Context, id string, code int) error {
-	args := m.Called(ctx, id, code)
+func (m *MockEventRepo) MarkForwarded(ctx context.Context, id string, code int, eventsReceived int) error {
+	args := m.Called(ctx, id, code, eventsReceived)
 	return args.Error(0)
 }
 func (m *MockEventRepo) GetEventsForReplay(ctx context.Context, pixelID string, types []string, from, to *time.Time) ([]*domain.PixelEvent, error) {

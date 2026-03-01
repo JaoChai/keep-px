@@ -16,6 +16,7 @@ const pixelSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   fb_pixel_id: z.string().min(1, 'Facebook Pixel ID is required'),
   fb_access_token: z.string().min(1, 'Access Token is required'),
+  test_event_code: z.string().optional(),
 })
 
 type PixelForm = z.infer<typeof pixelSchema>
@@ -41,13 +42,13 @@ export function PixelsPage() {
 
   const openCreate = () => {
     setEditingPixel(null)
-    reset({ name: '', fb_pixel_id: '', fb_access_token: '' })
+    reset({ name: '', fb_pixel_id: '', fb_access_token: '', test_event_code: '' })
     setShowDialog(true)
   }
 
   const openEdit = (pixel: Pixel) => {
     setEditingPixel(pixel)
-    reset({ name: pixel.name, fb_pixel_id: pixel.fb_pixel_id, fb_access_token: '' })
+    reset({ name: pixel.name, fb_pixel_id: pixel.fb_pixel_id, fb_access_token: '', test_event_code: pixel.test_event_code || '' })
     setShowDialog(true)
   }
 
@@ -58,10 +59,14 @@ export function PixelsPage() {
         name: data.name,
         fb_pixel_id: data.fb_pixel_id,
         ...(data.fb_access_token ? { fb_access_token: data.fb_access_token } : {}),
+        test_event_code: data.test_event_code || '',
       })
       setShowDialog(false)
     } else {
-      await createPixel.mutateAsync(data)
+      await createPixel.mutateAsync({
+        ...data,
+        test_event_code: data.test_event_code || undefined,
+      })
       setShowDialog(false)
     }
   }
@@ -201,6 +206,13 @@ export function PixelsPage() {
               </Label>
               <Input id="fb_access_token" type="password" placeholder="EAAxxxxxxx..." {...register('fb_access_token')} />
               {errors.fb_access_token && <p className="text-sm text-red-500">{errors.fb_access_token.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="test_event_code">
+                Test Event Code <span className="text-neutral-400 font-normal">(optional)</span>
+              </Label>
+              <Input id="test_event_code" placeholder="TEST12345" {...register('test_event_code')} />
+              <p className="text-xs text-neutral-400">คัดลอกจาก Facebook Events Manager → เหตุการณ์ทดสอบ เพื่อ debug events</p>
             </div>
             {editingPixel && (
               <div className="space-y-2">

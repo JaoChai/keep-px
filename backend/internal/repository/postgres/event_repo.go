@@ -38,9 +38,9 @@ func (r *EventRepo) GetByID(ctx context.Context, id string) (*domain.PixelEvent,
 	e := &domain.PixelEvent{}
 	var eventID, clientIP, clientUA *string
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, pixel_id, event_name, event_data, user_data, source_url, event_time, forwarded_to_capi, capi_response_code, created_at, event_id, client_ip, client_user_agent
+		`SELECT id, pixel_id, event_name, event_data, user_data, source_url, event_time, forwarded_to_capi, capi_response_code, capi_events_received, created_at, event_id, client_ip, client_user_agent
 		 FROM pixel_events WHERE id = $1`, id,
-	).Scan(&e.ID, &e.PixelID, &e.EventName, &e.EventData, &e.UserData, &e.SourceURL, &e.EventTime, &e.ForwardedToCAPI, &e.CAPIResponseCode, &e.CreatedAt, &eventID, &clientIP, &clientUA)
+	).Scan(&e.ID, &e.PixelID, &e.EventName, &e.EventData, &e.UserData, &e.SourceURL, &e.EventTime, &e.ForwardedToCAPI, &e.CAPIResponseCode, &e.CAPIEventsReceived, &e.CreatedAt, &eventID, &clientIP, &clientUA)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
@@ -69,7 +69,7 @@ func (r *EventRepo) ListByPixelID(ctx context.Context, pixelID string, limit, of
 	}
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, pixel_id, event_name, event_data, user_data, source_url, event_time, forwarded_to_capi, capi_response_code, created_at, event_id, client_ip, client_user_agent
+		`SELECT id, pixel_id, event_name, event_data, user_data, source_url, event_time, forwarded_to_capi, capi_response_code, capi_events_received, created_at, event_id, client_ip, client_user_agent
 		 FROM pixel_events WHERE pixel_id = $1
 		 ORDER BY event_time DESC LIMIT $2 OFFSET $3`, pixelID, limit, offset,
 	)
@@ -82,7 +82,7 @@ func (r *EventRepo) ListByPixelID(ctx context.Context, pixelID string, limit, of
 	for rows.Next() {
 		e := &domain.PixelEvent{}
 		var eventID, clientIP, clientUA *string
-		if err := rows.Scan(&e.ID, &e.PixelID, &e.EventName, &e.EventData, &e.UserData, &e.SourceURL, &e.EventTime, &e.ForwardedToCAPI, &e.CAPIResponseCode, &e.CreatedAt, &eventID, &clientIP, &clientUA); err != nil {
+		if err := rows.Scan(&e.ID, &e.PixelID, &e.EventName, &e.EventData, &e.UserData, &e.SourceURL, &e.EventTime, &e.ForwardedToCAPI, &e.CAPIResponseCode, &e.CAPIEventsReceived, &e.CreatedAt, &eventID, &clientIP, &clientUA); err != nil {
 			return nil, 0, err
 		}
 		if eventID != nil {
@@ -110,7 +110,7 @@ func (r *EventRepo) ListByCustomerID(ctx context.Context, customerID string, pix
 	}
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT pe.id, pe.pixel_id, pe.event_name, pe.event_data, pe.user_data, pe.source_url, pe.event_time, pe.forwarded_to_capi, pe.capi_response_code, pe.created_at, pe.event_id, pe.client_ip, pe.client_user_agent
+		`SELECT pe.id, pe.pixel_id, pe.event_name, pe.event_data, pe.user_data, pe.source_url, pe.event_time, pe.forwarded_to_capi, pe.capi_response_code, pe.capi_events_received, pe.created_at, pe.event_id, pe.client_ip, pe.client_user_agent
 		 FROM pixel_events pe JOIN pixels p ON p.id = pe.pixel_id
 		 WHERE p.customer_id = $1
 		   AND ($2::text = '' OR pe.pixel_id = $2::uuid)
@@ -125,7 +125,7 @@ func (r *EventRepo) ListByCustomerID(ctx context.Context, customerID string, pix
 	for rows.Next() {
 		e := &domain.PixelEvent{}
 		var eventID, clientIP, clientUA *string
-		if err := rows.Scan(&e.ID, &e.PixelID, &e.EventName, &e.EventData, &e.UserData, &e.SourceURL, &e.EventTime, &e.ForwardedToCAPI, &e.CAPIResponseCode, &e.CreatedAt, &eventID, &clientIP, &clientUA); err != nil {
+		if err := rows.Scan(&e.ID, &e.PixelID, &e.EventName, &e.EventData, &e.UserData, &e.SourceURL, &e.EventTime, &e.ForwardedToCAPI, &e.CAPIResponseCode, &e.CAPIEventsReceived, &e.CreatedAt, &eventID, &clientIP, &clientUA); err != nil {
 			return nil, 0, err
 		}
 		if eventID != nil {
@@ -142,17 +142,17 @@ func (r *EventRepo) ListByCustomerID(ctx context.Context, customerID string, pix
 	return events, total, rows.Err()
 }
 
-func (r *EventRepo) MarkForwarded(ctx context.Context, id string, responseCode int) error {
+func (r *EventRepo) MarkForwarded(ctx context.Context, id string, responseCode int, eventsReceived int) error {
 	_, err := r.pool.Exec(ctx,
-		`UPDATE pixel_events SET forwarded_to_capi = true, capi_response_code = $2 WHERE id = $1`,
-		id, responseCode,
+		`UPDATE pixel_events SET forwarded_to_capi = true, capi_response_code = $2, capi_events_received = $3 WHERE id = $1`,
+		id, responseCode, eventsReceived,
 	)
 	return err
 }
 
 func (r *EventRepo) GetEventsForReplay(ctx context.Context, pixelID string, eventTypes []string, from, to *time.Time) ([]*domain.PixelEvent, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, pixel_id, event_name, event_data, user_data, source_url, event_time, forwarded_to_capi, capi_response_code, created_at, event_id, client_ip, client_user_agent
+		`SELECT id, pixel_id, event_name, event_data, user_data, source_url, event_time, forwarded_to_capi, capi_response_code, capi_events_received, created_at, event_id, client_ip, client_user_agent
 		 FROM pixel_events
 		 WHERE pixel_id = $1
 		   AND ($2::text[] IS NULL OR event_name = ANY($2::text[]))
@@ -170,7 +170,7 @@ func (r *EventRepo) GetEventsForReplay(ctx context.Context, pixelID string, even
 	for rows.Next() {
 		e := &domain.PixelEvent{}
 		var eventID, clientIP, clientUA *string
-		if err := rows.Scan(&e.ID, &e.PixelID, &e.EventName, &e.EventData, &e.UserData, &e.SourceURL, &e.EventTime, &e.ForwardedToCAPI, &e.CAPIResponseCode, &e.CreatedAt, &eventID, &clientIP, &clientUA); err != nil {
+		if err := rows.Scan(&e.ID, &e.PixelID, &e.EventName, &e.EventData, &e.UserData, &e.SourceURL, &e.EventTime, &e.ForwardedToCAPI, &e.CAPIResponseCode, &e.CAPIEventsReceived, &e.CreatedAt, &eventID, &clientIP, &clientUA); err != nil {
 			return nil, err
 		}
 		if eventID != nil {
