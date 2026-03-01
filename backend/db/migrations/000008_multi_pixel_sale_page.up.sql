@@ -6,10 +6,18 @@ CREATE TABLE IF NOT EXISTS sale_page_pixels (
 );
 CREATE INDEX IF NOT EXISTS idx_sale_page_pixels_pixel ON sale_page_pixels(pixel_id);
 
--- Migrate existing data
-INSERT INTO sale_page_pixels (sale_page_id, pixel_id, position)
-SELECT id, pixel_id, 0 FROM sale_pages WHERE pixel_id IS NOT NULL
-ON CONFLICT DO NOTHING;
+-- Migrate existing data (only if pixel_id column still exists)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'sale_pages' AND column_name = 'pixel_id'
+  ) THEN
+    INSERT INTO sale_page_pixels (sale_page_id, pixel_id, position)
+    SELECT id, pixel_id, 0 FROM sale_pages WHERE pixel_id IS NOT NULL
+    ON CONFLICT DO NOTHING;
+  END IF;
+END$$;
 
 -- Drop old column
 ALTER TABLE sale_pages DROP COLUMN IF EXISTS pixel_id;
