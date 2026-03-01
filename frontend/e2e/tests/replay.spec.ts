@@ -11,6 +11,6 @@ test.describe('Replay', () => {
     await expect(replayPage.targetPixelSelect).toBeVisible()
     await expect(replayPage.dateFromInput).toBeVisible()
     await expect(replayPage.dateToInput).toBeVisible()
-    await expect(replayPage.startReplayButton).toBeVisible()
+    await expect(replayPage.previewButton).toBeVisible()
   })
 })
