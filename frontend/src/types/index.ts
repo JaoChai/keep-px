@@ -51,7 +51,15 @@ export interface ReplaySession {
   error_message?: string
   started_at?: string
   completed_at?: string
+  cancelled_at?: string
+  failed_batch_ranges?: Array<{ start: number; end: number }>
   created_at: string
+}
+
+export interface ReplayPreview {
+  total_events: number
+  sample_events: PixelEvent[]
+  warning?: string
 }
 
 export interface PageStyle {

@@ -158,8 +158,61 @@ func (r *EventRepo) GetEventsForReplay(ctx context.Context, pixelID string, even
 		   AND ($2::text[] IS NULL OR event_name = ANY($2::text[]))
 		   AND ($3::timestamptz IS NULL OR event_time >= $3)
 		   AND ($4::timestamptz IS NULL OR event_time <= $4)
-		 ORDER BY event_time ASC`,
+		 ORDER BY event_time ASC
+		 LIMIT 100000`,
 		pixelID, eventTypes, from, to,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*domain.PixelEvent
+	for rows.Next() {
+		e := &domain.PixelEvent{}
+		var eventID, clientIP, clientUA *string
+		if err := rows.Scan(&e.ID, &e.PixelID, &e.EventName, &e.EventData, &e.UserData, &e.SourceURL, &e.EventTime, &e.ForwardedToCAPI, &e.CAPIResponseCode, &e.CAPIEventsReceived, &e.CreatedAt, &eventID, &clientIP, &clientUA); err != nil {
+			return nil, err
+		}
+		if eventID != nil {
+			e.EventID = *eventID
+		}
+		if clientIP != nil {
+			e.ClientIP = *clientIP
+		}
+		if clientUA != nil {
+			e.ClientUserAgent = *clientUA
+		}
+		events = append(events, e)
+	}
+	return events, rows.Err()
+}
+
+func (r *EventRepo) CountEventsForReplay(ctx context.Context, pixelID string, eventTypes []string, from, to *time.Time) (int, error) {
+	var count int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*)
+		 FROM pixel_events
+		 WHERE pixel_id = $1
+		   AND ($2::text[] IS NULL OR event_name = ANY($2::text[]))
+		   AND ($3::timestamptz IS NULL OR event_time >= $3)
+		   AND ($4::timestamptz IS NULL OR event_time <= $4)`,
+		pixelID, eventTypes, from, to,
+	).Scan(&count)
+	return count, err
+}
+
+func (r *EventRepo) GetEventsForReplayPreview(ctx context.Context, pixelID string, eventTypes []string, from, to *time.Time, limit int) ([]*domain.PixelEvent, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, pixel_id, event_name, event_data, user_data, source_url, event_time, forwarded_to_capi, capi_response_code, capi_events_received, created_at, event_id, client_ip, client_user_agent
+		 FROM pixel_events
+		 WHERE pixel_id = $1
+		   AND ($2::text[] IS NULL OR event_name = ANY($2::text[]))
+		   AND ($3::timestamptz IS NULL OR event_time >= $3)
+		   AND ($4::timestamptz IS NULL OR event_time <= $4)
+		 ORDER BY event_time ASC
+		 LIMIT $5`,
+		pixelID, eventTypes, from, to, limit,
 	)
 	if err != nil {
 		return nil, err

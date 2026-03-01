@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,18 +16,25 @@ import (
 )
 
 var (
-	ErrReplayNotFound = errors.New("replay session not found")
+	ErrReplayNotFound      = errors.New("replay session not found")
+	ErrReplayNotCancellable = errors.New("replay session cannot be cancelled")
+	ErrReplayNotRetryable   = errors.New("replay session cannot be retried")
 )
 
+var ErrInvalidDateFormat = errors.New("invalid date format, expected RFC3339")
+
 type ReplayService struct {
-	replayRepo repository.ReplaySessionRepository
-	eventRepo  repository.EventRepository
-	pixelRepo  repository.PixelRepository
-	capiClient *facebook.CAPIClient
-	logger     *slog.Logger
+	replayRepo  repository.ReplaySessionRepository
+	eventRepo   repository.EventRepository
+	pixelRepo   repository.PixelRepository
+	capiClient  *facebook.CAPIClient
+	logger      *slog.Logger
+	shutdownCtx context.Context
+	wg          sync.WaitGroup
 }
 
 func NewReplayService(
+	shutdownCtx context.Context,
 	replayRepo repository.ReplaySessionRepository,
 	eventRepo repository.EventRepository,
 	pixelRepo repository.PixelRepository,
@@ -34,12 +42,18 @@ func NewReplayService(
 	logger *slog.Logger,
 ) *ReplayService {
 	return &ReplayService{
-		replayRepo: replayRepo,
-		eventRepo:  eventRepo,
-		pixelRepo:  pixelRepo,
-		capiClient: capiClient,
-		logger:     logger,
+		replayRepo:  replayRepo,
+		eventRepo:   eventRepo,
+		pixelRepo:   pixelRepo,
+		capiClient:  capiClient,
+		logger:      logger,
+		shutdownCtx: shutdownCtx,
 	}
+}
+
+// Shutdown waits for all background replay goroutines to finish.
+func (s *ReplayService) Shutdown() {
+	s.wg.Wait()
 }
 
 type CreateReplayInput struct {
@@ -57,6 +71,24 @@ type CreateReplayResult struct {
 	Warning string                `json:"warning,omitempty"`
 }
 
+type PreviewReplayResult struct {
+	TotalEvents  int                  `json:"total_events"`
+	SampleEvents []*domain.PixelEvent `json:"sample_events"`
+	Warning      string               `json:"warning,omitempty"`
+}
+
+// parseDateFilter parses an optional RFC3339 date string into a *time.Time.
+func parseDateFilter(s string) (*time.Time, error) {
+	if s == "" {
+		return nil, nil
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", ErrInvalidDateFormat, s)
+	}
+	return &t, nil
+}
+
 func (s *ReplayService) Create(ctx context.Context, customerID string, input CreateReplayInput) (*CreateReplayResult, error) {
 	// Verify source pixel
 	sourcePixel, err := s.pixelRepo.GetByID(ctx, input.SourcePixelID)
@@ -70,18 +102,13 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 		return nil, ErrPixelNotFound
 	}
 
-	var dateFrom, dateTo *time.Time
-	if input.DateFrom != "" {
-		t, err := time.Parse(time.RFC3339, input.DateFrom)
-		if err == nil {
-			dateFrom = &t
-		}
+	dateFrom, err := parseDateFilter(input.DateFrom)
+	if err != nil {
+		return nil, err
 	}
-	if input.DateTo != "" {
-		t, err := time.Parse(time.RFC3339, input.DateTo)
-		if err == nil {
-			dateTo = &t
-		}
+	dateTo, err := parseDateFilter(input.DateTo)
+	if err != nil {
+		return nil, err
 	}
 
 	// Count events to replay
@@ -129,19 +156,44 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 	}
 
 	// Start replay in background
-	go s.executeReplay(context.Background(), session, targetPixel, events)
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		s.executeReplay(s.shutdownCtx, session, targetPixel, events)
+	}()
 
 	return &CreateReplayResult{Session: session, Warning: warning}, nil
 }
 
 func (s *ReplayService) executeReplay(ctx context.Context, session *domain.ReplaySession, targetPixel *domain.Pixel, events []*domain.PixelEvent) {
-	_ = s.replayRepo.UpdateStatus(ctx, session.ID, "running")
+	if err := s.replayRepo.UpdateStatus(ctx, session.ID, "running"); err != nil {
+		s.logger.Error("failed to update replay status to running", "error", err, "session_id", session.ID)
+	}
 
 	var replayed, failed int64
 	var lastErr error
+	var failedBatchRanges []domain.BatchRange
 	const batchSize = 1000
 
 	for i := 0; i < len(events); i += batchSize {
+		// Check for cancellation before each batch
+		status, err := s.replayRepo.GetStatus(ctx, session.ID)
+		if err == nil && status == "cancelled" {
+			s.logger.Info("replay cancelled by user", "session_id", session.ID, "replayed", replayed, "failed", failed)
+			// Save failed batch ranges for potential retry
+			if len(failedBatchRanges) > 0 {
+				if rangesJSON, err := json.Marshal(failedBatchRanges); err == nil {
+					if err := s.replayRepo.UpdateFailedBatches(ctx, session.ID, rangesJSON); err != nil {
+						s.logger.Warn("failed to save failed batch ranges on cancel", "error", err, "session_id", session.ID)
+					}
+				}
+			}
+			if err := s.replayRepo.UpdateProgress(ctx, session.ID, int(replayed), int(failed)); err != nil {
+				s.logger.Warn("failed to update progress on cancel", "error", err, "session_id", session.ID)
+			}
+			return
+		}
+
 		end := i + batchSize
 		if end > len(events) {
 			end = len(events)
@@ -187,26 +239,40 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 
 		// Replay sends to the live endpoint; test_event_code is intentionally
 		// omitted so replayed events do not appear in FB Test Events tool.
-		_, err := s.capiClient.SendEvents(ctx, targetPixel.FBPixelID, targetPixel.FBAccessToken, "", capiEvents)
+		_, err = s.capiClient.SendEvents(ctx, targetPixel.FBPixelID, targetPixel.FBAccessToken, "", capiEvents)
 		if err != nil {
 			lastErr = err
 			// Fail-fast on auth error (any batch) — token is invalid, no point continuing
 			if facebook.IsAuthError(err) {
 				s.logger.Error("replay auth error, failing fast", "error", err, "session_id", session.ID)
-				_ = s.replayRepo.UpdateStatusWithError(ctx, session.ID, "failed", sanitizeReplayError(err))
+				if err := s.replayRepo.UpdateStatusWithError(ctx, session.ID, "failed", sanitizeReplayError(err)); err != nil {
+					s.logger.Error("failed to update replay status to failed", "error", err, "session_id", session.ID)
+				}
 				return
 			}
 			failed += int64(len(batch))
+			failedBatchRanges = append(failedBatchRanges, domain.BatchRange{Start: i, End: end})
 			s.logger.Error("replay batch failed", "error", err, "batch_start", i, "batch_end", end)
 		} else {
 			replayed += int64(len(batch))
 		}
 
-		_ = s.replayRepo.UpdateProgress(ctx, session.ID, int(replayed), int(failed))
+		if err := s.replayRepo.UpdateProgress(ctx, session.ID, int(replayed), int(failed)); err != nil {
+			s.logger.Warn("failed to update replay progress", "error", err, "session_id", session.ID)
+		}
 
 		// Batch delay between batches (skip after the last batch)
 		if session.BatchDelayMs > 0 && end < len(events) {
 			time.Sleep(time.Duration(session.BatchDelayMs) * time.Millisecond)
+		}
+	}
+
+	// Save failed batch ranges if any
+	if len(failedBatchRanges) > 0 {
+		if rangesJSON, err := json.Marshal(failedBatchRanges); err == nil {
+			if err := s.replayRepo.UpdateFailedBatches(ctx, session.ID, rangesJSON); err != nil {
+				s.logger.Warn("failed to save failed batch ranges", "error", err, "session_id", session.ID)
+			}
 		}
 	}
 
@@ -215,9 +281,13 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 		if lastErr != nil {
 			errMsg = sanitizeReplayError(lastErr)
 		}
-		_ = s.replayRepo.UpdateStatusWithError(ctx, session.ID, "failed", errMsg)
+		if err := s.replayRepo.UpdateStatusWithError(ctx, session.ID, "failed", errMsg); err != nil {
+			s.logger.Error("failed to update replay status to failed", "error", err, "session_id", session.ID)
+		}
 	} else {
-		_ = s.replayRepo.UpdateStatus(ctx, session.ID, "completed")
+		if err := s.replayRepo.UpdateStatus(ctx, session.ID, "completed"); err != nil {
+			s.logger.Error("failed to update replay status to completed", "error", err, "session_id", session.ID)
+		}
 	}
 
 	s.logger.Info("replay completed",
@@ -267,4 +337,164 @@ func (s *ReplayService) List(ctx context.Context, customerID string) ([]*domain.
 		sessions = []*domain.ReplaySession{}
 	}
 	return sessions, nil
+}
+
+func (s *ReplayService) Cancel(ctx context.Context, customerID, sessionID string) (*domain.ReplaySession, error) {
+	// Verify ownership first
+	session, err := s.replayRepo.GetByID(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("get replay session: %w", err)
+	}
+	if session == nil || session.CustomerID != customerID {
+		return nil, ErrReplayNotFound
+	}
+
+	// Atomic cancel: only transitions pending/running -> cancelled
+	cancelled, err := s.replayRepo.CancelSession(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("cancel replay session: %w", err)
+	}
+	if cancelled == nil {
+		return nil, ErrReplayNotCancellable
+	}
+	return cancelled, nil
+}
+
+func (s *ReplayService) Preview(ctx context.Context, customerID string, input CreateReplayInput) (*PreviewReplayResult, error) {
+	// Verify source pixel
+	sourcePixel, err := s.pixelRepo.GetByID(ctx, input.SourcePixelID)
+	if err != nil || sourcePixel == nil || sourcePixel.CustomerID != customerID {
+		return nil, ErrPixelNotFound
+	}
+
+	// Verify target pixel
+	targetPixel, err := s.pixelRepo.GetByID(ctx, input.TargetPixelID)
+	if err != nil || targetPixel == nil || targetPixel.CustomerID != customerID {
+		return nil, ErrPixelNotFound
+	}
+
+	dateFrom, err := parseDateFilter(input.DateFrom)
+	if err != nil {
+		return nil, err
+	}
+	dateTo, err := parseDateFilter(input.DateTo)
+	if err != nil {
+		return nil, err
+	}
+
+	totalEvents, err := s.eventRepo.CountEventsForReplay(ctx, input.SourcePixelID, input.EventTypes, dateFrom, dateTo)
+	if err != nil {
+		return nil, fmt.Errorf("count events for replay preview: %w", err)
+	}
+
+	sampleEvents, err := s.eventRepo.GetEventsForReplayPreview(ctx, input.SourcePixelID, input.EventTypes, dateFrom, dateTo, 10)
+	if err != nil {
+		return nil, fmt.Errorf("get events for replay preview: %w", err)
+	}
+	if sampleEvents == nil {
+		sampleEvents = []*domain.PixelEvent{}
+	}
+
+	// Default TimeMode
+	timeMode := input.TimeMode
+	if timeMode == "" {
+		timeMode = "original"
+	}
+
+	var warning string
+	if timeMode == "original" && len(sampleEvents) > 0 {
+		var oldest time.Time
+		for _, evt := range sampleEvents {
+			if oldest.IsZero() || evt.EventTime.Before(oldest) {
+				oldest = evt.EventTime
+			}
+		}
+		age := time.Since(oldest)
+		if age > 7*24*time.Hour {
+			days := int(age.Hours() / 24)
+			warning = fmt.Sprintf("Warning: oldest event is %d days old. Facebook may reject events older than 7 days. Consider using time_mode: current.", days)
+		}
+	}
+
+	return &PreviewReplayResult{
+		TotalEvents:  totalEvents,
+		SampleEvents: sampleEvents,
+		Warning:      warning,
+	}, nil
+}
+
+func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string) (*domain.ReplaySession, error) {
+	session, err := s.replayRepo.GetByID(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("get replay session: %w", err)
+	}
+	if session == nil || session.CustomerID != customerID {
+		return nil, ErrReplayNotFound
+	}
+
+	// Only failed or cancelled sessions can be retried
+	if session.Status != "failed" && session.Status != "cancelled" {
+		return nil, ErrReplayNotRetryable
+	}
+
+	// Verify target pixel still exists and is owned
+	targetPixel, err := s.pixelRepo.GetByID(ctx, session.TargetPixelID)
+	if err != nil || targetPixel == nil || targetPixel.CustomerID != customerID {
+		return nil, ErrPixelNotFound
+	}
+
+	// Get all events for replay (we'll use failed batch ranges if available)
+	allEvents, err := s.eventRepo.GetEventsForReplay(ctx, session.SourcePixelID, session.EventTypes, session.DateFrom, session.DateTo)
+	if err != nil {
+		return nil, fmt.Errorf("get events for retry: %w", err)
+	}
+
+	// Determine which events to retry
+	var retryEvents []*domain.PixelEvent
+	if session.FailedBatchRanges != nil {
+		var batchRanges []domain.BatchRange
+		if err := json.Unmarshal(session.FailedBatchRanges, &batchRanges); err == nil && len(batchRanges) > 0 {
+			for _, br := range batchRanges {
+				start := br.Start
+				end := br.End
+				if start < len(allEvents) {
+					if end > len(allEvents) {
+						end = len(allEvents)
+					}
+					retryEvents = append(retryEvents, allEvents[start:end]...)
+				}
+			}
+		}
+	}
+
+	// Fall back to all events if no batch range info
+	if len(retryEvents) == 0 {
+		retryEvents = allEvents
+	}
+
+	// Create a NEW session (preserve history)
+	newSession := &domain.ReplaySession{
+		CustomerID:    customerID,
+		SourcePixelID: session.SourcePixelID,
+		TargetPixelID: session.TargetPixelID,
+		TotalEvents:   len(retryEvents),
+		EventTypes:    session.EventTypes,
+		DateFrom:      session.DateFrom,
+		DateTo:        session.DateTo,
+		TimeMode:      session.TimeMode,
+		BatchDelayMs:  session.BatchDelayMs,
+	}
+
+	if err := s.replayRepo.Create(ctx, newSession); err != nil {
+		return nil, fmt.Errorf("create retry replay session: %w", err)
+	}
+
+	// Start replay in background
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		s.executeReplay(s.shutdownCtx, newSession, targetPixel, retryEvents)
+	}()
+
+	return newSession, nil
 }

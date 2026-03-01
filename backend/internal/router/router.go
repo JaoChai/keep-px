@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -16,7 +17,9 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
-func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handler {
+type CleanupFunc func()
+
+func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCtx context.Context) (http.Handler, CleanupFunc) {
 	r := chi.NewRouter()
 
 	// Global middleware
@@ -40,7 +43,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger)
 	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger)
-	replayService := service.NewReplayService(replaySessionRepo, eventRepo, pixelRepo, capiClient, logger)
+	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger)
 	analyticsService := service.NewAnalyticsService(pool)
 	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo)
 
@@ -107,7 +110,10 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 			r.Route("/replays", func(r chi.Router) {
 				r.Post("/", replayHandler.Create)
 				r.Get("/", replayHandler.List)
+				r.Post("/preview", replayHandler.Preview)
 				r.Get("/{id}", replayHandler.GetByID)
+				r.Post("/{id}/cancel", replayHandler.Cancel)
+				r.Post("/{id}/retry", replayHandler.Retry)
 			})
 
 			// Sale pages routes
@@ -129,5 +135,5 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool) http.Handl
 		})
 	})
 
-	return r
+	return r, func() { replayService.Shutdown() }
 }

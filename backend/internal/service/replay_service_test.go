@@ -23,7 +23,7 @@ func newTestReplayService() (*ReplayService, *MockReplaySessionRepo, *MockEventR
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
 	logger := slog.Default()
-	svc := NewReplayService(replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
 	return svc, replayRepo, eventRepo, pixelRepo
 }
 
@@ -65,6 +65,8 @@ func TestReplayService_Create(t *testing.T) {
 				rr.On("UpdateStatus", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
 				rr.On("UpdateProgress", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil).Maybe()
 				rr.On("UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
+				rr.On("GetStatus", mock.Anything, mock.AnythingOfType("string")).Return("running", nil).Maybe()
+				rr.On("UpdateFailedBatches", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil).Maybe()
 			},
 			wantErr: nil,
 		},
@@ -96,6 +98,8 @@ func TestReplayService_Create(t *testing.T) {
 				rr.On("UpdateStatus", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
 				rr.On("UpdateProgress", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil).Maybe()
 				rr.On("UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
+				rr.On("GetStatus", mock.Anything, mock.AnythingOfType("string")).Return("running", nil).Maybe()
+				rr.On("UpdateFailedBatches", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil).Maybe()
 			},
 			wantErr: nil,
 		},
@@ -128,6 +132,8 @@ func TestReplayService_Create(t *testing.T) {
 				rr.On("UpdateStatus", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
 				rr.On("UpdateProgress", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil).Maybe()
 				rr.On("UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
+				rr.On("GetStatus", mock.Anything, mock.AnythingOfType("string")).Return("running", nil).Maybe()
+				rr.On("UpdateFailedBatches", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil).Maybe()
 			},
 			wantErr: nil,
 		},
@@ -160,6 +166,8 @@ func TestReplayService_Create(t *testing.T) {
 				rr.On("UpdateStatus", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
 				rr.On("UpdateProgress", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil).Maybe()
 				rr.On("UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
+				rr.On("GetStatus", mock.Anything, mock.AnythingOfType("string")).Return("running", nil).Maybe()
+				rr.On("UpdateFailedBatches", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil).Maybe()
 			},
 			wantErr:     nil,
 			wantWarning: "older than 7 days",
@@ -246,7 +254,7 @@ func TestReplayService_ExecuteReplay_AuthErrorFailFast(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -268,6 +276,7 @@ func TestReplayService_ExecuteReplay_AuthErrorFailFast(t *testing.T) {
 	}
 
 	replayRepo.On("UpdateStatus", mock.Anything, "session-1", "running").Return(nil)
+	replayRepo.On("GetStatus", mock.Anything, "session-1").Return("running", nil)
 	replayRepo.On("UpdateStatusWithError", mock.Anything, "session-1", "failed", mock.AnythingOfType("string")).Return(nil)
 
 	// Call executeReplay directly (it normally runs as a goroutine)
@@ -300,7 +309,7 @@ func TestReplayService_ExecuteReplay_TimeModeCurrentUsesNow(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
 
 	oldTime := time.Now().Add(-30 * 24 * time.Hour) // 30 days ago
 	session := &domain.ReplaySession{
@@ -322,6 +331,7 @@ func TestReplayService_ExecuteReplay_TimeModeCurrentUsesNow(t *testing.T) {
 	}
 
 	replayRepo.On("UpdateStatus", mock.Anything, "session-1", "running").Return(nil)
+	replayRepo.On("GetStatus", mock.Anything, "session-1").Return("running", nil)
 	replayRepo.On("UpdateProgress", mock.Anything, "session-1", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil)
 	replayRepo.On("UpdateStatus", mock.Anything, "session-1", "completed").Return(nil)
 
@@ -351,7 +361,7 @@ func TestReplayService_ExecuteReplay_BatchDelay(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -378,6 +388,7 @@ func TestReplayService_ExecuteReplay_BatchDelay(t *testing.T) {
 	}
 
 	replayRepo.On("UpdateStatus", mock.Anything, "session-1", "running").Return(nil)
+	replayRepo.On("GetStatus", mock.Anything, "session-1").Return("running", nil)
 	replayRepo.On("UpdateProgress", mock.Anything, "session-1", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil)
 	replayRepo.On("UpdateStatus", mock.Anything, "session-1", "completed").Return(nil)
 
@@ -401,7 +412,7 @@ func TestReplayService_ExecuteReplay_NonAuthErrorContinues(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(replayRepo, eventRepo, pixelRepo, capiClient, logger)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -422,14 +433,62 @@ func TestReplayService_ExecuteReplay_NonAuthErrorContinues(t *testing.T) {
 	}
 
 	replayRepo.On("UpdateStatus", mock.Anything, "session-1", "running").Return(nil)
+	replayRepo.On("GetStatus", mock.Anything, "session-1").Return("running", nil)
 	replayRepo.On("UpdateProgress", mock.Anything, "session-1", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil)
 	replayRepo.On("UpdateStatusWithError", mock.Anything, "session-1", "failed", mock.AnythingOfType("string")).Return(nil)
+	replayRepo.On("UpdateFailedBatches", mock.Anything, "session-1", mock.AnythingOfType("[]uint8")).Return(nil)
 
 	svc.executeReplay(context.Background(), session, targetPixel, events)
 
 	replayRepo.AssertExpectations(t)
 	// Should use UpdateStatusWithError for all-failed case, not UpdateStatus
 	replayRepo.AssertCalled(t, "UpdateStatusWithError", mock.Anything, "session-1", "failed", mock.AnythingOfType("string"))
+}
+
+func TestReplayService_ExecuteReplay_CancellationCheck(t *testing.T) {
+	callCount := 0
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(facebook.CAPIResponse{EventsReceived: 1})
+	}))
+	defer fakeServer.Close()
+
+	replayRepo := new(MockReplaySessionRepo)
+	eventRepo := new(MockEventRepo)
+	pixelRepo := new(MockPixelRepo)
+	capiClient := facebook.NewCAPIClient(fakeServer.URL)
+	logger := slog.Default()
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger)
+
+	session := &domain.ReplaySession{
+		ID:            "session-1",
+		CustomerID:    "cust-1",
+		SourcePixelID: "pixel-1",
+		TargetPixelID: "pixel-2",
+		TotalEvents:   1,
+		TimeMode:      "original",
+	}
+	targetPixel := &domain.Pixel{
+		ID:            "pixel-2",
+		CustomerID:    "cust-1",
+		FBPixelID:     "fb-2",
+		FBAccessToken: "token-2",
+	}
+	events := []*domain.PixelEvent{
+		{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
+	}
+
+	replayRepo.On("UpdateStatus", mock.Anything, "session-1", "running").Return(nil)
+	// Return cancelled when checking status
+	replayRepo.On("GetStatus", mock.Anything, "session-1").Return("cancelled", nil)
+	replayRepo.On("UpdateProgress", mock.Anything, "session-1", mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil)
+
+	svc.executeReplay(context.Background(), session, targetPixel, events)
+
+	// CAPI should not be called because cancellation was detected before the batch
+	assert.Equal(t, 0, callCount)
+	replayRepo.AssertExpectations(t)
 }
 
 func TestReplayService_GetByID(t *testing.T) {
@@ -508,4 +567,365 @@ func TestReplayService_List(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, sessions, 2)
 	replayRepo.AssertExpectations(t)
+}
+
+func TestReplayService_Cancel(t *testing.T) {
+	tests := []struct {
+		name       string
+		customerID string
+		sessionID  string
+		setup      func(*MockReplaySessionRepo)
+		wantErr    error
+	}{
+		{
+			name:       "cancel running session",
+			customerID: "cust-1",
+			sessionID:  "session-1",
+			setup: func(rr *MockReplaySessionRepo) {
+				rr.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
+					ID:         "session-1",
+					CustomerID: "cust-1",
+					Status:     "running",
+				}, nil)
+				rr.On("CancelSession", mock.Anything, "session-1").Return(&domain.ReplaySession{
+					ID:         "session-1",
+					CustomerID: "cust-1",
+					Status:     "cancelled",
+				}, nil)
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "cancel pending session",
+			customerID: "cust-1",
+			sessionID:  "session-2",
+			setup: func(rr *MockReplaySessionRepo) {
+				rr.On("GetByID", mock.Anything, "session-2").Return(&domain.ReplaySession{
+					ID:         "session-2",
+					CustomerID: "cust-1",
+					Status:     "pending",
+				}, nil)
+				rr.On("CancelSession", mock.Anything, "session-2").Return(&domain.ReplaySession{
+					ID:         "session-2",
+					CustomerID: "cust-1",
+					Status:     "cancelled",
+				}, nil)
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "cannot cancel completed session",
+			customerID: "cust-1",
+			sessionID:  "session-3",
+			setup: func(rr *MockReplaySessionRepo) {
+				rr.On("GetByID", mock.Anything, "session-3").Return(&domain.ReplaySession{
+					ID:         "session-3",
+					CustomerID: "cust-1",
+					Status:     "completed",
+				}, nil)
+				// CancelSession returns nil when status doesn't match
+				rr.On("CancelSession", mock.Anything, "session-3").Return(nil, nil)
+			},
+			wantErr: ErrReplayNotCancellable,
+		},
+		{
+			name:       "cannot cancel failed session",
+			customerID: "cust-1",
+			sessionID:  "session-4",
+			setup: func(rr *MockReplaySessionRepo) {
+				rr.On("GetByID", mock.Anything, "session-4").Return(&domain.ReplaySession{
+					ID:         "session-4",
+					CustomerID: "cust-1",
+					Status:     "failed",
+				}, nil)
+				// CancelSession returns nil when status doesn't match
+				rr.On("CancelSession", mock.Anything, "session-4").Return(nil, nil)
+			},
+			wantErr: ErrReplayNotCancellable,
+		},
+		{
+			name:       "session not found",
+			customerID: "cust-1",
+			sessionID:  "nonexistent",
+			setup: func(rr *MockReplaySessionRepo) {
+				rr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
+			},
+			wantErr: ErrReplayNotFound,
+		},
+		{
+			name:       "session not owned",
+			customerID: "cust-2",
+			sessionID:  "session-1",
+			setup: func(rr *MockReplaySessionRepo) {
+				rr.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
+					ID:         "session-1",
+					CustomerID: "cust-1",
+					Status:     "running",
+				}, nil)
+			},
+			wantErr: ErrReplayNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, replayRepo, _, _ := newTestReplayService()
+			tt.setup(replayRepo)
+
+			session, err := svc.Cancel(context.Background(), tt.customerID, tt.sessionID)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, session)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, session)
+				assert.Equal(t, "cancelled", session.Status)
+			}
+			replayRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestReplayService_Preview(t *testing.T) {
+	tests := []struct {
+		name        string
+		customerID  string
+		input       CreateReplayInput
+		setup       func(*MockReplaySessionRepo, *MockEventRepo, *MockPixelRepo)
+		wantErr     error
+		wantTotal   int
+		wantSamples int
+	}{
+		{
+			name:       "success with events",
+			customerID: "cust-1",
+			input: CreateReplayInput{
+				SourcePixelID: "pixel-1",
+				TargetPixelID: "pixel-2",
+			},
+			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:         "pixel-1",
+					CustomerID: "cust-1",
+				}, nil)
+				pr.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+					ID:         "pixel-2",
+					CustomerID: "cust-1",
+				}, nil)
+				er.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+					Return(42, nil)
+				er.On("GetEventsForReplayPreview", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), 10).
+					Return([]*domain.PixelEvent{
+						{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
+						{ID: "evt-2", EventName: "Purchase", EventTime: time.Now()},
+					}, nil)
+			},
+			wantErr:     nil,
+			wantTotal:   42,
+			wantSamples: 2,
+		},
+		{
+			name:       "no events",
+			customerID: "cust-1",
+			input: CreateReplayInput{
+				SourcePixelID: "pixel-1",
+				TargetPixelID: "pixel-2",
+			},
+			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+					ID:         "pixel-1",
+					CustomerID: "cust-1",
+				}, nil)
+				pr.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+					ID:         "pixel-2",
+					CustomerID: "cust-1",
+				}, nil)
+				er.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+					Return(0, nil)
+				er.On("GetEventsForReplayPreview", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), 10).
+					Return(nil, nil)
+			},
+			wantErr:     nil,
+			wantTotal:   0,
+			wantSamples: 0,
+		},
+		{
+			name:       "source pixel not found",
+			customerID: "cust-1",
+			input: CreateReplayInput{
+				SourcePixelID: "nonexistent",
+				TargetPixelID: "pixel-2",
+			},
+			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
+			},
+			wantErr: ErrPixelNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, replayRepo, eventRepo, pixelRepo := newTestReplayService()
+			tt.setup(replayRepo, eventRepo, pixelRepo)
+
+			result, err := svc.Preview(context.Background(), tt.customerID, tt.input)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, result)
+			} else {
+				assert.NoError(t, err)
+				require.NotNil(t, result)
+				assert.Equal(t, tt.wantTotal, result.TotalEvents)
+				assert.Len(t, result.SampleEvents, tt.wantSamples)
+			}
+			pixelRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestReplayService_Retry(t *testing.T) {
+	tests := []struct {
+		name       string
+		customerID string
+		sessionID  string
+		setup      func(*MockReplaySessionRepo, *MockEventRepo, *MockPixelRepo)
+		wantErr    error
+	}{
+		{
+			name:       "retry failed session",
+			customerID: "cust-1",
+			sessionID:  "session-1",
+			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+				failedRanges, _ := json.Marshal([]domain.BatchRange{{Start: 0, End: 1000}})
+				rr.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
+					ID:                "session-1",
+					CustomerID:        "cust-1",
+					SourcePixelID:     "pixel-1",
+					TargetPixelID:     "pixel-2",
+					Status:            "failed",
+					TimeMode:          "original",
+					FailedBatchRanges: failedRanges,
+				}, nil)
+				pr.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+					ID:            "pixel-2",
+					CustomerID:    "cust-1",
+					FBPixelID:     "fb-2",
+					FBAccessToken: "token-2",
+				}, nil)
+				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+					Return([]*domain.PixelEvent{
+						{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
+					}, nil)
+				rr.On("Create", mock.Anything, mock.AnythingOfType("*domain.ReplaySession")).Return(nil)
+				// Background goroutine
+				rr.On("UpdateStatus", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
+				rr.On("GetStatus", mock.Anything, mock.AnythingOfType("string")).Return("running", nil).Maybe()
+				rr.On("UpdateProgress", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil).Maybe()
+				rr.On("UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
+				rr.On("UpdateFailedBatches", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil).Maybe()
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "retry cancelled session",
+			customerID: "cust-1",
+			sessionID:  "session-2",
+			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+				rr.On("GetByID", mock.Anything, "session-2").Return(&domain.ReplaySession{
+					ID:            "session-2",
+					CustomerID:    "cust-1",
+					SourcePixelID: "pixel-1",
+					TargetPixelID: "pixel-2",
+					Status:        "cancelled",
+					TimeMode:      "original",
+				}, nil)
+				pr.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+					ID:            "pixel-2",
+					CustomerID:    "cust-1",
+					FBPixelID:     "fb-2",
+					FBAccessToken: "token-2",
+				}, nil)
+				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).
+					Return([]*domain.PixelEvent{
+						{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
+					}, nil)
+				rr.On("Create", mock.Anything, mock.AnythingOfType("*domain.ReplaySession")).Return(nil)
+				// Background goroutine
+				rr.On("UpdateStatus", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
+				rr.On("GetStatus", mock.Anything, mock.AnythingOfType("string")).Return("running", nil).Maybe()
+				rr.On("UpdateProgress", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil).Maybe()
+				rr.On("UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
+				rr.On("UpdateFailedBatches", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8")).Return(nil).Maybe()
+			},
+			wantErr: nil,
+		},
+		{
+			name:       "cannot retry running session",
+			customerID: "cust-1",
+			sessionID:  "session-3",
+			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+				rr.On("GetByID", mock.Anything, "session-3").Return(&domain.ReplaySession{
+					ID:         "session-3",
+					CustomerID: "cust-1",
+					Status:     "running",
+				}, nil)
+			},
+			wantErr: ErrReplayNotRetryable,
+		},
+		{
+			name:       "cannot retry completed session",
+			customerID: "cust-1",
+			sessionID:  "session-4",
+			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+				rr.On("GetByID", mock.Anything, "session-4").Return(&domain.ReplaySession{
+					ID:         "session-4",
+					CustomerID: "cust-1",
+					Status:     "completed",
+				}, nil)
+			},
+			wantErr: ErrReplayNotRetryable,
+		},
+		{
+			name:       "session not found",
+			customerID: "cust-1",
+			sessionID:  "nonexistent",
+			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+				rr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
+			},
+			wantErr: ErrReplayNotFound,
+		},
+		{
+			name:       "session not owned",
+			customerID: "cust-2",
+			sessionID:  "session-1",
+			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+				rr.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
+					ID:         "session-1",
+					CustomerID: "cust-1",
+					Status:     "failed",
+				}, nil)
+			},
+			wantErr: ErrReplayNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, replayRepo, eventRepo, pixelRepo := newTestReplayService()
+			tt.setup(replayRepo, eventRepo, pixelRepo)
+
+			session, err := svc.Retry(context.Background(), tt.customerID, tt.sessionID)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, session)
+			} else {
+				assert.NoError(t, err)
+				require.NotNil(t, session)
+			}
+			replayRepo.AssertExpectations(t)
+		})
+	}
 }
