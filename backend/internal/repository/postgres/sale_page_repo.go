@@ -21,7 +21,7 @@ func (r *SalePageRepo) Create(ctx context.Context, p *domain.SalePage) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	err = tx.QueryRow(ctx,
 		`INSERT INTO sale_pages (customer_id, name, slug, template_name, content, is_published)
@@ -122,7 +122,7 @@ func (r *SalePageRepo) Update(ctx context.Context, p *domain.SalePage) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	_, err = tx.Exec(ctx,
 		`UPDATE sale_pages SET name = $2, slug = $3, template_name = $4, content = $5, is_published = $6, updated_at = NOW()
