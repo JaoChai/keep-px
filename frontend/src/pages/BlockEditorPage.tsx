@@ -30,11 +30,11 @@ export function BlockEditorPage() {
 
   if (isEditing) {
     if (isLoading) {
-      return <div className="text-center py-12 text-neutral-500">Loading...</div>
+      return <div className="text-center py-12 text-muted-foreground">Loading...</div>
     }
     const page = salePages?.find((p) => p.id === id)
     if (!page) {
-      return <div className="text-center py-12 text-neutral-500">Page not found</div>
+      return <div className="text-center py-12 text-muted-foreground">Page not found</div>
     }
     const content = page.content as SalePageContentV2
     if (content.version !== 2) {
@@ -154,17 +154,17 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
       <div className="flex items-center justify-between mb-6">
         <Link
           to="/sale-pages"
-          className="flex items-center gap-1.5 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Sale Pages
         </Link>
         <div className="flex items-center gap-2">
           {/* Mobile toggle */}
-          <div className="flex lg:hidden border border-neutral-200 rounded-md overflow-hidden">
+          <div className="flex lg:hidden border border-border rounded-md overflow-hidden">
             <button
               type="button"
-              className={`px-3 py-1.5 text-xs font-medium ${mobileView === 'edit' ? 'bg-neutral-900 text-white' : 'text-neutral-600'}`}
+              className={`px-3 py-1.5 text-xs font-medium ${mobileView === 'edit' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
               onClick={() => setMobileView('edit')}
             >
               <Pencil className="h-3 w-3 inline mr-1" />
@@ -172,7 +172,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
             </button>
             <button
               type="button"
-              className={`px-3 py-1.5 text-xs font-medium ${mobileView === 'preview' ? 'bg-neutral-900 text-white' : 'text-neutral-600'}`}
+              className={`px-3 py-1.5 text-xs font-medium ${mobileView === 'preview' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
               onClick={() => setMobileView('preview')}
             >
               <Eye className="h-3 w-3 inline mr-1" />
@@ -221,7 +221,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
               <div className="space-y-2">
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setShowCustomSlug(!showCustomSlug)}
                 >
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showCustomSlug ? 'rotate-0' : '-rotate-90'}`} />
@@ -229,7 +229,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                 </button>
                 {showCustomSlug && (
                   <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-neutral-200 bg-neutral-50 text-sm text-neutral-500">
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-border bg-muted text-sm text-muted-foreground">
                       /p/
                     </span>
                     <Input
@@ -242,17 +242,17 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                   </div>
                 )}
                 {!showCustomSlug && (
-                  <p className="text-xs text-neutral-400">ระบบจะสร้าง URL ให้อัตโนมัติ</p>
+                  <p className="text-xs text-muted-foreground">ระบบจะสร้าง URL ให้อัตโนมัติ</p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label>Pixels (ไม่บังคับ)</Label>
-                <div className="max-h-40 overflow-y-auto border border-neutral-200 rounded-md p-2 space-y-1">
+                <div className="max-h-40 overflow-y-auto border border-border rounded-md p-2 space-y-1">
                   {(!pixels || pixels.length === 0) && (
-                    <p className="text-xs text-neutral-400">No pixels available</p>
+                    <p className="text-xs text-muted-foreground">No pixels available</p>
                   )}
                   {pixels?.map((pixel) => (
-                    <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-neutral-50 cursor-pointer">
+                    <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-accent cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedPixelIds.includes(pixel.id)}
@@ -263,7 +263,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                             setSelectedPixelIds(prev => prev.filter(id => id !== pixel.id))
                           }
                         }}
-                        className="rounded border-neutral-300"
+                        className="rounded border-border"
                       />
                       {pixel.name} ({pixel.fb_pixel_id})
                     </label>
@@ -288,7 +288,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                 <Label htmlFor="cta-event">เมื่อกดปุ่ม CTA ให้ยิงอีเวนต์</Label>
                 <select
                   id="cta-event"
-                  className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={ctaEventName}
                   onChange={(e) => setCtaEventName(e.target.value)}
                 >
@@ -321,7 +321,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                   <Label htmlFor="currency">สกุลเงิน</Label>
                   <select
                     id="currency"
-                    className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     value={trackingCurrency}
                     onChange={(e) => setTrackingCurrency(e.target.value)}
                   >
@@ -349,7 +349,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
         {/* Right Column - Preview */}
         <div className={`lg:w-1/3 ${mobileView === 'edit' ? 'hidden lg:block' : ''}`}>
           <div className="sticky top-8">
-            <p className="text-sm font-medium text-neutral-500 mb-3">Preview</p>
+            <p className="text-sm font-medium text-muted-foreground mb-3">Preview</p>
             <BlockPreview blocks={blocks} ctaEventName={ctaEventName} style={pageStyle} />
           </div>
         </div>
@@ -362,9 +362,9 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
             <DialogTitle>เผยแพร่สำเร็จ!</DialogTitle>
           </DialogHeader>
           <div className="mt-4 space-y-3">
-            <p className="text-sm text-neutral-600">หน้าเพจของคุณพร้อมใช้งานแล้วที่:</p>
-            <div className="flex items-center gap-2 p-2 bg-neutral-50 rounded-md border border-neutral-200">
-              <code className="text-sm text-indigo-600 flex-1 truncate">
+            <p className="text-sm text-muted-foreground">หน้าเพจของคุณพร้อมใช้งานแล้วที่:</p>
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-md border border-border">
+              <code className="text-sm text-foreground flex-1 truncate">
                 {publishedDialog && `${window.location.origin}/p/${publishedDialog.slug}`}
               </code>
               <Button
@@ -376,7 +376,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                 {copiedUrl ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-muted-foreground">
               แชร์ลิงก์นี้ใน bio link, LINE, หรือ Facebook เพื่อเริ่มเก็บข้อมูล
             </p>
           </div>

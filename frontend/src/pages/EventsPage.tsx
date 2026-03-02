@@ -65,11 +65,11 @@ function StatCard({ title, value, subtitle, icon }: StatCardProps) {
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-neutral-500">{title}</p>
-            <p className="text-2xl font-bold text-neutral-900 mt-1">{value}</p>
-            {subtitle && <p className="text-xs text-neutral-400 mt-1">{subtitle}</p>}
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
+            {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
           </div>
-          <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-foreground">
             {icon}
           </div>
         </div>
@@ -79,16 +79,16 @@ function StatCard({ title, value, subtitle, icon }: StatCardProps) {
 }
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
-  PageView: 'bg-neutral-400',
+  PageView: 'bg-muted-foreground',
   Purchase: 'bg-emerald-500',
-  Lead: 'bg-indigo-500',
-  CompleteRegistration: 'bg-indigo-400',
+  Lead: 'bg-primary',
+  CompleteRegistration: 'bg-primary/80',
   AddToCart: 'bg-amber-500',
   InitiateCheckout: 'bg-amber-400',
 }
 
 function getEventColor(name: string): string {
-  return EVENT_TYPE_COLORS[name] ?? 'bg-neutral-300'
+  return EVENT_TYPE_COLORS[name] ?? 'bg-muted-foreground'
 }
 
 export function EventsPage() {
@@ -169,8 +169,8 @@ export function EventsPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">Events</h1>
-            <p className="text-sm text-neutral-500 mt-1">
+            <h1 className="text-2xl font-bold text-foreground">Events</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               {mode === 'live'
                 ? `${realtimeEvents.length} events${stats.eventsPerMinute > 0 ? ` (${stats.eventsPerMinute}/min)` : ''}`
                 : historyQuery.data
@@ -187,12 +187,12 @@ export function EventsPage() {
 
         <div className="flex items-center gap-3">
           {/* Mode toggle */}
-          <div className="flex rounded-lg border border-neutral-200 p-0.5 bg-neutral-100">
+          <div className="flex rounded-lg border border-border p-0.5 bg-secondary">
             <Button
               variant={mode === 'live' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setMode('live')}
-              className={mode === 'live' ? '' : 'text-neutral-600'}
+              className={mode === 'live' ? '' : 'text-muted-foreground'}
             >
               <Activity className="h-4 w-4 mr-1" />
               Live
@@ -201,7 +201,7 @@ export function EventsPage() {
               variant={mode === 'history' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setMode('history')}
-              className={mode === 'history' ? '' : 'text-neutral-600'}
+              className={mode === 'history' ? '' : 'text-muted-foreground'}
             >
               <ScrollText className="h-4 w-4 mr-1" />
               History
@@ -242,7 +242,7 @@ export function EventsPage() {
       {/* Pixel filter */}
       <div className="mb-4">
         <select
-          className="border border-neutral-200 rounded-lg px-3 py-2 text-sm bg-white text-neutral-900"
+          className="border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground"
           value={pixelId ?? ''}
           onChange={(e) => setPixelFilter(e.target.value || null)}
         >
@@ -298,7 +298,7 @@ export function EventsPage() {
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={timeBuckets}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
                   <XAxis
                     dataKey="label"
                     tick={{ fontSize: 10, fill: '#737373' }}
@@ -312,7 +312,7 @@ export function EventsPage() {
                       fontSize: '12px',
                     }}
                   />
-                  <Bar dataKey="count" fill="#4f46e5" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="count" fill="#18181B" radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -331,11 +331,11 @@ export function EventsPage() {
                       <Badge variant={eventBadgeVariant(type.name)} className="text-xs">
                         {type.name}
                       </Badge>
-                      <span className="text-xs text-neutral-500">
+                      <span className="text-xs text-muted-foreground">
                         {type.count} ({type.percentage}%)
                       </span>
                     </div>
-                    <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${getEventColor(type.name)}`}
                         style={{ width: `${type.percentage}%` }}
@@ -344,7 +344,7 @@ export function EventsPage() {
                   </div>
                 ))}
                 {eventTypeCounts.length === 0 && (
-                  <p className="text-sm text-neutral-400 text-center py-4">No data</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">No data</p>
                 )}
               </div>
             </CardContent>
@@ -356,42 +356,42 @@ export function EventsPage() {
       {mode === 'live' ? (
         /* Live mode table */
         realtimeEvents.length === 0 ? (
-          <div className="text-center py-16 border border-dashed border-neutral-300 rounded-lg">
+          <div className="text-center py-16 border border-dashed border-border rounded-lg">
             {realtimeLoading ? (
               <>
-                <RefreshCw className="h-6 w-6 animate-spin text-indigo-500 mx-auto mb-3" />
-                <p className="text-neutral-500">Loading recent events...</p>
+                <RefreshCw className="h-6 w-6 animate-spin text-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">Loading recent events...</p>
               </>
             ) : (
               <>
                 <div className="animate-pulse mb-3">
                   <div className="inline-block h-3 w-3 rounded-full bg-emerald-400" />
                 </div>
-                <p className="text-neutral-500">Waiting for events...</p>
-                <p className="text-sm text-neutral-400 mt-1">
+                <p className="text-muted-foreground">Waiting for events...</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   New events will appear here in realtime
                 </p>
               </>
             )}
           </div>
         ) : (
-          <div className="border border-neutral-200 rounded-lg overflow-hidden">
+          <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50">
-                  <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">
+                <tr className="border-b border-border bg-muted">
+                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     Event
                   </th>
-                  <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">
+                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     Pixel
                   </th>
-                  <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">
+                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     Source URL
                   </th>
-                  <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">
+                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     CAPI
                   </th>
-                  <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">
+                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     Time
                   </th>
                 </tr>
@@ -400,16 +400,16 @@ export function EventsPage() {
                 {realtimeEvents.map((event) => (
                   <tr
                     key={event.id}
-                    className="border-b border-neutral-200 last:border-0 animate-[fadeIn_0.3s_ease-in]"
+                    className="border-b border-border last:border-0 animate-[fadeIn_0.3s_ease-in]"
                   >
                     <td className="px-4 py-3">
                       <Badge variant={eventBadgeVariant(event.event_name)}>
                         {event.event_name}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm text-neutral-700">{event.pixel_name}</td>
+                    <td className="px-4 py-3 text-sm text-foreground">{event.pixel_name}</td>
                     <td
-                      className="px-4 py-3 text-sm text-neutral-500 max-w-xs truncate"
+                      className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate"
                       title={event.source_url}
                     >
                       {event.source_url || '-'}
@@ -421,7 +421,7 @@ export function EventsPage() {
                         <X className="h-4 w-4 text-red-400" />
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-neutral-500">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
                       {formatDistanceToNow(new Date(event.event_time), { addSuffix: true })}
                     </td>
                   </tr>
@@ -432,50 +432,50 @@ export function EventsPage() {
         )
       ) : /* History mode table */
       historyQuery.isLoading ? (
-        <div className="text-center py-12 text-neutral-500">Loading events...</div>
+        <div className="text-center py-12 text-muted-foreground">Loading events...</div>
       ) : historyEvents.length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-neutral-300 rounded-lg">
-          <p className="text-neutral-500">No events recorded yet</p>
-          <p className="text-sm text-neutral-400 mt-1">
+        <div className="text-center py-12 border border-dashed border-border rounded-lg">
+          <p className="text-muted-foreground">No events recorded yet</p>
+          <p className="text-sm text-muted-foreground mt-1">
             Events will appear here once your sale pages start receiving traffic
           </p>
         </div>
       ) : (
         <>
-          <div className="border border-neutral-200 rounded-lg overflow-hidden">
+          <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50">
-                  <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">
+                <tr className="border-b border-border bg-muted">
+                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     Event
                   </th>
-                  <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">
+                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     Pixel
                   </th>
-                  <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">
+                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     Source URL
                   </th>
-                  <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">
+                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     CAPI
                   </th>
-                  <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">
+                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     Time
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {historyEvents.map((event) => (
-                  <tr key={event.id} className="border-b border-neutral-200 last:border-0">
+                  <tr key={event.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3">
                       <Badge variant={eventBadgeVariant(event.event_name)}>
                         {event.event_name}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-sm text-neutral-700">
+                    <td className="px-4 py-3 text-sm text-foreground">
                       {pixelNameMap.get(event.pixel_id) ?? event.pixel_id}
                     </td>
                     <td
-                      className="px-4 py-3 text-sm text-neutral-500 max-w-xs truncate"
+                      className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate"
                       title={event.source_url}
                     >
                       {event.source_url || '-'}
@@ -487,7 +487,7 @@ export function EventsPage() {
                         <X className="h-4 w-4 text-red-400" />
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-neutral-500">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
                       {formatDistanceToNow(new Date(event.event_time), { addSuffix: true })}
                     </td>
                   </tr>
@@ -498,7 +498,7 @@ export function EventsPage() {
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-muted-foreground">
                 Page {historyPage} of {totalPages}
               </p>
               <div className="flex gap-2">

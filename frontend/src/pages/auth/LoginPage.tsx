@@ -46,8 +46,8 @@ export function LoginPage() {
   return (
     <AuthLayout>
       <div>
-        <h2 className="text-2xl font-bold text-neutral-900 mb-2">Welcome back</h2>
-        <p className="text-neutral-500 mb-8">Sign in to your Pixlinks account</p>
+        <h2 className="text-2xl font-bold text-foreground mb-2">Welcome back</h2>
+        <p className="text-muted-foreground mb-8">Sign in to your Pixlinks account</p>
 
         {error && (
           <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600">
@@ -87,9 +87,9 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-neutral-500">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
           Don't have an account?{' '}
-          <Link to="/register" className="text-indigo-600 hover:underline font-medium">
+          <Link to="/register" className="text-foreground hover:text-foreground/80 hover:underline font-medium">
             Sign up
           </Link>
         </p>

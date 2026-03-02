@@ -24,11 +24,11 @@ function StatCard({ title, value, subtitle, icon }: StatCardProps) {
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-neutral-500">{title}</p>
-            <p className="text-2xl font-bold text-neutral-900 mt-1">{value}</p>
-            {subtitle && <p className="text-xs text-neutral-400 mt-1">{subtitle}</p>}
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
+            {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
           </div>
-          <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-foreground">
             {icon}
           </div>
         </div>
@@ -43,7 +43,7 @@ export function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-neutral-900 mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Dashboard</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
@@ -81,11 +81,11 @@ export function DashboardPage() {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1} />
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#18181B" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#18181B" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
                 <XAxis
                   dataKey="date"
                   tick={{ fontSize: 12, fill: '#737373' }}
@@ -99,14 +99,14 @@ export function DashboardPage() {
                 <Area
                   type="monotone"
                   dataKey="count"
-                  stroke="#4f46e5"
+                  stroke="#18181B"
                   fillOpacity={1}
                   fill="url(#colorEvents)"
                 />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-neutral-400">
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
               No event data yet
             </div>
           )}

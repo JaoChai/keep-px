@@ -20,7 +20,7 @@ export function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-neutral-900 mb-6">Settings</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Settings</h1>
 
       <div className="space-y-6 max-w-2xl">
         {/* Profile */}
@@ -65,7 +65,7 @@ export function SettingsPage() {
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-neutral-400 mt-2">
+            <p className="text-xs text-muted-foreground mt-2">
               This key is used by sale page templates to send events to your pixels.
             </p>
           </CardContent>

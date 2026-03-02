@@ -96,8 +96,8 @@ export function PixelsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Pixels</h1>
-          <p className="text-sm text-neutral-500 mt-1">Manage your Facebook Pixels</p>
+          <h1 className="text-2xl font-bold text-foreground">Pixels</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage your Facebook Pixels</p>
         </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4" />
@@ -106,33 +106,33 @@ export function PixelsPage() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-neutral-500">Loading...</div>
+        <div className="text-center py-12 text-muted-foreground">Loading...</div>
       ) : !pixels || pixels.length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-neutral-300 rounded-lg">
-          <p className="text-neutral-500 mb-4">No pixels yet</p>
+        <div className="text-center py-12 border border-dashed border-border rounded-lg">
+          <p className="text-muted-foreground mb-4">No pixels yet</p>
           <Button variant="outline" onClick={openCreate}>
             <Plus className="h-4 w-4" />
             Add your first Pixel
           </Button>
         </div>
       ) : (
-        <div className="border border-neutral-200 rounded-lg overflow-hidden">
+        <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-neutral-200 bg-neutral-50">
-                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Name</th>
-                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Pixel ID</th>
-                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Status</th>
-                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Backup</th>
-                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Created</th>
-                <th className="text-right text-sm font-medium text-neutral-500 px-4 py-3">Actions</th>
+              <tr className="border-b border-border bg-muted">
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Name</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Pixel ID</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Status</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Backup</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Created</th>
+                <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {pixels.map((pixel) => (
-                <tr key={pixel.id} className="border-b border-neutral-200 last:border-0">
-                  <td className="px-4 py-3 text-sm font-medium text-neutral-900">{pixel.name}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600 font-mono">{pixel.fb_pixel_id}</td>
+                <tr key={pixel.id} className="border-b border-border last:border-0">
+                  <td className="px-4 py-3 text-sm font-medium text-foreground">{pixel.name}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground font-mono">{pixel.fb_pixel_id}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => handleToggleActive(pixel)}>
                       <Badge variant={pixel.is_active ? 'success' : 'warning'}>
@@ -147,10 +147,10 @@ export function PixelsPage() {
                         {pixels?.find(p => p.id === pixel.backup_pixel_id)?.name || 'Unknown'}
                       </Badge>
                     ) : (
-                      <span className="text-xs text-neutral-400">None</span>
+                      <span className="text-xs text-muted-foreground">None</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-neutral-500">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     {new Date(pixel.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -202,23 +202,23 @@ export function PixelsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="fb_access_token">
-                Access Token {editingPixel && <span className="text-neutral-400 font-normal">(leave blank to keep current)</span>}
+                Access Token {editingPixel && <span className="text-muted-foreground font-normal">(leave blank to keep current)</span>}
               </Label>
               <Input id="fb_access_token" type="password" placeholder="EAAxxxxxxx..." {...register('fb_access_token')} />
               {errors.fb_access_token && <p className="text-sm text-red-500">{errors.fb_access_token.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="test_event_code">
-                Test Event Code <span className="text-neutral-400 font-normal">(optional)</span>
+                Test Event Code <span className="text-muted-foreground font-normal">(optional)</span>
               </Label>
               <Input id="test_event_code" placeholder="TEST12345" {...register('test_event_code')} />
-              <p className="text-xs text-neutral-400">คัดลอกจาก Facebook Events Manager → เหตุการณ์ทดสอบ เพื่อ debug events</p>
+              <p className="text-xs text-muted-foreground">คัดลอกจาก Facebook Events Manager → เหตุการณ์ทดสอบ เพื่อ debug events</p>
             </div>
             {editingPixel && (
               <div className="space-y-2">
                 <Label>Backup Pixel</Label>
                 <select
-                  className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm"
+                  className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
                   defaultValue={editingPixel.backup_pixel_id || ''}
                   onChange={(e) => {
                     updatePixel.mutate({
@@ -232,7 +232,7 @@ export function PixelsPage() {
                     <option key={p.id} value={p.id}>{p.name} ({p.fb_pixel_id})</option>
                   ))}
                 </select>
-                <p className="text-xs text-neutral-400">Events will also be forwarded to the backup pixel via CAPI</p>
+                <p className="text-xs text-muted-foreground">Events will also be forwarded to the backup pixel via CAPI</p>
               </div>
             )}
             <DialogFooter>
@@ -251,7 +251,7 @@ export function PixelsPage() {
           <DialogHeader>
             <DialogTitle>Delete Pixel</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-neutral-500 mt-2">
+          <p className="text-sm text-muted-foreground mt-2">
             Are you sure? This will also delete all events and rules associated with this pixel. This action cannot be undone.
           </p>
           <DialogFooter>

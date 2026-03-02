@@ -249,7 +249,7 @@ export function SalePageEditorPage() {
       <div className="flex items-center justify-between mb-6">
         <Link
           to="/sale-pages"
-          className="flex items-center gap-1.5 text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Sale Pages
@@ -289,7 +289,7 @@ export function SalePageEditorPage() {
               <div className="space-y-2">
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   onClick={() => setShowCustomSlug(!showCustomSlug)}
                 >
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showCustomSlug ? 'rotate-0' : '-rotate-90'}`} />
@@ -297,7 +297,7 @@ export function SalePageEditorPage() {
                 </button>
                 {showCustomSlug && (
                   <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-neutral-200 bg-neutral-50 text-sm text-neutral-500">
+                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-border bg-muted text-sm text-muted-foreground">
                       /p/
                     </span>
                     <Input
@@ -309,18 +309,18 @@ export function SalePageEditorPage() {
                   </div>
                 )}
                 {!showCustomSlug && (
-                  <p className="text-xs text-neutral-400">ระบบจะสร้าง URL ให้อัตโนมัติ</p>
+                  <p className="text-xs text-muted-foreground">ระบบจะสร้าง URL ให้อัตโนมัติ</p>
                 )}
                 {errors.slug && <p className="text-sm text-red-500">{errors.slug.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label>Pixels (optional)</Label>
-                <div className="max-h-40 overflow-y-auto border border-neutral-200 rounded-md p-2 space-y-1">
+                <div className="max-h-40 overflow-y-auto border border-border rounded-md p-2 space-y-1">
                   {(!pixels || pixels.length === 0) && (
-                    <p className="text-xs text-neutral-400">No pixels available</p>
+                    <p className="text-xs text-muted-foreground">No pixels available</p>
                   )}
                   {pixels?.map((pixel) => (
-                    <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-neutral-50 cursor-pointer">
+                    <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-accent cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selectedPixelIds.includes(pixel.id)}
@@ -331,7 +331,7 @@ export function SalePageEditorPage() {
                             setSelectedPixelIds(prev => prev.filter(id => id !== pixel.id))
                           }
                         }}
-                        className="rounded border-neutral-300"
+                        className="rounded border-border"
                       />
                       {pixel.name} ({pixel.fb_pixel_id})
                     </label>
@@ -359,7 +359,7 @@ export function SalePageEditorPage() {
                 <Label>Hero Image</Label>
                 {watchedValues.hero_image_url && (
                   <div className="relative w-full max-w-[200px]">
-                    <img src={watchedValues.hero_image_url} alt="" className="w-full h-auto rounded-lg border border-neutral-200" />
+                    <img src={watchedValues.hero_image_url} alt="" className="w-full h-auto rounded-lg border border-border" />
                     <button
                       type="button"
                       className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
@@ -419,7 +419,7 @@ export function SalePageEditorPage() {
                           type="button"
                           onClick={() => removeFeature(index)}
                         >
-                          <X className="h-4 w-4 text-neutral-400" />
+                          <X className="h-4 w-4 text-muted-foreground" />
                         </Button>
                       )}
                     </div>
@@ -438,7 +438,7 @@ export function SalePageEditorPage() {
                   <div className="grid grid-cols-3 gap-2">
                     {bodyImages.map((url, index) => (
                       <div key={index} className="relative group">
-                        <img src={url} alt="" className="w-full h-24 object-cover rounded-lg border border-neutral-200" />
+                        <img src={url} alt="" className="w-full h-24 object-cover rounded-lg border border-border" />
                         <button
                           type="button"
                           className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
@@ -494,7 +494,7 @@ export function SalePageEditorPage() {
                 <Label htmlFor="cta_event_name">เมื่อกดปุ่ม CTA ให้ยิงอีเวนต์</Label>
                 <select
                   id="cta_event_name"
-                  className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600"
+                  className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   {...register('cta_event_name')}
                 >
                   {CTA_EVENT_OPTIONS.map((opt) => (
@@ -526,7 +526,7 @@ export function SalePageEditorPage() {
                   <Label htmlFor="tracking_currency">สกุลเงิน</Label>
                   <select
                     id="tracking_currency"
-                    className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600"
+                    className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     {...register('tracking_currency')}
                   >
                     <option value="THB">THB (บาท)</option>
@@ -582,7 +582,7 @@ export function SalePageEditorPage() {
         {/* Right Column - Preview */}
         <div className="hidden lg:block lg:w-1/3">
           <div className="sticky top-8">
-            <p className="text-sm font-medium text-neutral-500 mb-3">Preview</p>
+            <p className="text-sm font-medium text-muted-foreground mb-3">Preview</p>
             <SalePagePreview
               hero={{
                 title: watchedValues.hero_title ?? '',
@@ -617,9 +617,9 @@ export function SalePageEditorPage() {
             <DialogTitle>Sale Page Published!</DialogTitle>
           </DialogHeader>
           <div className="mt-4 space-y-3">
-            <p className="text-sm text-neutral-600">Your page is live at:</p>
-            <div className="flex items-center gap-2 p-2 bg-neutral-50 rounded-md border border-neutral-200">
-              <code className="text-sm text-indigo-600 flex-1 truncate">
+            <p className="text-sm text-muted-foreground">Your page is live at:</p>
+            <div className="flex items-center gap-2 p-2 bg-muted rounded-md border border-border">
+              <code className="text-sm text-foreground flex-1 truncate">
                 {publishedDialog && `${window.location.origin}/p/${publishedDialog.slug}`}
               </code>
               <Button
@@ -631,7 +631,7 @@ export function SalePageEditorPage() {
                 {copiedUrl ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-muted-foreground">
               Share this link on your bio link, LINE, or Facebook to start tracking.
             </p>
           </div>

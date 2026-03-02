@@ -80,7 +80,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
   return (
     <div className="space-y-3">
       {blocks.map((block, index) => (
-        <div key={block.id} className="border border-neutral-200 rounded-lg p-4 bg-white">
+        <div key={block.id} className="border border-border rounded-lg p-4 bg-card">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               {getTypeBadge(block.type)}
@@ -102,9 +102,9 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
           {block.type === 'image' && (
             <div className="space-y-2">
               {block.image_url ? (
-                <img src={block.image_url} alt="" className="w-full max-h-48 object-cover rounded-md border border-neutral-200" />
+                <img src={block.image_url} alt="" className="w-full max-h-48 object-cover rounded-md border border-border" />
               ) : (
-                <div className="w-full h-32 bg-neutral-100 rounded-md flex items-center justify-center text-neutral-400 text-sm">
+                <div className="w-full h-32 bg-secondary rounded-md flex items-center justify-center text-muted-foreground text-sm">
                   ยังไม่มีรูป
                 </div>
               )}
@@ -156,7 +156,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
               <div className="space-y-1.5">
                 <Label className="text-xs">ประเภทปุ่ม</Label>
                 <select
-                  className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={block.button_style || 'line'}
                   onChange={(e) => updateBlock(index, { button_style: e.target.value as ButtonStyle })}
                 >
@@ -198,8 +198,8 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
       ))}
 
       {/* Add Block Buttons */}
-      <div className="border-2 border-dashed border-neutral-200 rounded-lg p-4">
-        <p className="text-xs font-medium text-neutral-500 mb-3 text-center">เพิ่มบล็อก</p>
+      <div className="border-2 border-dashed border-border rounded-lg p-4">
+        <p className="text-xs font-medium text-muted-foreground mb-3 text-center">เพิ่มบล็อก</p>
         <div className="flex flex-wrap justify-center gap-2">
           <input ref={imageFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
           <Button

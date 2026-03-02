@@ -22,7 +22,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
 
 export function DialogContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement> & { onClose?: () => void }) {
   return (
-    <div className={cn('relative z-50 w-full max-w-lg rounded-lg border border-neutral-200 bg-white p-6 shadow-lg', className)} {...props}>
+    <div className={cn('relative z-50 w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg', className)} {...props}>
       {props.onClose && (
         <button onClick={props.onClose} className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100">
           <X className="h-4 w-4" />
@@ -42,7 +42,7 @@ export function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHe
 }
 
 export function DialogDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('text-sm text-neutral-500', className)} {...props} />
+  return <p className={cn('text-sm text-muted-foreground', className)} {...props} />
 }
 
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
