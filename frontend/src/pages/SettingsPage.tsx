@@ -1,14 +1,20 @@
 import { useState } from 'react'
-import { Copy, Check, Key } from 'lucide-react'
+import { Copy, Check, Key, Eye, EyeOff, RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useAuthStore } from '@/stores/auth-store'
+import { useRegenerateAPIKey } from '@/hooks/use-auth'
 
 export function SettingsPage() {
   const customer = useAuthStore((s) => s.customer)
   const [copied, setCopied] = useState(false)
+  const [showKey, setShowKey] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const regenerateMutation = useRegenerateAPIKey()
 
   const copyAPIKey = () => {
     if (customer?.api_key) {
@@ -16,6 +22,18 @@ export function SettingsPage() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
+  }
+
+  const handleRegenerate = () => {
+    regenerateMutation.mutate(undefined, {
+      onSuccess: () => {
+        setConfirmOpen(false)
+        toast.success('สร้าง API Key ใหม่สำเร็จ')
+      },
+      onError: () => {
+        toast.error('ไม่สามารถสร้าง API Key ใหม่ได้')
+      },
+    })
   }
 
   return (
@@ -57,20 +75,62 @@ export function SettingsPage() {
           <CardContent>
             <div className="flex gap-2">
               <Input
-                value={customer?.api_key || ''}
+                value={
+                  showKey
+                    ? customer?.api_key || ''
+                    : customer?.api_key
+                      ? `${'•'.repeat(12)}${customer.api_key.slice(-4)}`
+                      : ''
+                }
                 readOnly
                 className="font-mono text-sm"
               />
+              <Button variant="outline" onClick={() => setShowKey(!showKey)}>
+                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
               <Button variant="outline" onClick={copyAPIKey}>
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              คีย์นี้ใช้สำหรับเทมเพลตหน้าขายเพื่อส่งอีเวนต์ไปยังพิกเซลของคุณ
-            </p>
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-muted-foreground">
+                คีย์นี้ใช้สำหรับเทมเพลตหน้าขายเพื่อส่งอีเวนต์ไปยังพิกเซลของคุณ
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmOpen(true)}
+                disabled={regenerateMutation.isPending}
+              >
+                <RefreshCw className={`h-4 w-4 mr-1.5 ${regenerateMutation.isPending ? 'animate-spin' : ''}`} />
+                สร้างคีย์ใหม่
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>สร้าง API Key ใหม่</DialogTitle>
+            <DialogDescription>
+              คีย์เดิมจะใช้ไม่ได้ทันที ต้องการสร้างคีย์ใหม่หรือไม่?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={regenerateMutation.isPending}>
+              ยกเลิก
+            </Button>
+            <Button variant="destructive" onClick={handleRegenerate} disabled={regenerateMutation.isPending}>
+              {regenerateMutation.isPending ? (
+                <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : null}
+              ยืนยัน
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

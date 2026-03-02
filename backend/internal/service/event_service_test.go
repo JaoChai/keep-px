@@ -20,7 +20,7 @@ func newTestEventService() (*EventService, *MockEventRepo, *MockPixelRepo) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
 	logger := slog.Default()
-	svc := NewEventService(eventRepo, pixelRepo, capiClient, logger, nil, nil)
+	svc := NewEventService(eventRepo, pixelRepo, capiClient, logger, nil)
 	return svc, eventRepo, pixelRepo
 }
 

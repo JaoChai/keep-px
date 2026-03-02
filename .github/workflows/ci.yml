@@ -60,6 +60,18 @@ jobs:
       - name: go build
         run: go build -o /dev/null ./cmd/server
 
+      - name: gosec (security scanner)
+        continue-on-error: true
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec ./...
+
+      - name: govulncheck (vulnerability scanner)
+        continue-on-error: true
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
   frontend:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
@@ -80,6 +92,10 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
+
+      - name: npm audit (security scan)
+        continue-on-error: true
+        run: npm audit --audit-level=high
 
   e2e:
     needs: changes

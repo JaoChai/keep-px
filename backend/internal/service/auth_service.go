@@ -187,6 +187,23 @@ func (s *AuthService) GoogleAuth(ctx context.Context, input GoogleAuthInput) (*A
 	return s.generateTokens(ctx, customer)
 }
 
+func (s *AuthService) RegenerateAPIKey(ctx context.Context, customerID string) (*domain.Customer, error) {
+	newKey, err := generateAPIKey()
+	if err != nil {
+		return nil, fmt.Errorf("generate api key: %w", err)
+	}
+
+	customer, err := s.customerRepo.RegenerateAPIKey(ctx, customerID, newKey)
+	if err != nil {
+		return nil, fmt.Errorf("regenerate api key: %w", err)
+	}
+	if customer == nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	return customer, nil
+}
+
 func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string) (*AuthTokens, error) {
 	tokenHash := hashToken(refreshToken)
 	customerID, _, err := s.refreshTokenRepo.GetByTokenHash(ctx, tokenHash)

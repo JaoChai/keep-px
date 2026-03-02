@@ -179,7 +179,7 @@ export function BillingPage() {
                   </div>
                 </div>
                 <div className="mb-4">
-                  <span className="text-3xl font-bold text-foreground">{pack.price}</span>
+                  <span className="text-3xl font-bold text-foreground">{pack.price.toLocaleString('th-TH')}</span>
                   <span className="text-sm text-muted-foreground"> THB</span>
                 </div>
                 <ul className="space-y-2 mb-4 text-sm text-muted-foreground">
@@ -277,7 +277,7 @@ export function BillingPage() {
                     </div>
                   </div>
                   <div className="mb-4">
-                    <span className="text-3xl font-bold text-foreground">{addon.price}</span>
+                    <span className="text-3xl font-bold text-foreground">{addon.price.toLocaleString('th-TH')}</span>
                     <span className="text-sm text-muted-foreground"> THB/เดือน</span>
                   </div>
                   {isActive ? (

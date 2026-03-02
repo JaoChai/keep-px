@@ -102,15 +102,19 @@ func (s *QuotaService) GetCustomerQuota(ctx context.Context, customerID string) 
 	return quota, nil
 }
 
-// CheckEventIngestionQuota checks if the customer can ingest the given number of events.
-func (s *QuotaService) CheckEventIngestionQuota(ctx context.Context, customerID string, count int64) error {
+// CheckAndIncrementEventQuota atomically checks and increments the event usage
+// counter, preventing race conditions in concurrent ingestion.
+func (s *QuotaService) CheckAndIncrementEventQuota(ctx context.Context, customerID string, count int64) error {
 	quota, err := s.GetCustomerQuota(ctx, customerID)
 	if err != nil {
 		return err
 	}
 
-	if quota.EventsUsedThisMonth+count > quota.MaxEventsPerMonth {
-		return ErrQuotaEventsExceeded
+	if err := s.usageRepo.CheckAndIncrement(ctx, customerID, count, quota.MaxEventsPerMonth); err != nil {
+		if errors.Is(err, repository.ErrQuotaExceeded) {
+			return ErrQuotaEventsExceeded
+		}
+		return err
 	}
 	return nil
 }

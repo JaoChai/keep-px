@@ -254,29 +254,7 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 }
 
 func (s *ReplayService) sendBatchWithRetry(ctx context.Context, pixelID, accessToken string, events []facebook.CAPIEvent) (*facebook.CAPIResponse, error) {
-	var lastErr error
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		resp, err := s.capiClient.SendEvents(ctx, pixelID, accessToken, "", events)
-		if err == nil {
-			return resp, nil
-		}
-		lastErr = err
-		if facebook.IsAuthError(err) {
-			return nil, err // fail fast
-		}
-		if facebook.IsRateLimitError(err) && attempt < maxRetries {
-			backoff := time.Duration(1<<uint(attempt)) * time.Second // 1s, 2s, 4s
-			s.logger.Warn("CAPI rate limited, retrying", "attempt", attempt+1, "backoff", backoff)
-			select {
-			case <-time.After(backoff):
-				continue
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			}
-		}
-		break // other errors don't retry
-	}
-	return nil, lastErr
+	return facebook.SendEventsWithRetry(ctx, s.capiClient, pixelID, accessToken, "", events, maxRetries, s.logger)
 }
 
 func (s *ReplayService) executeReplay(ctx context.Context, session *domain.ReplaySession, targetPixel *domain.Pixel, events []*domain.PixelEvent) {

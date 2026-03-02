@@ -2,10 +2,12 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
+	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
 
 type EventUsageRepo struct {
@@ -25,6 +27,25 @@ func (r *EventUsageRepo) IncrementCount(ctx context.Context, customerID string, 
 		customerID, count,
 	)
 	return err
+}
+
+func (r *EventUsageRepo) CheckAndIncrement(ctx context.Context, customerID string, count int64, maxAllowed int64) error {
+	tag, err := r.pool.Exec(ctx,
+		`INSERT INTO event_usage (customer_id, month, event_count)
+		 SELECT $1, date_trunc('month', CURRENT_DATE), $2
+		 WHERE $2 <= $3
+		 ON CONFLICT (customer_id, month)
+		 DO UPDATE SET event_count = event_usage.event_count + EXCLUDED.event_count, updated_at = NOW()
+		 WHERE event_usage.event_count + EXCLUDED.event_count <= $3`,
+		customerID, count, maxAllowed,
+	)
+	if err != nil {
+		return fmt.Errorf("check and increment event usage: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return repository.ErrQuotaExceeded
+	}
+	return nil
 }
 
 func (r *EventUsageRepo) GetCurrentMonth(ctx context.Context, customerID string) (*domain.EventUsage, error) {

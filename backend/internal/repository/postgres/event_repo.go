@@ -301,6 +301,19 @@ func (r *EventRepo) ListLatestByCustomerID(ctx context.Context, customerID strin
 	return events, nil
 }
 
+func (r *EventRepo) DeleteOlderThan(ctx context.Context, before time.Time, batchSize int) (int64, error) {
+	tag, err := r.pool.Exec(ctx,
+		`DELETE FROM pixel_events WHERE id IN (
+			SELECT id FROM pixel_events WHERE created_at < $1 LIMIT $2
+		)`,
+		before, batchSize,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
 func (r *EventRepo) ListRecentByCustomerID(ctx context.Context, customerID string, since time.Time, pixelID string, limit int) ([]*domain.RealtimeEvent, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT pe.id, pe.pixel_id, p.name AS pixel_name, pe.event_name,

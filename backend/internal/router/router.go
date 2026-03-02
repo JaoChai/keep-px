@@ -70,7 +70,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	billingService := service.NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookEventRepo, cfg)
 	quotaService := service.NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger, quotaService)
-	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger, quotaService, usageRepo)
+	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger, quotaService)
 	notifService := service.NewNotificationService(notifRepo)
 	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService, quotaService)
 	analyticsService := service.NewAnalyticsService(pool)
@@ -80,7 +80,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	storageService := service.NewStorageService(cfg)
 
 	// Handlers
-	healthHandler := handler.NewHealthHandler()
+	healthHandler := handler.NewHealthHandler(pool)
 	authHandler := handler.NewAuthHandler(authService, logger)
 	pixelHandler := handler.NewPixelHandler(pixelService)
 	eventHandler := handler.NewEventHandler(eventService)
@@ -126,6 +126,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 			// Auth - get current user
 			r.Get("/auth/me", authHandler.Me)
+			r.Post("/auth/regenerate-api-key", authHandler.RegenerateAPIKey)
 
 			// Pixel routes - Phase 3
 			r.Route("/pixels", func(r chi.Router) {

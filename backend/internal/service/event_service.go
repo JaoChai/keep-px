@@ -22,7 +22,6 @@ type EventService struct {
 	capiClient   *facebook.CAPIClient
 	logger       *slog.Logger
 	quotaService *QuotaService
-	usageRepo    repository.EventUsageRepository
 }
 
 func NewEventService(
@@ -31,7 +30,6 @@ func NewEventService(
 	capiClient *facebook.CAPIClient,
 	logger *slog.Logger,
 	quotaService *QuotaService,
-	usageRepo repository.EventUsageRepository,
 ) *EventService {
 	return &EventService{
 		eventRepo:    eventRepo,
@@ -39,7 +37,6 @@ func NewEventService(
 		capiClient:   capiClient,
 		logger:       logger,
 		quotaService: quotaService,
-		usageRepo:    usageRepo,
 	}
 }
 
@@ -66,9 +63,9 @@ type IngestBatchInput struct {
 }
 
 func (s *EventService) Ingest(ctx context.Context, customerID string, input IngestBatchInput, client ClientContext) (int, error) {
-	// Check event ingestion quota
+	// Atomically check quota and increment usage counter
 	if s.quotaService != nil {
-		if err := s.quotaService.CheckEventIngestionQuota(ctx, customerID, int64(len(input.Events))); err != nil {
+		if err := s.quotaService.CheckAndIncrementEventQuota(ctx, customerID, int64(len(input.Events))); err != nil {
 			return 0, err
 		}
 	}
@@ -143,13 +140,6 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 		created++
 	}
 
-	// Track usage after successful ingestion
-	if s.usageRepo != nil && created > 0 {
-		if err := s.usageRepo.IncrementCount(ctx, customerID, int64(created)); err != nil {
-			s.logger.Error("failed to increment event usage", "error", err, "customer_id", customerID, "count", created)
-		}
-	}
-
 	return created, nil
 }
 
@@ -215,7 +205,7 @@ func (s *EventService) forwardToCAPI(ctx context.Context, event *domain.PixelEve
 		testEventCode = *pixel.TestEventCode
 	}
 
-	resp, err := s.capiClient.SendEvent(ctx, pixel.FBPixelID, pixel.FBAccessToken, testEventCode, capiEvent)
+	resp, err := facebook.SendEventWithRetry(ctx, s.capiClient, pixel.FBPixelID, pixel.FBAccessToken, testEventCode, capiEvent, maxCAPIRetries, s.logger)
 	if err != nil {
 		s.logger.Error("forward to CAPI failed", "error", err, "event_id", event.ID)
 		return
@@ -276,6 +266,7 @@ func (s *EventService) ListLatest(ctx context.Context, customerID, pixelID strin
 }
 
 const (
+	maxCAPIRetries     = 3   // shared retry count for CAPI calls
 	realtimeEventLimit = 50
 	maxFBCookieLen     = 500 // max length for _fbc/_fbp cookie values
 	maxFBClidLen       = 200 // max length for fbclid URL parameter
