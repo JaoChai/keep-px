@@ -15,34 +15,40 @@ interface RegisterInput {
   name: string
 }
 
-export function useLogin() {
-  const setCustomer = useAuthStore((s) => s.setCustomer)
+function storeAuthTokens(data: AuthTokens) {
+  localStorage.setItem('access_token', data.access_token)
+  localStorage.setItem('refresh_token', data.refresh_token)
+  useAuthStore.getState().setCustomer(data.customer)
+}
 
+export function useLogin() {
   return useMutation({
     mutationFn: async (input: LoginInput) => {
       const { data } = await api.post<APIResponse<AuthTokens>>('/auth/login', input)
       return data.data!
     },
-    onSuccess: (data) => {
-      localStorage.setItem('access_token', data.access_token)
-      localStorage.setItem('refresh_token', data.refresh_token)
-      setCustomer(data.customer)
+    onSuccess: storeAuthTokens,
+  })
+}
+
+export function useGoogleAuth() {
+  return useMutation({
+    mutationFn: async (idToken: string) => {
+      const { data } = await api.post<APIResponse<AuthTokens>>('/auth/google', { id_token: idToken })
+      return data.data!
     },
+    onSuccess: storeAuthTokens,
   })
 }
 
 export function useRegister() {
-  const setCustomer = useAuthStore((s) => s.setCustomer)
-
   return useMutation({
     mutationFn: async (input: RegisterInput) => {
       const { data } = await api.post<APIResponse<AuthTokens>>('/auth/register', input)
       return data.data!
     },
     onSuccess: (data) => {
-      localStorage.setItem('access_token', data.access_token)
-      localStorage.setItem('refresh_token', data.refresh_token)
-      setCustomer(data.customer)
+      storeAuthTokens(data)
       toast.success('สมัครสมาชิกสำเร็จ')
     },
     onError: () => {

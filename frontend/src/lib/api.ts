@@ -40,7 +40,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
-    const authPaths = ['/auth/login', '/auth/register', '/auth/refresh']
+    const authPaths = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/google']
     const isAuthRequest = authPaths.some((path) => originalRequest.url?.includes(path))
 
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthRequest) {

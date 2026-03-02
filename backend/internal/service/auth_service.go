@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/api/idtoken"
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
@@ -21,6 +22,7 @@ var (
 	ErrInvalidCredentials  = errors.New("invalid credentials")
 	ErrEmailAlreadyExists  = errors.New("email already exists")
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
+	ErrInvalidGoogleToken  = errors.New("invalid google token")
 )
 
 type AuthService struct {
@@ -56,6 +58,10 @@ type RegisterInput struct {
 type LoginInput struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
+}
+
+type GoogleAuthInput struct {
+	IDToken string `json:"id_token" validate:"required"`
 }
 
 func (s *AuthService) GetCustomerByID(ctx context.Context, id string) (*domain.Customer, error) {
@@ -112,8 +118,70 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*AuthTokens,
 		return nil, ErrInvalidCredentials
 	}
 
+	if customer.PasswordHash == "" {
+		return nil, ErrInvalidCredentials
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(customer.PasswordHash), []byte(input.Password)); err != nil {
 		return nil, ErrInvalidCredentials
+	}
+
+	return s.generateTokens(ctx, customer)
+}
+
+func (s *AuthService) GoogleAuth(ctx context.Context, input GoogleAuthInput) (*AuthTokens, error) {
+	payload, err := idtoken.Validate(ctx, input.IDToken, s.cfg.GoogleClientID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalidGoogleToken, err)
+	}
+
+	googleID, _ := payload.Claims["sub"].(string)
+	email, _ := payload.Claims["email"].(string)
+	name, _ := payload.Claims["name"].(string)
+	emailVerified, _ := payload.Claims["email_verified"].(bool)
+
+	if googleID == "" || email == "" || !emailVerified {
+		return nil, ErrInvalidGoogleToken
+	}
+
+	// Check if user already linked by Google ID
+	customer, err := s.customerRepo.GetByGoogleID(ctx, googleID)
+	if err != nil {
+		return nil, fmt.Errorf("get by google id: %w", err)
+	}
+	if customer != nil {
+		return s.generateTokens(ctx, customer)
+	}
+
+	// Check if user exists by email — link Google ID
+	customer, err = s.customerRepo.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("get by email: %w", err)
+	}
+	if customer != nil {
+		customer.GoogleID = &googleID
+		if err := s.customerRepo.Update(ctx, customer); err != nil {
+			return nil, fmt.Errorf("link google id: %w", err)
+		}
+		return s.generateTokens(ctx, customer)
+	}
+
+	// New user — create without password
+	apiKey, err := generateAPIKey()
+	if err != nil {
+		return nil, fmt.Errorf("generate api key: %w", err)
+	}
+
+	customer = &domain.Customer{
+		Email:    email,
+		GoogleID: &googleID,
+		Name:     name,
+		APIKey:   apiKey,
+		Plan:     "free",
+	}
+
+	if err := s.customerRepo.Create(ctx, customer); err != nil {
+		return nil, fmt.Errorf("create customer: %w", err)
 	}
 
 	return s.generateTokens(ctx, customer)

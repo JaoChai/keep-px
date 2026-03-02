@@ -16,6 +16,7 @@ type CustomerRepository interface {
 	Create(ctx context.Context, customer *domain.Customer) error
 	GetByID(ctx context.Context, id string) (*domain.Customer, error)
 	GetByEmail(ctx context.Context, email string) (*domain.Customer, error)
+	GetByGoogleID(ctx context.Context, googleID string) (*domain.Customer, error)
 	GetByAPIKey(ctx context.Context, apiKey string) (*domain.Customer, error)
 	Update(ctx context.Context, customer *domain.Customer) error
 }

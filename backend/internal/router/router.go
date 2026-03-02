@@ -79,6 +79,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", authHandler.Register)
 			r.Post("/login", authHandler.Login)
+			r.Post("/google", authHandler.GoogleAuth)
 			r.Post("/refresh", authHandler.Refresh)
 		})
 
