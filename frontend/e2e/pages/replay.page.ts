@@ -9,6 +9,8 @@ export class ReplayPage {
   readonly dateToInput: Locator
   readonly previewButton: Locator
   readonly replayHistory: Locator
+  readonly paywallMessage: Locator
+  readonly viewReplayPacksButton: Locator
 
   constructor(page: Page) {
     this.page = page
@@ -20,6 +22,8 @@ export class ReplayPage {
     this.dateToInput = page.locator('label:has-text("Date To") + input')
     this.previewButton = page.getByRole('button', { name: 'Preview' })
     this.replayHistory = page.getByText('Replay History')
+    this.paywallMessage = page.getByText('No replay credits')
+    this.viewReplayPacksButton = page.getByRole('button', { name: 'View Replay Packs' })
   }
 
   async goto() {
