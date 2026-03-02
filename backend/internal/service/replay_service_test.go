@@ -1246,7 +1246,7 @@ func TestReplayService_Preview_MaxEventsWarning(t *testing.T) {
 
 	assert.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Equal(t, maxReplayEvents, result.TotalEvents)
+	assert.Equal(t, MaxReplayEvents, result.TotalEvents)
 	assert.Contains(t, result.Warning, "100001 events found")
 	assert.Contains(t, result.Warning, "only first 100000 will be replayed")
 }
