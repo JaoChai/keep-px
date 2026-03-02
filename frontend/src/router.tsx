@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute'
 import { LoginPage } from '@/pages/auth/LoginPage'
-import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { HomePage } from '@/pages/HomePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { PixelsPage } from '@/pages/PixelsPage'
@@ -24,7 +23,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/register',
-    element: <RegisterPage />,
+    element: <Navigate to="/login" replace />,
   },
   {
     element: (

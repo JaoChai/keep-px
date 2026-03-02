@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createElement } from 'react'
-import { useLogin, useRegister } from '../use-auth'
+import { useGoogleAuth } from '../use-auth'
 import api from '@/lib/api'
 
 // Mock api module
@@ -53,82 +53,47 @@ function createWrapper() {
     createElement(QueryClientProvider, { client: queryClient }, children)
 }
 
-describe('useLogin', () => {
+describe('useGoogleAuth', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
-  it('should login successfully', async () => {
+  it('should authenticate with Google ID token', async () => {
     const mockResponse = {
       data: {
         data: {
           access_token: 'test-access',
           refresh_token: 'test-refresh',
-          customer: { id: '1', email: 'test@test.com', name: 'Test' },
+          customer: { id: '1', email: 'google@test.com', name: 'Google User' },
         },
       },
     }
     vi.mocked(api.post).mockResolvedValueOnce(mockResponse)
 
-    const { result } = renderHook(() => useLogin(), { wrapper: createWrapper() })
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: createWrapper() })
 
     await act(async () => {
-      result.current.mutate({ email: 'test@test.com', password: 'password123' })
+      result.current.mutate('google-id-token-123')
     })
 
     await waitFor(() => {
       expect(result.current.isSuccess || result.current.isError).toBe(true)
     })
 
-    if (result.current.isError) {
-      console.error('Mutation error:', result.current.error)
-    }
-
     expect(result.current.isSuccess).toBe(true)
-    expect(api.post).toHaveBeenCalledWith('/auth/login', { email: 'test@test.com', password: 'password123' })
+    expect(api.post).toHaveBeenCalledWith('/auth/google', { id_token: 'google-id-token-123' })
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('access_token', 'test-access')
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('refresh_token', 'test-refresh')
+    expect(mockSetCustomer).toHaveBeenCalledWith({ id: '1', email: 'google@test.com', name: 'Google User' })
   })
 
-  it('should handle login failure', async () => {
-    vi.mocked(api.post).mockRejectedValueOnce(new Error('Invalid credentials'))
+  it('should handle Google auth failure', async () => {
+    vi.mocked(api.post).mockRejectedValueOnce(new Error('Google auth failed'))
 
-    const { result } = renderHook(() => useLogin(), { wrapper: createWrapper() })
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: createWrapper() })
 
     await act(async () => {
-      result.current.mutate({ email: 'test@test.com', password: 'wrong' })
+      result.current.mutate('invalid-token')
     })
 
     await waitFor(() => expect(result.current.isError).toBe(true))
-  })
-})
-
-describe('useRegister', () => {
-  beforeEach(() => { vi.clearAllMocks() })
-
-  it('should register successfully', async () => {
-    const mockResponse = {
-      data: {
-        data: {
-          access_token: 'test-access',
-          refresh_token: 'test-refresh',
-          customer: { id: '1', email: 'new@test.com', name: 'New User' },
-        },
-      },
-    }
-    vi.mocked(api.post).mockResolvedValueOnce(mockResponse)
-
-    const { result } = renderHook(() => useRegister(), { wrapper: createWrapper() })
-
-    await act(async () => {
-      result.current.mutate({ email: 'new@test.com', password: 'password123', name: 'New User' })
-    })
-
-    await waitFor(() => {
-      expect(result.current.isSuccess || result.current.isError).toBe(true)
-    })
-
-    if (result.current.isError) {
-      console.error('Mutation error:', result.current.error)
-    }
-
-    expect(result.current.isSuccess).toBe(true)
-    expect(api.post).toHaveBeenCalledWith('/auth/register', { email: 'new@test.com', password: 'password123', name: 'New User' })
   })
 })

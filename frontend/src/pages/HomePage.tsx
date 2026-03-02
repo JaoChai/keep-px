@@ -73,20 +73,12 @@ export function HomePage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link
-              to="/login"
-              className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hidden sm:inline-flex')}
-            >
-              Login
-            </Link>
-            <Link
-              to="/register"
-              className={buttonVariants({ size: 'sm' })}
-            >
-              Get Started
-            </Link>
-          </div>
+          <Link
+            to="/login"
+            className={buttonVariants({ size: 'sm' })}
+          >
+            Get Started
+          </Link>
         </div>
       </nav>
 
@@ -103,7 +95,7 @@ export function HomePage() {
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
-            to="/register"
+            to="/login"
             className={cn(buttonVariants({ size: 'lg' }), 'gap-2')}
           >
             เริ่มต้นใช้งาน

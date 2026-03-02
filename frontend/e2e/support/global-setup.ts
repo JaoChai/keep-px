@@ -1,4 +1,3 @@
-import { chromium } from '@playwright/test'
 import { TEST_USER } from '../fixtures/test-data'
 import path from 'path'
 import fs from 'fs'
@@ -12,39 +11,56 @@ async function globalSetup() {
     fs.mkdirSync(authDir, { recursive: true })
   }
 
-  const browser = await chromium.launch()
-  const page = await browser.newPage()
-
   const baseURL = process.env.E2E_BASE_URL || 'http://localhost:5173'
+  const apiBase = `${baseURL}/api/v1`
   const storagePath = path.resolve(authDir, 'user.json')
 
-  // Try to register the test user first (may fail if already exists)
-  try {
-    await page.goto(`${baseURL}/register`)
-    await page.getByLabel('Name').fill(TEST_USER.name)
-    await page.getByLabel('Email').fill(TEST_USER.email)
-    await page.getByLabel('Password', { exact: true }).fill(TEST_USER.password)
-    await page.getByLabel('Confirm Password').fill(TEST_USER.password)
-    await page.getByRole('button', { name: 'Create account' }).click()
-    await page.waitForURL('**/dashboard', { timeout: 10_000 })
+  let tokens: { access_token: string; refresh_token: string }
 
-    // Registration succeeded and auto-logged in
-    await page.context().storageState({ path: storagePath })
-    await browser.close()
-    return
+  // Try to register via API (may fail if user already exists)
+  try {
+    const res = await fetch(`${apiBase}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: TEST_USER.name,
+        email: TEST_USER.email,
+        password: TEST_USER.password,
+      }),
+    })
+    if (!res.ok) throw new Error('register failed')
+    const body = await res.json()
+    tokens = body.data
   } catch {
-    // Registration failed (user may already exist) — fall through to login
+    // Registration failed (user exists) — login instead
+    const res = await fetch(`${apiBase}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: TEST_USER.email,
+        password: TEST_USER.password,
+      }),
+    })
+    if (!res.ok) throw new Error(`E2E auth setup failed: login returned ${res.status}`)
+    const body = await res.json()
+    tokens = body.data
   }
 
-  // Login with existing user
-  await page.goto(`${baseURL}/login`)
-  await page.getByLabel('Email').fill(TEST_USER.email)
-  await page.getByLabel('Password').fill(TEST_USER.password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.waitForURL('**/dashboard')
+  // Write storageState with tokens in localStorage
+  const storageState = {
+    cookies: [],
+    origins: [
+      {
+        origin: baseURL,
+        localStorage: [
+          { name: 'access_token', value: tokens.access_token },
+          { name: 'refresh_token', value: tokens.refresh_token },
+        ],
+      },
+    ],
+  }
 
-  await page.context().storageState({ path: storagePath })
-  await browser.close()
+  fs.writeFileSync(storagePath, JSON.stringify(storageState, null, 2))
 }
 
 export default globalSetup
