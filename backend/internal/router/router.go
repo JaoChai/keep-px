@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"encoding/hex"
 	"log/slog"
 	"net/http"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
+	"github.com/jaochai/pixlinks/backend/internal/crypto"
 	"github.com/jaochai/pixlinks/backend/internal/facebook"
 	"github.com/jaochai/pixlinks/backend/internal/handler"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
@@ -29,10 +31,27 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.CORS(cfg.CORSAllowedOrigins))
 
+	// Token encryption (optional)
+	var encryptor *crypto.TokenEncryptor
+	if cfg.TokenEncryptionKey != "" {
+		keyBytes, err := hex.DecodeString(cfg.TokenEncryptionKey)
+		if err != nil {
+			logger.Error("invalid TOKEN_ENCRYPTION_KEY (must be hex-encoded)", "error", err)
+		} else {
+			enc, err := crypto.NewTokenEncryptor(keyBytes)
+			if err != nil {
+				logger.Error("failed to create token encryptor", "error", err)
+			} else {
+				encryptor = enc
+				logger.Info("token encryption enabled")
+			}
+		}
+	}
+
 	// Repositories
 	customerRepo := postgres.NewCustomerRepo(pool)
 	refreshTokenRepo := postgres.NewRefreshTokenRepo(pool)
-	pixelRepo := postgres.NewPixelRepo(pool)
+	pixelRepo := postgres.NewPixelRepo(pool, encryptor)
 	eventRepo := postgres.NewEventRepo(pool)
 	replaySessionRepo := postgres.NewReplaySessionRepo(pool)
 	salePageRepo := postgres.NewSalePageRepo(pool)
@@ -41,13 +60,14 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	creditRepo := postgres.NewReplayCreditRepo(pool)
 	subRepo := postgres.NewSubscriptionRepo(pool)
 	usageRepo := postgres.NewEventUsageRepo(pool)
+	webhookEventRepo := postgres.NewWebhookEventRepo(pool)
 
 	// Facebook CAPI client
 	capiClient := facebook.NewCAPIClient(cfg.FBGraphAPIURL)
 
 	// Services
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
-	billingService := service.NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, cfg)
+	billingService := service.NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookEventRepo, cfg)
 	quotaService := service.NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger, quotaService)
 	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger, quotaService, usageRepo)

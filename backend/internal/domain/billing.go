@@ -97,3 +97,10 @@ type EventUsage struct {
 	EventCount int64     `json:"event_count"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
+
+type StripeWebhookEvent struct {
+	ID            string    `json:"id"`
+	StripeEventID string    `json:"stripe_event_id"`
+	EventType     string    `json:"event_type"`
+	ProcessedAt   time.Time `json:"processed_at"`
+}

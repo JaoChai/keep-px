@@ -151,27 +151,18 @@ func (s *QuotaService) CheckSalePageCreationQuota(ctx context.Context, customerI
 	return nil
 }
 
-// ConsumeReplayCredit consumes one replay from the customer's active credits.
+// ConsumeReplayCredit atomically consumes one replay from the customer's active credits.
 // Returns the credit used so the caller can access MaxEventsPerReplay.
 func (s *QuotaService) ConsumeReplayCredit(ctx context.Context, customerID string, eventCount int) (*domain.ReplayCredit, error) {
-	credits, err := s.creditRepo.GetActiveByCustomerID(ctx, customerID)
+	credit, err := s.creditRepo.ConsumeOneCredit(ctx, customerID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("consume credit: %w", err)
 	}
-	if len(credits) == 0 {
+	if credit == nil {
 		return nil, ErrQuotaReplayNotAllowed
 	}
-
-	// Use the first active credit (sorted by soonest expiry from repo)
-	credit := credits[0]
-
-	if eventCount > credit.MaxEventsPerReplay {
+	if credit.MaxEventsPerReplay > 0 && eventCount > credit.MaxEventsPerReplay {
 		return nil, ErrQuotaReplayEventsExceeded
 	}
-
-	if err := s.creditRepo.IncrementUsed(ctx, credit.ID); err != nil {
-		return nil, err
-	}
-
 	return credit, nil
 }

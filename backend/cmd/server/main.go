@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -17,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
+	"github.com/jaochai/pixlinks/backend/internal/crypto"
 	"github.com/jaochai/pixlinks/backend/internal/repository/postgres"
 	"github.com/jaochai/pixlinks/backend/internal/router"
 )
@@ -73,6 +75,21 @@ func main() {
 		logger.Error("failed to recover orphaned replay sessions", "error", err)
 	} else if recovered > 0 {
 		logger.Warn("recovered orphaned replay sessions", "count", recovered)
+	}
+
+	// Migrate plaintext tokens to encrypted (one-time, idempotent)
+	if cfg.TokenEncryptionKey != "" {
+		keyBytes, err := hex.DecodeString(cfg.TokenEncryptionKey)
+		if err != nil {
+			logger.Error("invalid TOKEN_ENCRYPTION_KEY for migration", "error", err)
+		} else {
+			enc, err := crypto.NewTokenEncryptor(keyBytes)
+			if err != nil {
+				logger.Error("failed to create encryptor for migration", "error", err)
+			} else {
+				migrateTokens(context.Background(), pool, enc, logger)
+			}
+		}
 	}
 
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
@@ -149,4 +166,43 @@ func runMigrations(databaseURL string, logger *slog.Logger) error {
 
 	logger.Info("migrations: applied successfully")
 	return nil
+}
+
+func migrateTokens(ctx context.Context, pool *pgxpool.Pool, encryptor *crypto.TokenEncryptor, logger *slog.Logger) {
+	rows, err := pool.Query(ctx, "SELECT id, fb_access_token FROM pixels WHERE fb_access_token != ''")
+	if err != nil {
+		logger.Error("token migration: failed to query pixels", "error", err)
+		return
+	}
+	defer rows.Close()
+
+	var migrated int
+	for rows.Next() {
+		var id, token string
+		if err := rows.Scan(&id, &token); err != nil {
+			logger.Error("token migration: failed to scan row", "error", err)
+			continue
+		}
+		if crypto.IsEncrypted(token) {
+			continue // already encrypted
+		}
+		encrypted, err := encryptor.Encrypt(token)
+		if err != nil {
+			logger.Error("token migration: failed to encrypt", "pixel_id", id, "error", err)
+			continue
+		}
+		if _, err := pool.Exec(ctx, "UPDATE pixels SET fb_access_token = $1 WHERE id = $2", encrypted, id); err != nil {
+			logger.Error("token migration: failed to update", "pixel_id", id, "error", err)
+			continue
+		}
+		migrated++
+	}
+	if err := rows.Err(); err != nil {
+		logger.Error("token migration: rows iteration error", "error", err)
+	}
+	if migrated > 0 {
+		logger.Info("token migration: encrypted plaintext tokens", "count", migrated)
+	} else {
+		logger.Info("token migration: no plaintext tokens to migrate")
+	}
 }

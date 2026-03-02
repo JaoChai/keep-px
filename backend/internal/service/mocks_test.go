@@ -9,6 +9,173 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 )
 
+// MockPurchaseRepo
+type MockPurchaseRepo struct{ mock.Mock }
+
+func (m *MockPurchaseRepo) Create(ctx context.Context, purchase *domain.Purchase) error {
+	args := m.Called(ctx, purchase)
+	return args.Error(0)
+}
+func (m *MockPurchaseRepo) GetByID(ctx context.Context, id string) (*domain.Purchase, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Purchase), args.Error(1)
+}
+func (m *MockPurchaseRepo) GetByStripeCheckoutSessionID(ctx context.Context, sessionID string) (*domain.Purchase, error) {
+	args := m.Called(ctx, sessionID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Purchase), args.Error(1)
+}
+func (m *MockPurchaseRepo) UpdateStatus(ctx context.Context, id string, status string, completedAt *time.Time) error {
+	args := m.Called(ctx, id, status, completedAt)
+	return args.Error(0)
+}
+func (m *MockPurchaseRepo) ListByCustomerID(ctx context.Context, customerID string) ([]*domain.Purchase, error) {
+	args := m.Called(ctx, customerID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Purchase), args.Error(1)
+}
+
+// MockReplayCreditRepo
+type MockReplayCreditRepo struct{ mock.Mock }
+
+func (m *MockReplayCreditRepo) Create(ctx context.Context, credit *domain.ReplayCredit) error {
+	args := m.Called(ctx, credit)
+	return args.Error(0)
+}
+func (m *MockReplayCreditRepo) GetByID(ctx context.Context, id string) (*domain.ReplayCredit, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ReplayCredit), args.Error(1)
+}
+func (m *MockReplayCreditRepo) GetActiveByCustomerID(ctx context.Context, customerID string) ([]*domain.ReplayCredit, error) {
+	args := m.Called(ctx, customerID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.ReplayCredit), args.Error(1)
+}
+func (m *MockReplayCreditRepo) IncrementUsed(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+func (m *MockReplayCreditRepo) ConsumeOneCredit(ctx context.Context, customerID string) (*domain.ReplayCredit, error) {
+	args := m.Called(ctx, customerID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ReplayCredit), args.Error(1)
+}
+
+// MockSubscriptionRepo
+type MockSubscriptionRepo struct{ mock.Mock }
+
+func (m *MockSubscriptionRepo) Create(ctx context.Context, sub *domain.Subscription) error {
+	args := m.Called(ctx, sub)
+	return args.Error(0)
+}
+func (m *MockSubscriptionRepo) GetByStripeSubscriptionID(ctx context.Context, stripeSubID string) (*domain.Subscription, error) {
+	args := m.Called(ctx, stripeSubID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Subscription), args.Error(1)
+}
+func (m *MockSubscriptionRepo) GetActiveByCustomerID(ctx context.Context, customerID string) ([]*domain.Subscription, error) {
+	args := m.Called(ctx, customerID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Subscription), args.Error(1)
+}
+func (m *MockSubscriptionRepo) Update(ctx context.Context, sub *domain.Subscription) error {
+	args := m.Called(ctx, sub)
+	return args.Error(0)
+}
+func (m *MockSubscriptionRepo) ListByCustomerID(ctx context.Context, customerID string) ([]*domain.Subscription, error) {
+	args := m.Called(ctx, customerID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Subscription), args.Error(1)
+}
+
+// MockEventUsageRepo
+type MockEventUsageRepo struct{ mock.Mock }
+
+func (m *MockEventUsageRepo) IncrementCount(ctx context.Context, customerID string, count int64) error {
+	args := m.Called(ctx, customerID, count)
+	return args.Error(0)
+}
+func (m *MockEventUsageRepo) GetCurrentMonth(ctx context.Context, customerID string) (*domain.EventUsage, error) {
+	args := m.Called(ctx, customerID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.EventUsage), args.Error(1)
+}
+
+// MockSalePageRepo
+type MockSalePageRepo struct{ mock.Mock }
+
+func (m *MockSalePageRepo) Create(ctx context.Context, page *domain.SalePage) error {
+	args := m.Called(ctx, page)
+	return args.Error(0)
+}
+func (m *MockSalePageRepo) GetByID(ctx context.Context, id string) (*domain.SalePage, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.SalePage), args.Error(1)
+}
+func (m *MockSalePageRepo) GetBySlug(ctx context.Context, slug string) (*domain.SalePage, error) {
+	args := m.Called(ctx, slug)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.SalePage), args.Error(1)
+}
+func (m *MockSalePageRepo) ListByCustomerID(ctx context.Context, customerID string) ([]*domain.SalePage, error) {
+	args := m.Called(ctx, customerID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.SalePage), args.Error(1)
+}
+func (m *MockSalePageRepo) Update(ctx context.Context, page *domain.SalePage) error {
+	args := m.Called(ctx, page)
+	return args.Error(0)
+}
+func (m *MockSalePageRepo) Delete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+func (m *MockSalePageRepo) SlugExists(ctx context.Context, slug string) (bool, error) {
+	args := m.Called(ctx, slug)
+	return args.Bool(0), args.Error(1)
+}
+
+// MockWebhookEventRepo
+type MockWebhookEventRepo struct{ mock.Mock }
+
+func (m *MockWebhookEventRepo) Exists(ctx context.Context, stripeEventID string) (bool, error) {
+	args := m.Called(ctx, stripeEventID)
+	return args.Bool(0), args.Error(1)
+}
+func (m *MockWebhookEventRepo) Create(ctx context.Context, stripeEventID, eventType string) error {
+	args := m.Called(ctx, stripeEventID, eventType)
+	return args.Error(0)
+}
+
 // MockCustomerRepo
 type MockCustomerRepo struct{ mock.Mock }
 

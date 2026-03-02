@@ -42,6 +42,9 @@ type Config struct {
 	StripePriceRetention365    string `env:"STRIPE_PRICE_RETENTION_365"`
 	StripePriceEvents1M        string `env:"STRIPE_PRICE_EVENTS_1M"`
 	FrontendURL                string `env:"FRONTEND_URL" envDefault:"http://localhost:5173"`
+
+	// Token encryption (32-byte hex-encoded key, optional)
+	TokenEncryptionKey string `env:"TOKEN_ENCRYPTION_KEY"`
 }
 
 func Load() (*Config, error) {

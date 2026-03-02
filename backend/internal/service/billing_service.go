@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/stripe/stripe-go/v82"
@@ -44,6 +45,7 @@ type BillingService struct {
 	creditRepo   repository.ReplayCreditRepository
 	subRepo      repository.SubscriptionRepository
 	customerRepo repository.CustomerRepository
+	webhookRepo  repository.WebhookEventRepository
 	cfg          *config.Config
 	packConfigs  map[string]PackConfig
 }
@@ -53,6 +55,7 @@ func NewBillingService(
 	creditRepo repository.ReplayCreditRepository,
 	subRepo repository.SubscriptionRepository,
 	customerRepo repository.CustomerRepository,
+	webhookRepo repository.WebhookEventRepository,
 	cfg *config.Config,
 ) *BillingService {
 	s := &BillingService{
@@ -60,6 +63,7 @@ func NewBillingService(
 		creditRepo:   creditRepo,
 		subRepo:      subRepo,
 		customerRepo: customerRepo,
+		webhookRepo:  webhookRepo,
 		cfg:          cfg,
 	}
 
@@ -263,6 +267,29 @@ func (s *BillingService) CreateCustomerPortalSession(ctx context.Context, custom
 	}
 
 	return sess.URL, nil
+}
+
+// ProcessWebhookEvent checks idempotency and processes the webhook event.
+// Returns nil if the event was already processed (duplicate).
+func (s *BillingService) ProcessWebhookEvent(ctx context.Context, stripeEventID, eventType string, process func() error) error {
+	exists, err := s.webhookRepo.Exists(ctx, stripeEventID)
+	if err != nil {
+		return fmt.Errorf("check webhook event: %w", err)
+	}
+	if exists {
+		slog.Info("skipping duplicate webhook event", "stripe_event_id", stripeEventID, "event_type", eventType)
+		return nil
+	}
+
+	if err := process(); err != nil {
+		return err
+	}
+
+	if err := s.webhookRepo.Create(ctx, stripeEventID, eventType); err != nil {
+		slog.Warn("failed to record webhook event", "stripe_event_id", stripeEventID, "error", err)
+	}
+
+	return nil
 }
 
 // HandleCheckoutCompleted processes a completed Stripe Checkout session.
