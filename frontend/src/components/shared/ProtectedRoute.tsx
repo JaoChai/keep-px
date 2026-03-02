@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router'
 import { useAuthStore } from '@/stores/auth-store'
 import api from '@/lib/api'
@@ -25,9 +25,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const setCustomer = useAuthStore((s) => s.setCustomer)
   const logout = useAuthStore((s) => s.logout)
   const verifyingRef = useRef(false)
+  const [verifyComplete, setVerifyComplete] = useState(hasVerifiedThisSession)
 
   useEffect(() => {
-    if (!hasHydrated || !isAuthenticated || hasVerifiedThisSession || verifyingRef.current) return
+    if (!hasHydrated || hasVerifiedThisSession || verifyingRef.current) return
+
+    const hasToken = !!localStorage.getItem('access_token')
+    if (!isAuthenticated && !hasToken) return
 
     verifyingRef.current = true
     const controller = new AbortController()
@@ -54,6 +58,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         if (!controller.signal.aborted) {
           hasVerifiedThisSession = true
           verifyingRef.current = false
+          setVerifyComplete(true)
         }
       })
 
@@ -68,9 +73,20 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+  // If authenticated (from Zustand persist), show children immediately
+  if (isAuthenticated) {
+    return <>{children}</>
   }
 
-  return <>{children}</>
+  // Not authenticated: wait if token exists and verification hasn't completed
+  // This handles E2E and cases where Zustand state was cleared but tokens remain
+  if (!!localStorage.getItem('access_token') && !verifyComplete) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={{ color: '#666', fontSize: '14px' }}>กำลังโหลด...</div>
+      </div>
+    )
+  }
+
+  return <Navigate to="/login" replace />
 }
