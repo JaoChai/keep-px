@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import api from '@/lib/api'
 import type { APIResponse, SalePage, SalePageContent, SalePageContentV2 } from '@/types'
 
@@ -28,6 +29,10 @@ export function useCreateSalePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sale-pages'] })
+      toast.success('สร้าง Sale Page สำเร็จ')
+    },
+    onError: () => {
+      toast.error('สร้าง Sale Page ไม่สำเร็จ')
     },
   })
 }
@@ -52,6 +57,10 @@ export function useUpdateSalePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sale-pages'] })
+      toast.success('อัปเดต Sale Page สำเร็จ')
+    },
+    onError: () => {
+      toast.error('อัปเดต Sale Page ไม่สำเร็จ')
     },
   })
 }
@@ -64,6 +73,10 @@ export function useDeleteSalePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sale-pages'] })
+      toast.success('ลบ Sale Page สำเร็จ')
+    },
+    onError: () => {
+      toast.error('ลบ Sale Page ไม่สำเร็จ')
     },
   })
 }

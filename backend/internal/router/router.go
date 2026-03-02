@@ -36,6 +36,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	eventRepo := postgres.NewEventRepo(pool)
 	replaySessionRepo := postgres.NewReplaySessionRepo(pool)
 	salePageRepo := postgres.NewSalePageRepo(pool)
+	notifRepo := postgres.NewNotificationRepo(pool)
 	// Facebook CAPI client
 	capiClient := facebook.NewCAPIClient(cfg.FBGraphAPIURL)
 
@@ -43,7 +44,8 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger)
 	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger)
-	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5)
+	notifService := service.NewNotificationService(notifRepo)
+	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService)
 	analyticsService := service.NewAnalyticsService(pool)
 	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo)
 
@@ -57,6 +59,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	eventHandler := handler.NewEventHandler(eventService)
 	replayHandler := handler.NewReplayHandler(replayService)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService)
+	notifHandler := handler.NewNotificationHandler(notifService)
 	salePageHandler := handler.NewSalePageHandler(salePageService, cfg.BaseURL, logger)
 	uploadHandler := handler.NewUploadHandler(storageService)
 
@@ -124,6 +127,14 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 				r.Put("/{id}", salePageHandler.Update)
 				r.Delete("/{id}", salePageHandler.Delete)
 				r.Get("/{id}/preview", salePageHandler.Preview)
+			})
+
+			// Notification routes
+			r.Route("/notifications", func(r chi.Router) {
+				r.Get("/", notifHandler.List)
+				r.Get("/unread-count", notifHandler.UnreadCount)
+				r.Post("/{id}/read", notifHandler.MarkRead)
+				r.Post("/read-all", notifHandler.MarkAllRead)
 			})
 
 			// Analytics routes

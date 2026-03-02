@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate, Link } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -24,7 +23,6 @@ type RegisterForm = z.infer<typeof registerSchema>
 export function RegisterPage() {
   const navigate = useNavigate()
   const registerMutation = useRegister()
-  const [error, setError] = useState('')
 
   const {
     register,
@@ -35,7 +33,6 @@ export function RegisterPage() {
   })
 
   const onSubmit = async (data: RegisterForm) => {
-    setError('')
     try {
       await registerMutation.mutateAsync({
         name: data.name,
@@ -44,7 +41,7 @@ export function RegisterPage() {
       })
       navigate('/dashboard')
     } catch {
-      setError('Registration failed. Email may already be in use.')
+      // Error toast is handled by useRegister onError callback
     }
   }
 
@@ -53,12 +50,6 @@ export function RegisterPage() {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Create account</h2>
         <p className="text-muted-foreground mb-8">Get started with Pixlinks</p>
-
-        {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">

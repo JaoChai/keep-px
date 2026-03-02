@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import api from '@/lib/api'
 
 interface UploadResponse {
@@ -14,6 +15,9 @@ export function useUploadImage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       return data.data.url
+    },
+    onError: () => {
+      toast.error('อัปโหลดรูปภาพไม่สำเร็จ')
     },
   })
 }
@@ -38,6 +42,9 @@ export function useUploadImages() {
         throw new Error('All uploads failed')
       }
       return urls
+    },
+    onError: () => {
+      toast.error('อัปโหลดรูปภาพไม่สำเร็จ')
     },
   })
 }

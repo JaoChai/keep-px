@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
@@ -85,6 +86,7 @@ api.interceptors.response.use(
         onRefreshFailed(
           err instanceof Error ? err : new Error('Token refresh failed')
         )
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่')
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         useAuthStore.getState().logout()

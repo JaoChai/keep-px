@@ -60,6 +60,14 @@ type SalePageRepository interface {
 	SlugExists(ctx context.Context, slug string) (bool, error)
 }
 
+type NotificationRepository interface {
+	Create(ctx context.Context, n *domain.Notification) error
+	ListByCustomerID(ctx context.Context, customerID string, limit int) ([]*domain.Notification, error)
+	CountUnread(ctx context.Context, customerID string) (int, error)
+	MarkRead(ctx context.Context, id, customerID string) error
+	MarkAllRead(ctx context.Context, customerID string) error
+}
+
 type RefreshTokenRepository interface {
 	Create(ctx context.Context, customerID, tokenHash string, expiresAt time.Time) error
 	GetByTokenHash(ctx context.Context, tokenHash string) (customerID string, expiresAt time.Time, err error)
