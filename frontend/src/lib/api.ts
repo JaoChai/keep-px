@@ -86,7 +86,7 @@ api.interceptors.response.use(
         onRefreshFailed(
           err instanceof Error ? err : new Error('Token refresh failed')
         )
-        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่')
+        toast.error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', { id: 'session-expired' })
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         useAuthStore.getState().logout()

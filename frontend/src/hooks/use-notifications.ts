@@ -10,6 +10,7 @@ export function useNotifications(enabled: boolean) {
       return data.data
     },
     enabled,
+    staleTime: 30_000,
   })
 }
 
@@ -31,7 +32,8 @@ export function useMarkRead() {
       await api.post(`/notifications/${id}/read`)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['notifications'], exact: true })
+      qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'], exact: true })
     },
   })
 }
@@ -43,7 +45,8 @@ export function useMarkAllRead() {
       await api.post('/notifications/read-all')
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['notifications'], exact: true })
+      qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'], exact: true })
     },
   })
 }

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Outlet } from 'react-router'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './Sidebar'
-import { NotificationBell } from './NotificationBell'
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -21,9 +20,6 @@ export function AppLayout() {
           <Menu className="h-5 w-5" />
         </button>
         <span className="text-lg font-bold text-foreground">Pixlinks</span>
-        <div className="ml-auto">
-          <NotificationBell />
-        </div>
       </div>
 
       <main className="lg:pl-[260px]">

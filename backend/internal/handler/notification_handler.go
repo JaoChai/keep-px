@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
+	"github.com/jaochai/pixlinks/backend/internal/repository/postgres"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
@@ -21,12 +23,7 @@ func NewNotificationHandler(notifService *service.NotificationService) *Notifica
 func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 
-	limit := 20
-	if l := r.URL.Query().Get("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil {
-			limit = parsed
-		}
-	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 
 	result, err := h.notifService.List(r.Context(), customerID, limit)
 	if err != nil {
@@ -52,6 +49,10 @@ func (h *NotificationHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	if err := h.notifService.MarkRead(r.Context(), id, customerID); err != nil {
+		if errors.Is(err, postgres.ErrNotificationNotFound) {
+			ErrorJSON(w, http.StatusNotFound, "notification not found")
+			return
+		}
 		ErrorJSON(w, http.StatusInternalServerError, "failed to mark notification as read")
 		return
 	}

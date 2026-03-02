@@ -2,10 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 )
+
+var ErrNotificationNotFound = errors.New("notification not found")
 
 type NotificationRepo struct {
 	pool *pgxpool.Pool
@@ -36,7 +39,7 @@ func (r *NotificationRepo) ListByCustomerID(ctx context.Context, customerID stri
 	}
 	defer rows.Close()
 
-	var notifications []*domain.Notification
+	notifications := make([]*domain.Notification, 0, limit)
 	for rows.Next() {
 		n := &domain.Notification{}
 		if err := rows.Scan(&n.ID, &n.CustomerID, &n.Type, &n.Title, &n.Body, &n.Metadata, &n.IsRead, &n.CreatedAt, &n.ReadAt); err != nil {
@@ -57,12 +60,18 @@ func (r *NotificationRepo) CountUnread(ctx context.Context, customerID string) (
 }
 
 func (r *NotificationRepo) MarkRead(ctx context.Context, id, customerID string) error {
-	_, err := r.pool.Exec(ctx,
+	tag, err := r.pool.Exec(ctx,
 		`UPDATE notifications SET is_read = TRUE, read_at = NOW()
-		 WHERE id = $1 AND customer_id = $2`,
+		 WHERE id = $1 AND customer_id = $2 AND is_read = FALSE`,
 		id, customerID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotificationNotFound
+	}
+	return nil
 }
 
 func (r *NotificationRepo) MarkAllRead(ctx context.Context, customerID string) error {

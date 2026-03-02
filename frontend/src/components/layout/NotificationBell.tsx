@@ -1,20 +1,11 @@
 import { useState } from 'react'
 import { Bell } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { th } from 'date-fns/locale'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead } from '@/hooks/use-notifications'
 import type { AppNotification } from '@/types'
-
-function timeAgo(dateStr: string): string {
-  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-  if (seconds < 60) return 'เมื่อสักครู่'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes} นาทีที่แล้ว`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} ชั่วโมงที่แล้ว`
-  const days = Math.floor(hours / 24)
-  return `${days} วันที่แล้ว`
-}
 
 function NotificationItem({
   notification,
@@ -40,7 +31,9 @@ function NotificationItem({
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground truncate">{notification.title}</p>
         <p className="text-xs text-muted-foreground line-clamp-2">{notification.body}</p>
-        <p className="mt-1 text-xs text-muted-foreground/70">{timeAgo(notification.created_at)}</p>
+        <p className="mt-1 text-xs text-muted-foreground/70">
+          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: th })}
+        </p>
       </div>
     </button>
   )
@@ -57,11 +50,10 @@ export function NotificationBell() {
   const displayCount = unreadCount > 9 ? '9+' : unreadCount
 
   return (
-    <Popover>
+    <Popover onOpenChange={setOpen}>
       <PopoverTrigger
         className="relative rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
         aria-label="Notifications"
-        onClick={() => setOpen(!open)}
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (

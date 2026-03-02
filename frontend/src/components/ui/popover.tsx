@@ -16,9 +16,21 @@ function usePopover() {
   return ctx
 }
 
-export function Popover({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
+export function Popover({
+  children,
+  onOpenChange,
+}: {
+  children: React.ReactNode
+  onOpenChange?: (open: boolean) => void
+}) {
+  const [open, setOpenInternal] = useState(false)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+
+  const setOpen = (next: boolean) => {
+    setOpenInternal(next)
+    onOpenChange?.(next)
+  }
+
   return (
     <PopoverContext.Provider value={{ open, setOpen, triggerRef }}>
       <div className="relative">{children}</div>
@@ -34,13 +46,22 @@ export function PopoverTrigger({ children, className, ...props }: React.ButtonHT
       type="button"
       aria-expanded={open}
       className={className}
-      onClick={() => setOpen(!open)}
       {...props}
+      onClick={(e) => {
+        setOpen(!open)
+        props.onClick?.(e)
+      }}
     >
       {children}
     </button>
   )
 }
+
+const alignClasses = {
+  start: 'left-0',
+  center: 'left-1/2 -translate-x-1/2',
+  end: 'right-0',
+} as const
 
 export function PopoverContent({
   children,
@@ -48,13 +69,17 @@ export function PopoverContent({
   align = 'end',
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & { align?: 'start' | 'center' | 'end' }) {
-  const { open, setOpen } = usePopover()
+  const { open, setOpen, triggerRef } = usePopover()
   const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
     const handleClickOutside = (e: MouseEvent) => {
-      if (contentRef.current && !contentRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (
+        contentRef.current && !contentRef.current.contains(target) &&
+        triggerRef.current && !triggerRef.current.contains(target)
+      ) {
         setOpen(false)
       }
     }
@@ -67,19 +92,16 @@ export function PopoverContent({
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleEscape)
     }
-  }, [open, setOpen])
+  }, [open, setOpen, triggerRef])
 
   if (!open) return null
-
-  const alignClass =
-    align === 'start' ? 'left-0' : align === 'end' ? 'right-0' : 'left-1/2 -translate-x-1/2'
 
   return (
     <div
       ref={contentRef}
       className={cn(
         'absolute top-full z-50 mt-2 w-80 rounded-lg border border-border bg-card shadow-lg animate-in fade-in-0 zoom-in-95',
-        alignClass,
+        alignClasses[align],
         className
       )}
       {...props}

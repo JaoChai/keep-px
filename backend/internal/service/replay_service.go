@@ -82,20 +82,22 @@ func (s *ReplayService) createReplayNotification(session *domain.ReplaySession, 
 	if s.notifService == nil {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-	metadata, _ := json.Marshal(map[string]string{"session_id": session.ID})
-	n := &domain.Notification{
-		CustomerID: session.CustomerID,
-		Type:       notifType,
-		Title:      title,
-		Body:       body,
-		Metadata:   metadata,
-	}
-	if err := s.notifService.CreateNotification(ctx, n); err != nil {
-		s.logger.Error("failed to create replay notification", "error", err, "session_id", session.ID, "type", notifType)
-	}
+		metadata, _ := json.Marshal(map[string]string{"session_id": session.ID})
+		n := &domain.Notification{
+			CustomerID: session.CustomerID,
+			Type:       notifType,
+			Title:      title,
+			Body:       body,
+			Metadata:   metadata,
+		}
+		if err := s.notifService.CreateNotification(ctx, n); err != nil {
+			s.logger.Error("failed to create replay notification", "error", err, "session_id", session.ID, "type", notifType)
+		}
+	}()
 }
 
 type CreateReplayInput struct {
