@@ -76,6 +76,32 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, APIResponse{Data: tokens})
 }
 
+func (h *AuthHandler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
+	var input service.GoogleAuthInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.validate.Struct(input); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	tokens, err := h.authService.GoogleAuth(r.Context(), input)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidGoogleToken) {
+			ErrorJSON(w, http.StatusUnauthorized, "invalid google token")
+			return
+		}
+		h.logger.Error("google auth failed", "error", err)
+		ErrorJSON(w, http.StatusInternalServerError, "google auth failed")
+		return
+	}
+
+	JSON(w, http.StatusOK, APIResponse{Data: tokens})
+}
+
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	customer, err := h.authService.GetCustomerByID(r.Context(), customerID)

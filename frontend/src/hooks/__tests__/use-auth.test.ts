@@ -34,13 +34,16 @@ const localStorageMock = (() => {
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock })
 
 // Mock auth store
-const mockSetCustomer = vi.fn()
-vi.mock('@/stores/auth-store', () => ({
-  useAuthStore: (selector: (state: Record<string, unknown>) => unknown) => {
-    const store = { setCustomer: mockSetCustomer, customer: null, isAuthenticated: false }
-    return selector(store)
-  },
-}))
+const { mockSetCustomer } = vi.hoisted(() => ({ mockSetCustomer: vi.fn() }))
+vi.mock('@/stores/auth-store', () => {
+  const store = { setCustomer: mockSetCustomer, customer: null, isAuthenticated: false }
+  return {
+    useAuthStore: Object.assign(
+      (selector: (state: Record<string, unknown>) => unknown) => selector(store),
+      { getState: () => store },
+    ),
+  }
+})
 
 function createWrapper() {
   const queryClient = new QueryClient({

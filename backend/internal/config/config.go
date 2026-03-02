@@ -21,6 +21,9 @@ type Config struct {
 	// Public base URL for sale pages
 	BaseURL string `env:"BASE_URL" envDefault:"https://pixlinks.xyz"`
 
+	// Google OAuth
+	GoogleClientID string `env:"GOOGLE_CLIENT_ID"`
+
 	// S3/R2 Storage
 	S3Endpoint  string `env:"S3_ENDPOINT"`
 	S3Bucket    string `env:"S3_BUCKET"`

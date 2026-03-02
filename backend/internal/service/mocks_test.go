@@ -30,6 +30,13 @@ func (m *MockCustomerRepo) GetByEmail(ctx context.Context, email string) (*domai
 	}
 	return args.Get(0).(*domain.Customer), args.Error(1)
 }
+func (m *MockCustomerRepo) GetByGoogleID(ctx context.Context, googleID string) (*domain.Customer, error) {
+	args := m.Called(ctx, googleID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Customer), args.Error(1)
+}
 func (m *MockCustomerRepo) GetByAPIKey(ctx context.Context, key string) (*domain.Customer, error) {
 	args := m.Called(ctx, key)
 	if args.Get(0) == nil {

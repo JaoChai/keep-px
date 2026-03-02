@@ -2,11 +2,13 @@ import { useNavigate, Link } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
+import { GoogleLogin } from '@react-oauth/google'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useRegister } from '@/hooks/use-auth'
+import { useRegister, useGoogleAuth } from '@/hooks/use-auth'
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -20,9 +22,12 @@ const registerSchema = z.object({
 
 type RegisterForm = z.infer<typeof registerSchema>
 
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
 export function RegisterPage() {
   const navigate = useNavigate()
   const registerMutation = useRegister()
+  const googleAuth = useGoogleAuth()
 
   const {
     register,
@@ -108,6 +113,40 @@ export function RegisterPage() {
             {isSubmitting ? 'Creating account...' : 'Create account'}
           </Button>
         </form>
+
+        {googleClientId && (
+          <>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              <GoogleLogin
+                onSuccess={async (response) => {
+                  if (response.credential) {
+                    try {
+                      await googleAuth.mutateAsync(response.credential)
+                      toast.success('สมัครสมาชิกสำเร็จ')
+                      navigate('/dashboard')
+                    } catch {
+                      toast.error('สมัครด้วย Google ไม่สำเร็จ')
+                    }
+                  }
+                }}
+                onError={() => {
+                  toast.error('สมัครด้วย Google ไม่สำเร็จ')
+                }}
+                text="signup_with"
+                width="100%"
+              />
+            </div>
+          </>
+        )}
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
