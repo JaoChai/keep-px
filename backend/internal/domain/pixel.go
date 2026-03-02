@@ -15,3 +15,8 @@ type Pixel struct {
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
+
+// HasCredentials returns true if the pixel has Facebook API credentials configured.
+func (p *Pixel) HasCredentials() bool {
+	return p.FBAccessToken != "" && p.FBPixelID != ""
+}

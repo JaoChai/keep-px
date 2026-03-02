@@ -160,7 +160,7 @@ func (r *EventRepo) GetEventsForReplay(ctx context.Context, pixelID string, even
 		   AND ($4::timestamptz IS NULL OR event_time <= $4)
 		   AND ($5::timestamptz IS NULL OR created_at < $5)
 		 ORDER BY event_time ASC
-		 LIMIT 100000`,
+		 LIMIT 100000`, // must match service.MaxReplayEvents
 		pixelID, eventTypes, from, to, createdBefore,
 	)
 	if err != nil {
@@ -199,7 +199,7 @@ func (r *EventRepo) CountEventsForReplay(ctx context.Context, pixelID string, ev
 		     AND ($3::timestamptz IS NULL OR event_time >= $3)
 		     AND ($4::timestamptz IS NULL OR event_time <= $4)
 		   LIMIT 100001
-		 ) sub`,
+		 ) sub`, // must match service.MaxReplayEvents + 1
 		pixelID, eventTypes, from, to,
 	).Scan(&count)
 	return count, err

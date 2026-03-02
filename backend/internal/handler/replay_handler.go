@@ -24,6 +24,28 @@ func NewReplayHandler(replayService *service.ReplayService) *ReplayHandler {
 	}
 }
 
+// mapReplayError maps common replay service errors to HTTP responses.
+// Returns true if an error was handled.
+func mapReplayError(err error, w http.ResponseWriter) bool {
+	switch {
+	case errors.Is(err, service.ErrPixelNotFound):
+		ErrorJSON(w, http.StatusNotFound, "pixel not found")
+	case errors.Is(err, service.ErrReplaySamePixel):
+		ErrorJSON(w, http.StatusBadRequest, "source and target pixel cannot be the same")
+	case errors.Is(err, service.ErrPixelNoCredentials):
+		ErrorJSON(w, http.StatusUnprocessableEntity, "target pixel has no Facebook credentials configured")
+	case errors.Is(err, service.ErrReplayNotFound):
+		ErrorJSON(w, http.StatusNotFound, "replay session not found")
+	case errors.Is(err, service.ErrReplayNotCancellable):
+		ErrorJSON(w, http.StatusConflict, "replay session cannot be cancelled")
+	case errors.Is(err, service.ErrReplayNotRetryable):
+		ErrorJSON(w, http.StatusConflict, "replay session cannot be retried")
+	default:
+		return false
+	}
+	return true
+}
+
 func (h *ReplayHandler) Create(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 
@@ -39,19 +61,9 @@ func (h *ReplayHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.replayService.Create(r.Context(), customerID, input)
 	if err != nil {
-		if errors.Is(err, service.ErrPixelNotFound) {
-			ErrorJSON(w, http.StatusNotFound, "pixel not found")
-			return
+		if !mapReplayError(err, w) {
+			ErrorJSON(w, http.StatusInternalServerError, "failed to create replay session")
 		}
-		if errors.Is(err, service.ErrReplaySamePixel) {
-			ErrorJSON(w, http.StatusBadRequest, "source and target pixel cannot be the same")
-			return
-		}
-		if errors.Is(err, service.ErrPixelNoCredentials) {
-			ErrorJSON(w, http.StatusUnprocessableEntity, "target pixel has no Facebook credentials configured")
-			return
-		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to create replay session")
 		return
 	}
 	JSON(w, http.StatusCreated, APIResponse{Data: result.Session, Message: result.Warning})
@@ -74,11 +86,9 @@ func (h *ReplayHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.replayService.GetByID(r.Context(), customerID, sessionID)
 	if err != nil {
-		if errors.Is(err, service.ErrReplayNotFound) {
-			ErrorJSON(w, http.StatusNotFound, "replay session not found")
-			return
+		if !mapReplayError(err, w) {
+			ErrorJSON(w, http.StatusInternalServerError, "failed to get replay session")
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get replay session")
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: session})
@@ -90,15 +100,9 @@ func (h *ReplayHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.replayService.Cancel(r.Context(), customerID, sessionID)
 	if err != nil {
-		if errors.Is(err, service.ErrReplayNotFound) {
-			ErrorJSON(w, http.StatusNotFound, "replay session not found")
-			return
+		if !mapReplayError(err, w) {
+			ErrorJSON(w, http.StatusInternalServerError, "failed to cancel replay session")
 		}
-		if errors.Is(err, service.ErrReplayNotCancellable) {
-			ErrorJSON(w, http.StatusConflict, "replay session cannot be cancelled")
-			return
-		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to cancel replay session")
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: session})
@@ -119,19 +123,9 @@ func (h *ReplayHandler) Preview(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.replayService.Preview(r.Context(), customerID, input)
 	if err != nil {
-		if errors.Is(err, service.ErrPixelNotFound) {
-			ErrorJSON(w, http.StatusNotFound, "pixel not found")
-			return
+		if !mapReplayError(err, w) {
+			ErrorJSON(w, http.StatusInternalServerError, "failed to preview replay")
 		}
-		if errors.Is(err, service.ErrReplaySamePixel) {
-			ErrorJSON(w, http.StatusBadRequest, "source and target pixel cannot be the same")
-			return
-		}
-		if errors.Is(err, service.ErrPixelNoCredentials) {
-			ErrorJSON(w, http.StatusUnprocessableEntity, "target pixel has no Facebook credentials configured")
-			return
-		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to preview replay")
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: result})
@@ -143,23 +137,9 @@ func (h *ReplayHandler) Retry(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.replayService.Retry(r.Context(), customerID, sessionID)
 	if err != nil {
-		if errors.Is(err, service.ErrReplayNotFound) {
-			ErrorJSON(w, http.StatusNotFound, "replay session not found")
-			return
+		if !mapReplayError(err, w) {
+			ErrorJSON(w, http.StatusInternalServerError, "failed to retry replay session")
 		}
-		if errors.Is(err, service.ErrReplayNotRetryable) {
-			ErrorJSON(w, http.StatusConflict, "replay session cannot be retried")
-			return
-		}
-		if errors.Is(err, service.ErrPixelNotFound) {
-			ErrorJSON(w, http.StatusNotFound, "pixel not found")
-			return
-		}
-		if errors.Is(err, service.ErrPixelNoCredentials) {
-			ErrorJSON(w, http.StatusUnprocessableEntity, "target pixel has no Facebook credentials configured")
-			return
-		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to retry replay session")
 		return
 	}
 	JSON(w, http.StatusCreated, APIResponse{Data: session})
@@ -174,11 +154,9 @@ func (h *ReplayHandler) EventTypes(w http.ResponseWriter, r *http.Request) {
 	}
 	types, err := h.replayService.GetEventTypes(r.Context(), customerID, pixelID)
 	if err != nil {
-		if errors.Is(err, service.ErrPixelNotFound) {
-			ErrorJSON(w, http.StatusNotFound, "pixel not found")
-			return
+		if !mapReplayError(err, w) {
+			ErrorJSON(w, http.StatusInternalServerError, "failed to get event types")
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get event types")
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: types})

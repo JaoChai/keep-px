@@ -93,6 +93,17 @@ type PreviewReplayResult struct {
 	Warning      string               `json:"warning,omitempty"`
 }
 
+// validateReplayTarget checks that source and target are different and the target has credentials.
+func validateReplayTarget(sourceID, targetID string, target *domain.Pixel) error {
+	if sourceID == targetID {
+		return ErrReplaySamePixel
+	}
+	if !target.HasCredentials() {
+		return ErrPixelNoCredentials
+	}
+	return nil
+}
+
 // parseDateFilter parses an optional RFC3339 date string into a *time.Time.
 func parseDateFilter(s string) (*time.Time, error) {
 	if s == "" {
@@ -118,14 +129,8 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 		return nil, ErrPixelNotFound
 	}
 
-	// Same pixel check
-	if input.SourcePixelID == input.TargetPixelID {
-		return nil, ErrReplaySamePixel
-	}
-
-	// Credential check
-	if targetPixel.FBAccessToken == "" || targetPixel.FBPixelID == "" {
-		return nil, ErrPixelNoCredentials
+	if err := validateReplayTarget(input.SourcePixelID, input.TargetPixelID, targetPixel); err != nil {
+		return nil, err
 	}
 
 	dateFrom, err := parseDateFilter(input.DateFrom)
@@ -434,7 +439,9 @@ func (s *ReplayService) Cancel(ctx context.Context, customerID, sessionID string
 	return cancelled, nil
 }
 
-const maxReplayEvents = 100000
+// MaxReplayEvents is the maximum number of events a single replay can process.
+// Also used by event_repo to cap SQL queries.
+const MaxReplayEvents = 100000
 
 func (s *ReplayService) Preview(ctx context.Context, customerID string, input CreateReplayInput) (*PreviewReplayResult, error) {
 	// Verify source pixel
@@ -449,14 +456,8 @@ func (s *ReplayService) Preview(ctx context.Context, customerID string, input Cr
 		return nil, ErrPixelNotFound
 	}
 
-	// Same pixel check
-	if input.SourcePixelID == input.TargetPixelID {
-		return nil, ErrReplaySamePixel
-	}
-
-	// Credential check
-	if targetPixel.FBAccessToken == "" || targetPixel.FBPixelID == "" {
-		return nil, ErrPixelNoCredentials
+	if err := validateReplayTarget(input.SourcePixelID, input.TargetPixelID, targetPixel); err != nil {
+		return nil, err
 	}
 
 	dateFrom, err := parseDateFilter(input.DateFrom)
@@ -488,9 +489,9 @@ func (s *ReplayService) Preview(ctx context.Context, customerID string, input Cr
 	}
 
 	var warnings []string
-	if totalEvents > maxReplayEvents {
-		warnings = append(warnings, fmt.Sprintf("%d events found, only first %d will be replayed", totalEvents, maxReplayEvents))
-		totalEvents = maxReplayEvents
+	if totalEvents > MaxReplayEvents {
+		warnings = append(warnings, fmt.Sprintf("%d events found, only first %d will be replayed", totalEvents, MaxReplayEvents))
+		totalEvents = MaxReplayEvents
 	}
 
 	if timeMode == timeModeOriginal && len(sampleEvents) > 0 {
@@ -509,7 +510,7 @@ func (s *ReplayService) Preview(ctx context.Context, customerID string, input Cr
 
 	var warning string
 	if len(warnings) > 0 {
-		warning = "Warning: " + strings.Join(warnings, ". Also: ")
+		warning = "Warning: " + strings.Join(warnings, ". ")
 	}
 
 	return &PreviewReplayResult{
@@ -539,8 +540,7 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 		return nil, ErrPixelNotFound
 	}
 
-	// Credential check
-	if targetPixel.FBAccessToken == "" || targetPixel.FBPixelID == "" {
+	if !targetPixel.HasCredentials() {
 		return nil, ErrPixelNoCredentials
 	}
 
