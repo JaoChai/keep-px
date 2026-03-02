@@ -97,6 +97,14 @@ func (r *ReplaySessionRepo) UpdateStatusWithError(ctx context.Context, id string
 	return err
 }
 
+func (r *ReplaySessionRepo) UpdateTotalEvents(ctx context.Context, id string, total int) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE replay_sessions SET total_events = $2 WHERE id = $1`,
+		id, total,
+	)
+	return err
+}
+
 func (r *ReplaySessionRepo) GetStatus(ctx context.Context, id string) (string, error) {
 	var status string
 	err := r.pool.QueryRow(ctx,

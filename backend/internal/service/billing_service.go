@@ -12,6 +12,8 @@ import (
 	checkoutsession "github.com/stripe/stripe-go/v82/checkout/session"
 	stripecustomer "github.com/stripe/stripe-go/v82/customer"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
@@ -269,24 +271,24 @@ func (s *BillingService) CreateCustomerPortalSession(ctx context.Context, custom
 	return sess.URL, nil
 }
 
-// ProcessWebhookEvent checks idempotency and processes the webhook event.
-// Returns nil if the event was already processed (duplicate).
+// ProcessWebhookEvent atomically claims the event via CreateIfNotExists, processes it,
+// and rolls back the claim on failure so retries can succeed.
 func (s *BillingService) ProcessWebhookEvent(ctx context.Context, stripeEventID, eventType string, process func() error) error {
-	exists, err := s.webhookRepo.Exists(ctx, stripeEventID)
+	inserted, err := s.webhookRepo.CreateIfNotExists(ctx, stripeEventID, eventType)
 	if err != nil {
-		return fmt.Errorf("check webhook event: %w", err)
+		return fmt.Errorf("claim webhook event: %w", err)
 	}
-	if exists {
+	if !inserted {
 		slog.Info("skipping duplicate webhook event", "stripe_event_id", stripeEventID, "event_type", eventType)
 		return nil
 	}
 
 	if err := process(); err != nil {
+		// Roll back the claim so Stripe retries can succeed
+		if delErr := s.webhookRepo.Delete(ctx, stripeEventID); delErr != nil {
+			slog.Error("failed to roll back webhook event claim", "stripe_event_id", stripeEventID, "error", delErr)
+		}
 		return err
-	}
-
-	if err := s.webhookRepo.Create(ctx, stripeEventID, eventType); err != nil {
-		slog.Warn("failed to record webhook event", "stripe_event_id", stripeEventID, "error", err)
 	}
 
 	return nil
@@ -424,25 +426,41 @@ func (s *BillingService) cancelSubscription(ctx context.Context, sub *stripe.Sub
 
 // GetBillingOverview returns all billing information for a customer.
 func (s *BillingService) GetBillingOverview(ctx context.Context, customerID string) (*BillingOverview, error) {
-	purchases, err := s.purchaseRepo.ListByCustomerID(ctx, customerID)
-	if err != nil {
-		return nil, fmt.Errorf("list purchases: %w", err)
+	var (
+		purchases     []*domain.Purchase
+		credits       []*domain.ReplayCredit
+		subscriptions []*domain.Subscription
+	)
+
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		purchases, err = s.purchaseRepo.ListByCustomerID(gCtx, customerID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		credits, err = s.creditRepo.GetActiveByCustomerID(gCtx, customerID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		subscriptions, err = s.subRepo.ListByCustomerID(gCtx, customerID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, fmt.Errorf("get billing overview: %w", err)
 	}
+
 	if purchases == nil {
 		purchases = []*domain.Purchase{}
 	}
-
-	credits, err := s.creditRepo.GetActiveByCustomerID(ctx, customerID)
-	if err != nil {
-		return nil, fmt.Errorf("list credits: %w", err)
-	}
 	if credits == nil {
 		credits = []*domain.ReplayCredit{}
-	}
-
-	subscriptions, err := s.subRepo.ListByCustomerID(ctx, customerID)
-	if err != nil {
-		return nil, fmt.Errorf("list subscriptions: %w", err)
 	}
 	if subscriptions == nil {
 		subscriptions = []*domain.Subscription{}

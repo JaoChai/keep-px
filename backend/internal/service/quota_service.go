@@ -105,12 +105,12 @@ func (s *QuotaService) GetCustomerQuota(ctx context.Context, customerID string) 
 // CheckAndIncrementEventQuota atomically checks and increments the event usage
 // counter, preventing race conditions in concurrent ingestion.
 func (s *QuotaService) CheckAndIncrementEventQuota(ctx context.Context, customerID string, count int64) error {
-	quota, err := s.GetCustomerQuota(ctx, customerID)
+	maxEvents, err := s.subRepo.GetMaxEventsPerMonth(ctx, customerID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get max events per month: %w", err)
 	}
 
-	if err := s.usageRepo.CheckAndIncrement(ctx, customerID, count, quota.MaxEventsPerMonth); err != nil {
+	if err := s.usageRepo.CheckAndIncrement(ctx, customerID, count, maxEvents); err != nil {
 		if errors.Is(err, repository.ErrQuotaExceeded) {
 			return ErrQuotaEventsExceeded
 		}
@@ -126,12 +126,12 @@ func (s *QuotaService) CheckPixelCreationQuota(ctx context.Context, customerID s
 		return err
 	}
 
-	pixels, err := s.pixelRepo.ListByCustomerID(ctx, customerID)
+	count, err := s.pixelRepo.CountByCustomerID(ctx, customerID)
 	if err != nil {
-		return err
+		return fmt.Errorf("count pixels: %w", err)
 	}
 
-	if len(pixels) >= quota.MaxPixels {
+	if count >= quota.MaxPixels {
 		return ErrQuotaPixelsExceeded
 	}
 	return nil
@@ -144,20 +144,54 @@ func (s *QuotaService) CheckSalePageCreationQuota(ctx context.Context, customerI
 		return err
 	}
 
-	pages, err := s.salePageRepo.ListByCustomerID(ctx, customerID)
+	count, err := s.salePageRepo.CountByCustomerID(ctx, customerID)
 	if err != nil {
-		return err
+		return fmt.Errorf("count sale pages: %w", err)
 	}
 
-	if len(pages) >= quota.MaxSalePages {
+	if count >= quota.MaxSalePages {
 		return ErrQuotaSalePagesExceeded
 	}
 	return nil
 }
 
 // ConsumeReplayCredit atomically consumes one replay from the customer's active credits.
+// Pre-flight validation checks credit availability and event limits before consuming.
 // Returns the credit used so the caller can access MaxEventsPerReplay.
 func (s *QuotaService) ConsumeReplayCredit(ctx context.Context, customerID string, eventCount int) (*domain.ReplayCredit, error) {
+	// Pre-flight: check credits exist and event count is within limits before consuming
+	credits, err := s.creditRepo.GetActiveByCustomerID(ctx, customerID)
+	if err != nil {
+		return nil, fmt.Errorf("check active credits: %w", err)
+	}
+	if len(credits) == 0 {
+		return nil, ErrQuotaReplayNotAllowed
+	}
+
+	// Verify at least one credit can handle the event count
+	hasValidCredit := false
+	for _, c := range credits {
+		if c.RemainingReplays() != 0 && (c.MaxEventsPerReplay == 0 || eventCount <= c.MaxEventsPerReplay) {
+			hasValidCredit = true
+			break
+		}
+	}
+	if !hasValidCredit {
+		// Check if it's an event limit issue vs no remaining replays
+		hasRemaining := false
+		for _, c := range credits {
+			if c.RemainingReplays() != 0 {
+				hasRemaining = true
+				break
+			}
+		}
+		if !hasRemaining {
+			return nil, ErrQuotaReplayNotAllowed
+		}
+		return nil, ErrQuotaReplayEventsExceeded
+	}
+
+	// Now atomically consume
 	credit, err := s.creditRepo.ConsumeOneCredit(ctx, customerID)
 	if err != nil {
 		return nil, fmt.Errorf("consume credit: %w", err)
@@ -165,6 +199,8 @@ func (s *QuotaService) ConsumeReplayCredit(ctx context.Context, customerID strin
 	if credit == nil {
 		return nil, ErrQuotaReplayNotAllowed
 	}
+
+	// Final check on consumed credit's actual MaxEventsPerReplay
 	if credit.MaxEventsPerReplay > 0 && eventCount > credit.MaxEventsPerReplay {
 		return nil, ErrQuotaReplayEventsExceeded
 	}

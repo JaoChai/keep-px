@@ -70,14 +70,29 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 		}
 	}
 
+	// Batch fetch all unique pixel IDs to avoid N+1 queries
+	uniqueIDs := make(map[string]struct{})
+	for _, e := range input.Events {
+		uniqueIDs[e.PixelID] = struct{}{}
+	}
+	ids := make([]string, 0, len(uniqueIDs))
+	for id := range uniqueIDs {
+		ids = append(ids, id)
+	}
+	pixels, err := s.pixelRepo.GetByIDs(ctx, ids)
+	if err != nil {
+		s.logger.Error("batch get pixels failed", "error", err)
+		return 0, fmt.Errorf("batch get pixels: %w", err)
+	}
+	pixelMap := make(map[string]*domain.Pixel, len(pixels))
+	for _, p := range pixels {
+		pixelMap[p.ID] = p
+	}
+
 	created := 0
 	for _, eventInput := range input.Events {
-		// Verify pixel belongs to customer
-		pixel, err := s.pixelRepo.GetByID(ctx, eventInput.PixelID)
-		if err != nil {
-			s.logger.Error("get pixel failed", "error", err, "pixel_id", eventInput.PixelID)
-			continue
-		}
+		// Verify pixel belongs to customer via pre-fetched map
+		pixel := pixelMap[eventInput.PixelID]
 		if pixel == nil || pixel.CustomerID != customerID || !pixel.IsActive {
 			s.logger.Warn("pixel not found or inactive", "pixel_id", eventInput.PixelID)
 			continue

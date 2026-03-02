@@ -31,7 +31,9 @@ type CustomerRepository interface {
 type PixelRepository interface {
 	Create(ctx context.Context, pixel *domain.Pixel) error
 	GetByID(ctx context.Context, id string) (*domain.Pixel, error)
+	GetByIDs(ctx context.Context, ids []string) ([]*domain.Pixel, error)
 	ListByCustomerID(ctx context.Context, customerID string) ([]*domain.Pixel, error)
+	CountByCustomerID(ctx context.Context, customerID string) (int, error)
 	Update(ctx context.Context, pixel *domain.Pixel) error
 	Delete(ctx context.Context, id string) error
 }
@@ -58,6 +60,7 @@ type ReplaySessionRepository interface {
 	UpdateProgress(ctx context.Context, id string, replayed, failed int) error
 	UpdateStatus(ctx context.Context, id string, status string) error
 	UpdateStatusWithError(ctx context.Context, id string, status string, errorMsg string) error
+	UpdateTotalEvents(ctx context.Context, id string, total int) error
 	GetStatus(ctx context.Context, id string) (string, error)
 	UpdateFailedBatches(ctx context.Context, id string, failedBatchRanges []byte) error
 	CancelSession(ctx context.Context, id string) (*domain.ReplaySession, error)
@@ -69,6 +72,7 @@ type SalePageRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.SalePage, error)
 	GetBySlug(ctx context.Context, slug string) (*domain.SalePage, error)
 	ListByCustomerID(ctx context.Context, customerID string) ([]*domain.SalePage, error)
+	CountByCustomerID(ctx context.Context, customerID string) (int, error)
 	Update(ctx context.Context, page *domain.SalePage) error
 	Delete(ctx context.Context, id string) error
 	SlugExists(ctx context.Context, slug string) (bool, error)
@@ -109,6 +113,7 @@ type SubscriptionRepository interface {
 	Create(ctx context.Context, sub *domain.Subscription) error
 	GetByStripeSubscriptionID(ctx context.Context, stripeSubID string) (*domain.Subscription, error)
 	GetActiveByCustomerID(ctx context.Context, customerID string) ([]*domain.Subscription, error)
+	GetMaxEventsPerMonth(ctx context.Context, customerID string) (int64, error)
 	Update(ctx context.Context, sub *domain.Subscription) error
 	ListByCustomerID(ctx context.Context, customerID string) ([]*domain.Subscription, error)
 }
@@ -120,6 +125,6 @@ type EventUsageRepository interface {
 }
 
 type WebhookEventRepository interface {
-	Exists(ctx context.Context, stripeEventID string) (bool, error)
-	Create(ctx context.Context, stripeEventID, eventType string) error
+	CreateIfNotExists(ctx context.Context, stripeEventID string, eventType string) (inserted bool, err error)
+	Delete(ctx context.Context, stripeEventID string) error
 }

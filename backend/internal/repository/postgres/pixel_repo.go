@@ -66,6 +66,39 @@ func (r *PixelRepo) GetByID(ctx context.Context, id string) (*domain.Pixel, erro
 	return p, nil
 }
 
+func (r *PixelRepo) GetByIDs(ctx context.Context, ids []string) ([]*domain.Pixel, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, customer_id, fb_pixel_id, fb_access_token, name, is_active, status, backup_pixel_id, test_event_code, created_at, updated_at
+		 FROM pixels WHERE id = ANY($1)`, ids,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var pixels []*domain.Pixel
+	for rows.Next() {
+		p := &domain.Pixel{}
+		if err := rows.Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.FBAccessToken, &p.Name, &p.IsActive, &p.Status, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		p.FBAccessToken = r.decryptToken(p.FBAccessToken)
+		pixels = append(pixels, p)
+	}
+	return pixels, rows.Err()
+}
+
+func (r *PixelRepo) CountByCustomerID(ctx context.Context, customerID string) (int, error) {
+	var count int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM pixels WHERE customer_id = $1`, customerID,
+	).Scan(&count)
+	return count, err
+}
+
 func (r *PixelRepo) ListByCustomerID(ctx context.Context, customerID string) ([]*domain.Pixel, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, customer_id, fb_pixel_id, fb_access_token, name, is_active, status, backup_pixel_id, test_event_code, created_at, updated_at
