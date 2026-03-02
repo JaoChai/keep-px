@@ -8,7 +8,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
-	"github.com/jaochai/pixlinks/backend/internal/repository/postgres"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
@@ -49,7 +48,7 @@ func (h *NotificationHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	if err := h.notifService.MarkRead(r.Context(), id, customerID); err != nil {
-		if errors.Is(err, postgres.ErrNotificationNotFound) {
+		if errors.Is(err, service.ErrNotificationNotFound) {
 			ErrorJSON(w, http.StatusNotFound, "notification not found")
 			return
 		}

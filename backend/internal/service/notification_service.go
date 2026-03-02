@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
+
+var ErrNotificationNotFound = errors.New("notification not found")
 
 type NotificationService struct {
 	repo repository.NotificationRepository
@@ -62,6 +65,9 @@ func (s *NotificationService) CountUnread(ctx context.Context, customerID string
 
 func (s *NotificationService) MarkRead(ctx context.Context, id, customerID string) error {
 	if err := s.repo.MarkRead(ctx, id, customerID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ErrNotificationNotFound
+		}
 		return fmt.Errorf("mark notification read: %w", err)
 	}
 	return nil

@@ -2,13 +2,11 @@ package postgres
 
 import (
 	"context"
-	"errors"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
+	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
-
-var ErrNotificationNotFound = errors.New("notification not found")
 
 type NotificationRepo struct {
 	pool *pgxpool.Pool
@@ -69,7 +67,7 @@ func (r *NotificationRepo) MarkRead(ctx context.Context, id, customerID string) 
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrNotificationNotFound
+		return repository.ErrNotFound
 	}
 	return nil
 }

@@ -2,10 +2,15 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 )
+
+// ErrNotFound is returned by repository implementations when the requested
+// entity does not exist or was not affected by the operation.
+var ErrNotFound = errors.New("not found")
 
 type CustomerRepository interface {
 	Create(ctx context.Context, customer *domain.Customer) error

@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     read_at     TIMESTAMPTZ
 );
 
-CREATE INDEX idx_notifications_customer_unread
+CREATE INDEX IF NOT EXISTS idx_notifications_customer_unread
     ON notifications(customer_id) WHERE is_read = FALSE;
-CREATE INDEX idx_notifications_customer_created
+CREATE INDEX IF NOT EXISTS idx_notifications_customer_created
     ON notifications(customer_id, created_at DESC);
