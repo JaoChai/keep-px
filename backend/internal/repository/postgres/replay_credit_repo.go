@@ -107,7 +107,7 @@ func (r *ReplayCreditRepo) ConsumeOneCredit(ctx context.Context, customerID stri
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var credit domain.ReplayCredit
 	err = tx.QueryRow(ctx, `
