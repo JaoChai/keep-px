@@ -10,7 +10,7 @@ export class DashboardPage {
     this.page = page
     this.heading = page.getByRole('heading', { name: 'Dashboard' })
     this.statCards = page.locator('[class*="card"]').filter({ has: page.locator('p.text-2xl') })
-    this.chartSection = page.getByText('Events (Last 30 Days)')
+    this.chartSection = page.getByText('Event Volume')
   }
 
   async goto() {

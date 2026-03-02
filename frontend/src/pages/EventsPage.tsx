@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,8 @@ import { useRealtimeStats } from '@/hooks/use-realtime-stats'
 import { useEvents } from '@/hooks/use-events'
 import { useOverviewStats } from '@/hooks/use-analytics'
 import { usePixels } from '@/hooks/use-pixels'
+import { usePixelNameMap } from '@/hooks/use-pixel-name-map'
+import { eventBadgeVariant, getEventColor } from '@/lib/event-utils'
 import { formatDistanceToNow } from 'date-fns'
 import {
   BarChart,
@@ -34,23 +36,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-
-const eventBadgeVariant = (name: string) => {
-  switch (name) {
-    case 'PageView':
-      return 'secondary'
-    case 'Purchase':
-      return 'success'
-    case 'Lead':
-    case 'CompleteRegistration':
-      return 'default'
-    case 'AddToCart':
-    case 'InitiateCheckout':
-      return 'warning'
-    default:
-      return 'outline'
-  }
-}
 
 interface StatCardProps {
   title: string
@@ -76,19 +61,6 @@ function StatCard({ title, value, subtitle, icon }: StatCardProps) {
       </CardContent>
     </Card>
   )
-}
-
-const EVENT_TYPE_COLORS: Record<string, string> = {
-  PageView: 'bg-muted-foreground',
-  Purchase: 'bg-emerald-500',
-  Lead: 'bg-primary',
-  CompleteRegistration: 'bg-primary/80',
-  AddToCart: 'bg-amber-500',
-  InitiateCheckout: 'bg-amber-400',
-}
-
-function getEventColor(name: string): string {
-  return EVENT_TYPE_COLORS[name] ?? 'bg-muted-foreground'
 }
 
 export function EventsPage() {
@@ -125,6 +97,7 @@ export function EventsPage() {
   const historyQuery = useEvents(historyPage, 50, pixelId)
   const { data: overviewStats } = useOverviewStats()
   const { data: pixels } = usePixels()
+  const pixelNameMap = usePixelNameMap()
 
   // Sync pixel filter to realtime hook
   useEffect(() => {
@@ -141,17 +114,6 @@ export function EventsPage() {
       togglePause()
     }
   }, [mode, isPaused, togglePause])
-
-  // Pixel name resolver for History mode (PixelEvent doesn't have pixel_name)
-  const pixelNameMap = useMemo(() => {
-    const map = new Map<string, string>()
-    if (pixels) {
-      for (const p of pixels) {
-        map.set(p.id, p.name)
-      }
-    }
-    return map
-  }, [pixels])
 
   // History data
   const historyEvents = historyQuery.data?.data ?? []

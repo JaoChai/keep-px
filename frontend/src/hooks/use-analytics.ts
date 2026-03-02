@@ -1,14 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { APIResponse } from '@/types'
+import type { APIResponse, RealtimeEvent } from '@/types'
 
 interface OverviewStats {
   total_pixels: number
   active_pixels: number
   total_events: number
   events_today: number
+  events_yesterday: number
   events_this_week: number
   total_replays: number
+  active_replays: number
   forwarded_events: number
 }
 
@@ -23,6 +25,18 @@ export function useOverviewStats() {
     queryFn: async () => {
       const { data } = await api.get<APIResponse<OverviewStats>>('/analytics/overview')
       return data.data!
+    },
+  })
+}
+
+export function useDashboardRecentEvents(limit = 8) {
+  return useQuery({
+    queryKey: ['dashboard', 'recent-events', limit],
+    queryFn: async () => {
+      const { data } = await api.get<APIResponse<RealtimeEvent[]>>('/events/recent', {
+        params: { limit },
+      })
+      return data.data ?? []
     },
   })
 }

@@ -20,8 +20,10 @@ type OverviewStats struct {
 	ActivePixels    int `json:"active_pixels"`
 	TotalEvents     int `json:"total_events"`
 	EventsToday     int `json:"events_today"`
+	EventsYesterday int `json:"events_yesterday"`
 	EventsThisWeek  int `json:"events_this_week"`
 	TotalReplays    int `json:"total_replays"`
+	ActiveReplays   int `json:"active_replays"`
 	ForwardedEvents int `json:"forwarded_events"`
 }
 
@@ -39,19 +41,24 @@ func (s *AnalyticsService) GetOverview(ctx context.Context, customerID string) (
 		`SELECT
 			COUNT(*),
 			COUNT(*) FILTER (WHERE pe.event_time >= CURRENT_DATE),
+			COUNT(*) FILTER (WHERE pe.event_time >= CURRENT_DATE - INTERVAL '1 day'
+			                   AND pe.event_time < CURRENT_DATE),
 			COUNT(*) FILTER (WHERE pe.event_time >= CURRENT_DATE - INTERVAL '7 days'),
 			COUNT(*) FILTER (WHERE pe.forwarded_to_capi)
 		 FROM pixel_events pe
 		 JOIN pixels p ON p.id = pe.pixel_id
 		 WHERE p.customer_id = $1`, customerID,
-	).Scan(&stats.TotalEvents, &stats.EventsToday, &stats.EventsThisWeek, &stats.ForwardedEvents)
+	).Scan(&stats.TotalEvents, &stats.EventsToday, &stats.EventsYesterday, &stats.EventsThisWeek, &stats.ForwardedEvents)
 	if err != nil {
 		return nil, fmt.Errorf("count events: %w", err)
 	}
 
 	err = s.pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM replay_sessions WHERE customer_id = $1`, customerID,
-	).Scan(&stats.TotalReplays)
+		`SELECT
+			COUNT(*),
+			COUNT(*) FILTER (WHERE status IN ('running', 'pending'))
+		 FROM replay_sessions WHERE customer_id = $1`, customerID,
+	).Scan(&stats.TotalReplays, &stats.ActiveReplays)
 	if err != nil {
 		return nil, fmt.Errorf("count replays: %w", err)
 	}
