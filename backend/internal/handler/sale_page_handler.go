@@ -99,6 +99,10 @@ func (h *SalePageHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	page, err := h.salePageService.Create(r.Context(), customerID, input)
 	if err != nil {
+		if errors.Is(err, service.ErrQuotaSalePagesExceeded) {
+			ErrorJSON(w, http.StatusPaymentRequired, "sale page limit exceeded")
+			return
+		}
 		if errors.Is(err, service.ErrInvalidSlug) {
 			ErrorJSON(w, http.StatusBadRequest, "slug must contain only lowercase letters, numbers, and hyphens")
 			return

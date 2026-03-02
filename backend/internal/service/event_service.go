@@ -17,10 +17,12 @@ import (
 )
 
 type EventService struct {
-	eventRepo  repository.EventRepository
-	pixelRepo  repository.PixelRepository
-	capiClient *facebook.CAPIClient
-	logger     *slog.Logger
+	eventRepo    repository.EventRepository
+	pixelRepo    repository.PixelRepository
+	capiClient   *facebook.CAPIClient
+	logger       *slog.Logger
+	quotaService *QuotaService
+	usageRepo    repository.EventUsageRepository
 }
 
 func NewEventService(
@@ -28,12 +30,16 @@ func NewEventService(
 	pixelRepo repository.PixelRepository,
 	capiClient *facebook.CAPIClient,
 	logger *slog.Logger,
+	quotaService *QuotaService,
+	usageRepo repository.EventUsageRepository,
 ) *EventService {
 	return &EventService{
-		eventRepo:  eventRepo,
-		pixelRepo:  pixelRepo,
-		capiClient: capiClient,
-		logger:     logger,
+		eventRepo:    eventRepo,
+		pixelRepo:    pixelRepo,
+		capiClient:   capiClient,
+		logger:       logger,
+		quotaService: quotaService,
+		usageRepo:    usageRepo,
 	}
 }
 
@@ -60,6 +66,13 @@ type IngestBatchInput struct {
 }
 
 func (s *EventService) Ingest(ctx context.Context, customerID string, input IngestBatchInput, client ClientContext) (int, error) {
+	// Check event ingestion quota
+	if s.quotaService != nil {
+		if err := s.quotaService.CheckEventIngestionQuota(ctx, customerID, int64(len(input.Events))); err != nil {
+			return 0, err
+		}
+	}
+
 	created := 0
 	for _, eventInput := range input.Events {
 		// Verify pixel belongs to customer
@@ -129,6 +142,14 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 
 		created++
 	}
+
+	// Track usage after successful ingestion
+	if s.usageRepo != nil && created > 0 {
+		if err := s.usageRepo.IncrementCount(ctx, customerID, int64(created)); err != nil {
+			s.logger.Error("failed to increment event usage", "error", err, "customer_id", customerID, "count", created)
+		}
+	}
+
 	return created, nil
 }
 

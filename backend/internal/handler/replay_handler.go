@@ -40,6 +40,10 @@ func mapReplayError(err error, w http.ResponseWriter) bool {
 		ErrorJSON(w, http.StatusConflict, "replay session cannot be cancelled")
 	case errors.Is(err, service.ErrReplayNotRetryable):
 		ErrorJSON(w, http.StatusConflict, "replay session cannot be retried")
+	case errors.Is(err, service.ErrQuotaReplayNotAllowed):
+		ErrorJSON(w, http.StatusPaymentRequired, "no replay credits available")
+	case errors.Is(err, service.ErrQuotaReplayEventsExceeded):
+		ErrorJSON(w, http.StatusPaymentRequired, "replay event count exceeds credit limit")
 	default:
 		return false
 	}

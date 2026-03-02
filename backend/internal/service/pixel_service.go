@@ -26,16 +26,18 @@ var (
 )
 
 type PixelService struct {
-	pixelRepo  repository.PixelRepository
-	capiClient *facebook.CAPIClient
-	logger     *slog.Logger
+	pixelRepo    repository.PixelRepository
+	capiClient   *facebook.CAPIClient
+	logger       *slog.Logger
+	quotaService *QuotaService
 }
 
-func NewPixelService(pixelRepo repository.PixelRepository, capiClient *facebook.CAPIClient, logger *slog.Logger) *PixelService {
+func NewPixelService(pixelRepo repository.PixelRepository, capiClient *facebook.CAPIClient, logger *slog.Logger, quotaService *QuotaService) *PixelService {
 	return &PixelService{
-		pixelRepo:  pixelRepo,
-		capiClient: capiClient,
-		logger:     logger,
+		pixelRepo:    pixelRepo,
+		capiClient:   capiClient,
+		logger:       logger,
+		quotaService: quotaService,
 	}
 }
 
@@ -56,6 +58,13 @@ type UpdatePixelInput struct {
 }
 
 func (s *PixelService) Create(ctx context.Context, customerID string, input CreatePixelInput) (*domain.Pixel, error) {
+	// Check pixel creation quota
+	if s.quotaService != nil {
+		if err := s.quotaService.CheckPixelCreationQuota(ctx, customerID); err != nil {
+			return nil, err
+		}
+	}
+
 	pixel := &domain.Pixel{
 		CustomerID:    customerID,
 		FBPixelID:     input.FBPixelID,

@@ -40,6 +40,7 @@ type ReplayService struct {
 	capiClient   *facebook.CAPIClient
 	logger       *slog.Logger
 	notifService *NotificationService
+	quotaService *QuotaService
 	shutdownCtx  context.Context
 	wg           sync.WaitGroup
 	sem          chan struct{} // concurrent replay limiter
@@ -54,6 +55,7 @@ func NewReplayService(
 	logger *slog.Logger,
 	maxConcurrentReplays int,
 	notifService *NotificationService,
+	quotaService *QuotaService,
 ) *ReplayService {
 	if maxConcurrentReplays <= 0 {
 		maxConcurrentReplays = 5
@@ -65,6 +67,7 @@ func NewReplayService(
 		capiClient:   capiClient,
 		logger:       logger,
 		notifService: notifService,
+		quotaService: quotaService,
 		shutdownCtx:  shutdownCtx,
 		sem:          make(chan struct{}, maxConcurrentReplays),
 	}
@@ -174,6 +177,18 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 	events, err := s.eventRepo.GetEventsForReplay(ctx, input.SourcePixelID, input.EventTypes, dateFrom, dateTo, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get events for replay: %w", err)
+	}
+
+	// Consume a replay credit if quota service is available
+	if s.quotaService != nil {
+		credit, err := s.quotaService.ConsumeReplayCredit(ctx, customerID, len(events))
+		if err != nil {
+			return nil, err
+		}
+		// Cap events to the credit's limit if lower than the global max
+		if credit.MaxEventsPerReplay > 0 && len(events) > credit.MaxEventsPerReplay {
+			events = events[:credit.MaxEventsPerReplay]
+		}
 	}
 
 	// Default TimeMode to "original"

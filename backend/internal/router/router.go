@@ -37,17 +37,24 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	replaySessionRepo := postgres.NewReplaySessionRepo(pool)
 	salePageRepo := postgres.NewSalePageRepo(pool)
 	notifRepo := postgres.NewNotificationRepo(pool)
+	purchaseRepo := postgres.NewPurchaseRepo(pool)
+	creditRepo := postgres.NewReplayCreditRepo(pool)
+	subRepo := postgres.NewSubscriptionRepo(pool)
+	usageRepo := postgres.NewEventUsageRepo(pool)
+
 	// Facebook CAPI client
 	capiClient := facebook.NewCAPIClient(cfg.FBGraphAPIURL)
 
 	// Services
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
-	pixelService := service.NewPixelService(pixelRepo, capiClient, logger)
-	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger)
+	billingService := service.NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, cfg)
+	quotaService := service.NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo)
+	pixelService := service.NewPixelService(pixelRepo, capiClient, logger, quotaService)
+	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger, quotaService, usageRepo)
 	notifService := service.NewNotificationService(notifRepo)
-	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService)
+	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService, quotaService)
 	analyticsService := service.NewAnalyticsService(pool)
-	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo)
+	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo, quotaService)
 
 	// Storage
 	storageService := service.NewStorageService(cfg)
@@ -62,6 +69,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	notifHandler := handler.NewNotificationHandler(notifService)
 	salePageHandler := handler.NewSalePageHandler(salePageService, cfg.BaseURL, logger)
 	uploadHandler := handler.NewUploadHandler(storageService)
+	billingHandler := handler.NewBillingHandler(billingService, quotaService, cfg, logger)
 
 	// Health check
 	r.Get("/health", healthHandler.Health)
@@ -82,6 +90,9 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 			r.Post("/google", authHandler.GoogleAuth)
 			r.Post("/refresh", authHandler.Refresh)
 		})
+
+		// Stripe webhook (no auth - uses Stripe signature verification)
+		r.Post("/billing/webhook", billingHandler.Webhook)
 
 		// Event ingestion (API key auth)
 		r.Route("/events", func(r chi.Router) {
@@ -136,6 +147,14 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 				r.Get("/unread-count", notifHandler.UnreadCount)
 				r.Post("/{id}/read", notifHandler.MarkRead)
 				r.Post("/read-all", notifHandler.MarkAllRead)
+			})
+
+			// Billing routes
+			r.Route("/billing", func(r chi.Router) {
+				r.Get("/", billingHandler.GetBillingOverview)
+				r.Get("/quota", billingHandler.GetQuota)
+				r.Post("/checkout", billingHandler.CreateCheckout)
+				r.Post("/portal", billingHandler.CreatePortalSession)
 			})
 
 			// Analytics routes

@@ -18,7 +18,9 @@ type CustomerRepository interface {
 	GetByEmail(ctx context.Context, email string) (*domain.Customer, error)
 	GetByGoogleID(ctx context.Context, googleID string) (*domain.Customer, error)
 	GetByAPIKey(ctx context.Context, apiKey string) (*domain.Customer, error)
+	GetByStripeCustomerID(ctx context.Context, stripeCustomerID string) (*domain.Customer, error)
 	Update(ctx context.Context, customer *domain.Customer) error
+	UpdateStripeCustomerID(ctx context.Context, customerID string, stripeCustomerID string) error
 }
 
 type PixelRepository interface {
@@ -79,4 +81,32 @@ type RefreshTokenRepository interface {
 	GetByTokenHash(ctx context.Context, tokenHash string) (customerID string, expiresAt time.Time, err error)
 	DeleteByCustomerID(ctx context.Context, customerID string) error
 	DeleteByTokenHash(ctx context.Context, tokenHash string) error
+}
+
+type PurchaseRepository interface {
+	Create(ctx context.Context, purchase *domain.Purchase) error
+	GetByID(ctx context.Context, id string) (*domain.Purchase, error)
+	GetByStripeCheckoutSessionID(ctx context.Context, sessionID string) (*domain.Purchase, error)
+	UpdateStatus(ctx context.Context, id string, status string, completedAt *time.Time) error
+	ListByCustomerID(ctx context.Context, customerID string) ([]*domain.Purchase, error)
+}
+
+type ReplayCreditRepository interface {
+	Create(ctx context.Context, credit *domain.ReplayCredit) error
+	GetByID(ctx context.Context, id string) (*domain.ReplayCredit, error)
+	GetActiveByCustomerID(ctx context.Context, customerID string) ([]*domain.ReplayCredit, error)
+	IncrementUsed(ctx context.Context, id string) error
+}
+
+type SubscriptionRepository interface {
+	Create(ctx context.Context, sub *domain.Subscription) error
+	GetByStripeSubscriptionID(ctx context.Context, stripeSubID string) (*domain.Subscription, error)
+	GetActiveByCustomerID(ctx context.Context, customerID string) ([]*domain.Subscription, error)
+	Update(ctx context.Context, sub *domain.Subscription) error
+	ListByCustomerID(ctx context.Context, customerID string) ([]*domain.Subscription, error)
+}
+
+type EventUsageRepository interface {
+	IncrementCount(ctx context.Context, customerID string, count int64) error
+	GetCurrentMonth(ctx context.Context, customerID string) (*domain.EventUsage, error)
 }

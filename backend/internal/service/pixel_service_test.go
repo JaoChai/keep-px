@@ -19,7 +19,7 @@ import (
 func newTestPixelService() (*PixelService, *MockPixelRepo) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
-	svc := NewPixelService(pixelRepo, capiClient, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	svc := NewPixelService(pixelRepo, capiClient, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
 	return svc, pixelRepo
 }
 
@@ -421,7 +421,7 @@ func TestPixelService_TestConnection(t *testing.T) {
 				capiClient = facebook.NewCAPIClient("http://localhost:9999")
 			}
 
-			svc := NewPixelService(pixelRepo, capiClient, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			svc := NewPixelService(pixelRepo, capiClient, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
 
 			resp, err := svc.TestConnection(context.Background(), tt.customerID, tt.pixelID)
 

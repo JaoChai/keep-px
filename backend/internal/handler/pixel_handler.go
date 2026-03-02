@@ -52,6 +52,10 @@ func (h *PixelHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	pixel, err := h.pixelService.Create(r.Context(), customerID, input)
 	if err != nil {
+		if errors.Is(err, service.ErrQuotaPixelsExceeded) {
+			ErrorJSON(w, http.StatusPaymentRequired, "pixel limit exceeded")
+			return
+		}
 		ErrorJSON(w, http.StatusInternalServerError, "failed to create pixel")
 		return
 	}
