@@ -24,8 +24,9 @@ import { usePixels } from '@/hooks/use-pixels'
 import { useReplays } from '@/hooks/use-replays'
 import { usePixelNameMap } from '@/hooks/use-pixel-name-map'
 import { QueryErrorAlert } from '@/components/shared/QueryErrorAlert'
+import { ReplayStatusBadge } from '@/components/shared/ReplayStatusBadge'
 import { eventBadgeVariant, getEventColor } from '@/lib/event-utils'
-import { formatDistanceToNow } from 'date-fns'
+import { timeAgo } from '@/lib/utils'
 import type { RealtimeEvent } from '@/types'
 import {
   AreaChart,
@@ -231,7 +232,7 @@ function RecentActivityFeed({ events }: { events: RealtimeEvent[] }) {
                     <X className="h-3.5 w-3.5 text-red-400" />
                   )}
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatDistanceToNow(new Date(event.event_time), { addSuffix: true })}
+                    {timeAgo(event.event_time)}
                   </span>
                 </div>
               </div>
@@ -367,23 +368,6 @@ function RecentReplays() {
       .slice(0, 3)
   }, [replays])
 
-  const statusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <Badge variant="success" className="text-xs">เสร็จสิ้น</Badge>
-      case 'running':
-        return <Badge variant="warning" className="text-xs">กำลังทำงาน</Badge>
-      case 'pending':
-        return <Badge variant="secondary" className="text-xs">รอดำเนินการ</Badge>
-      case 'failed':
-        return <Badge variant="destructive" className="text-xs">ล้มเหลว</Badge>
-      case 'cancelled':
-        return <Badge variant="outline" className="text-xs">ยกเลิกแล้ว</Badge>
-      default:
-        return <Badge variant="outline" className="text-xs">{status}</Badge>
-    }
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -416,7 +400,7 @@ function RecentReplays() {
                       <span className="text-muted-foreground">→</span>{' '}
                       {pixelNameMap.get(replay.target_pixel_id) || 'ปลายทาง'}
                     </span>
-                    {statusBadge(replay.status)}
+                    <ReplayStatusBadge status={replay.status} className="text-xs" />
                   </div>
                   {(replay.status === 'running' || replay.status === 'completed') && (
                     <div className="flex items-center gap-2">

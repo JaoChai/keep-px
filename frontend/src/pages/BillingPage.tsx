@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import {
   CreditCard,
@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { useBillingOverview, useQuota, useCreateCheckout, useCreatePortalSession } from '@/hooks/use-billing'
-import { formatDistanceToNow } from 'date-fns'
+import { formatBaht, isUnlimited, timeAgo } from '@/lib/utils'
 
 const REPLAY_PACKS = [
   {
@@ -26,6 +26,7 @@ const REPLAY_PACKS = [
     price: 299,
     replays: 1,
     eventsPerReplay: 100_000,
+    expiryDays: 90,
     description: 'เหมาะสำหรับการย้ายพิกเซลครั้งเดียว',
     icon: Zap,
     popular: false,
@@ -36,6 +37,7 @@ const REPLAY_PACKS = [
     price: 699,
     replays: 3,
     eventsPerReplay: 100_000,
+    expiryDays: 180,
     description: 'สำหรับการเปลี่ยนพิกเซลบ่อย',
     icon: Package,
     popular: true,
@@ -46,6 +48,7 @@ const REPLAY_PACKS = [
     price: 1490,
     replays: -1,
     eventsPerReplay: 100_000,
+    expiryDays: 365,
     description: 'รีเพลย์ไม่จำกัดเป็นเวลา 365 วัน',
     icon: Crown,
     popular: false,
@@ -76,16 +79,21 @@ const ADDONS = [
   },
 ] as const
 
-function formatBaht(satang: number) {
-  return `${(satang / 100).toLocaleString('th-TH')}`;
-}
-
 export function BillingPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: overview, isLoading: overviewLoading } = useBillingOverview()
   const { data: quota } = useQuota()
   const checkout = useCreateCheckout()
   const portal = useCreatePortalSession()
+  const [pendingCheckoutType, setPendingCheckoutType] = useState<string | null>(null)
+
+  const handleCheckout = (params: { pack_type?: string; addon_type?: string }) => {
+    const key = params.pack_type ?? params.addon_type ?? null
+    setPendingCheckoutType(key)
+    checkout.mutate(params, {
+      onSettled: () => setPendingCheckoutType(null),
+    })
+  }
 
   useEffect(() => {
     const status = searchParams.get('status')
@@ -138,7 +146,7 @@ export function BillingPage() {
               <div>
                 <p className="text-xs text-muted-foreground">รีเพลย์คงเหลือ</p>
                 <p className="text-lg font-bold text-foreground">
-                  {quota.remaining_replays === -1 ? 'ไม่จำกัด' : quota.remaining_replays}
+                  {isUnlimited(quota.remaining_replays) ? 'ไม่จำกัด' : quota.remaining_replays}
                 </p>
               </div>
               <div>
@@ -185,7 +193,7 @@ export function BillingPage() {
                 <ul className="space-y-2 mb-4 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                    {pack.replays === -1 ? 'รีเพลย์ไม่จำกัด' : `${pack.replays} รีเพลย์`}
+                    {isUnlimited(pack.replays) ? 'รีเพลย์ไม่จำกัด' : `${pack.replays} รีเพลย์`}
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -193,16 +201,16 @@ export function BillingPage() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                    ใช้ได้ 30 วัน
+                    ใช้ได้ {pack.expiryDays} วัน
                   </li>
                 </ul>
                 <Button
                   className="w-full"
                   variant={pack.popular ? 'default' : 'outline'}
-                  onClick={() => checkout.mutate({ pack_type: pack.type })}
+                  onClick={() => handleCheckout({ pack_type: pack.type })}
                   disabled={checkout.isPending}
                 >
-                  {checkout.isPending ? (
+                  {pendingCheckoutType === pack.type ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <CreditCard className="h-4 w-4" />
@@ -226,14 +234,14 @@ export function BillingPage() {
                   <div className="flex items-center justify-between mb-3">
                     <Badge variant="success">ใช้งาน</Badge>
                     <span className="text-xs text-muted-foreground">
-                      หมดอายุ {formatDistanceToNow(new Date(credit.expires_at), { addSuffix: true })}
+                      หมดอายุ {timeAgo(credit.expires_at)}
                     </span>
                   </div>
                   <p className="text-sm font-medium text-foreground capitalize mb-2">แพ็ก {credit.pack_type}</p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">รีเพลย์ที่ใช้แล้ว</span>
                     <span className="font-semibold text-foreground">
-                      {credit.used_replays} / {credit.total_replays === -1 ? 'ไม่จำกัด' : credit.total_replays}
+                      {credit.used_replays} / {isUnlimited(credit.total_replays) ? 'ไม่จำกัด' : credit.total_replays}
                     </span>
                   </div>
                   <div className="mt-2">
@@ -241,7 +249,7 @@ export function BillingPage() {
                       <div
                         className="h-full bg-primary rounded-full"
                         style={{
-                          width: credit.total_replays === -1
+                          width: isUnlimited(credit.total_replays)
                             ? '10%'
                             : `${Math.min((credit.used_replays / credit.total_replays) * 100, 100)}%`,
                         }}
@@ -289,10 +297,10 @@ export function BillingPage() {
                     <Button
                       variant="outline"
                       className="w-full"
-                      onClick={() => checkout.mutate({ addon_type: addon.type })}
+                      onClick={() => handleCheckout({ addon_type: addon.type })}
                       disabled={checkout.isPending}
                     >
-                      {checkout.isPending ? (
+                      {pendingCheckoutType === addon.type ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <CreditCard className="h-4 w-4" />

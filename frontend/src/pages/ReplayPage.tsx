@@ -3,18 +3,19 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link } from 'react-router'
-import { RotateCcw, Play, CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, StopCircle, Eye, CreditCard } from 'lucide-react'
+import { RotateCcw, Play, AlertTriangle, StopCircle, Eye, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { ReplayStatusBadge } from '@/components/shared/ReplayStatusBadge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { usePixels } from '@/hooks/use-pixels'
 import { useReplays, useReplaySession, useCreateReplay, useCancelReplay, useRetryReplay, useReplayPreview, useEventTypes } from '@/hooks/use-replays'
 import { useQuota } from '@/hooks/use-billing'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { truncateMessage } from '@/lib/utils'
+import { truncateMessage, isUnlimited } from '@/lib/utils'
 import type { ReplayPreview } from '@/types'
 
 const replaySchema = z.object({
@@ -27,16 +28,6 @@ const replaySchema = z.object({
 })
 
 type ReplayForm = z.infer<typeof replaySchema>
-
-function statusBadge(status: string) {
-  switch (status) {
-    case 'completed': return <Badge variant="success"><CheckCircle2 className="h-3 w-3 mr-1" />เสร็จสิ้น</Badge>
-    case 'running': return <Badge variant="default"><Loader2 className="h-3 w-3 mr-1 animate-spin" />กำลังทำงาน</Badge>
-    case 'failed': return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />ล้มเหลว</Badge>
-    case 'cancelled': return <Badge variant="outline"><StopCircle className="h-3 w-3 mr-1" />ยกเลิกแล้ว</Badge>
-    default: return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />รอดำเนินการ</Badge>
-  }
-}
 
 function toStartOfDay(dateStr: string): string {
   return new Date(dateStr + 'T00:00:00').toISOString()
@@ -158,7 +149,7 @@ export function ReplayPage() {
         </div>
         {quota && (
           <Badge variant={quota.can_replay ? 'success' : 'secondary'} className="text-sm px-3 py-1">
-            {quota.remaining_replays === -1
+            {isUnlimited(quota.remaining_replays)
               ? 'รีเพลย์ไม่จำกัด'
               : `เหลือ ${quota.remaining_replays} รีเพลย์`}
           </Badge>
@@ -356,7 +347,7 @@ export function ReplayPage() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between text-base">
                 <span>ความคืบหน้ารีเพลย์</span>
-                {statusBadge(activeReplay.status)}
+                <ReplayStatusBadge status={activeReplay.status} />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -463,7 +454,7 @@ export function ReplayPage() {
                           )}
                         </p>
                       </div>
-                      {statusBadge(replay.status)}
+                      <ReplayStatusBadge status={replay.status} />
                     </div>
                   ))}
                 </div>

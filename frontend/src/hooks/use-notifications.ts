@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import type { NotificationListResult } from '@/types'
+
+export function invalidateNotifications(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ['notifications'], exact: true })
+  qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'], exact: true })
+}
 
 export function useNotifications(enabled: boolean) {
   return useQuery({
@@ -10,7 +16,7 @@ export function useNotifications(enabled: boolean) {
       return data.data
     },
     enabled,
-    staleTime: 30_000,
+    staleTime: 60_000,
   })
 }
 
@@ -21,7 +27,7 @@ export function useUnreadCount() {
       const { data } = await api.get<{ data: { unread_count: number } }>('/notifications/unread-count')
       return data.data.unread_count
     },
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   })
 }
 
@@ -31,10 +37,7 @@ export function useMarkRead() {
     mutationFn: async (id: string) => {
       await api.post(`/notifications/${id}/read`)
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications'], exact: true })
-      qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'], exact: true })
-    },
+    onSuccess: () => invalidateNotifications(qc),
   })
 }
 
@@ -44,9 +47,6 @@ export function useMarkAllRead() {
     mutationFn: async () => {
       await api.post('/notifications/read-all')
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications'], exact: true })
-      qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'], exact: true })
-    },
+    onSuccess: () => invalidateNotifications(qc),
   })
 }

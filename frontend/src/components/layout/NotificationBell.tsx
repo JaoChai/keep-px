@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Bell } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { th } from 'date-fns/locale'
+import { timeAgo } from '@/lib/utils'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useNotifications, useUnreadCount, useMarkRead, useMarkAllRead } from '@/hooks/use-notifications'
@@ -32,7 +31,7 @@ function NotificationItem({
         <p className="text-sm font-medium text-foreground truncate">{notification.title}</p>
         <p className="text-xs text-muted-foreground line-clamp-2">{notification.body}</p>
         <p className="mt-1 text-xs text-muted-foreground/70">
-          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: th })}
+          {timeAgo(notification.created_at)}
         </p>
       </div>
     </button>
