@@ -112,6 +112,17 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, APIResponse{Data: customer})
 }
 
+func (h *AuthHandler) RegenerateAPIKey(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
+	customer, err := h.authService.RegenerateAPIKey(r.Context(), customerID)
+	if err != nil {
+		h.logger.Error("regenerate api key failed", "error", err)
+		ErrorJSON(w, http.StatusInternalServerError, "failed to regenerate api key")
+		return
+	}
+	JSON(w, http.StatusOK, APIResponse{Data: customer})
+}
+
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		RefreshToken string `json:"refresh_token" validate:"required"`

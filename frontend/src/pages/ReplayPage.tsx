@@ -14,6 +14,7 @@ import { usePixels } from '@/hooks/use-pixels'
 import { useReplays, useReplaySession, useCreateReplay, useCancelReplay, useRetryReplay, useReplayPreview, useEventTypes } from '@/hooks/use-replays'
 import { useQuota } from '@/hooks/use-billing'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { truncateMessage } from '@/lib/utils'
 import type { ReplayPreview } from '@/types'
 
 const replaySchema = z.object({
@@ -366,7 +367,7 @@ export function ReplayPage() {
                     <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
                     <div>
                       <p className="text-sm font-medium text-red-800">รีเพลย์ล้มเหลว</p>
-                      <p className="text-sm text-red-600 mt-1">{activeReplay.error_message}</p>
+                      <p className="text-sm text-red-600 mt-1">{truncateMessage(activeReplay.error_message)}</p>
                     </div>
                   </div>
                 )}
@@ -458,7 +459,7 @@ export function ReplayPage() {
                         <p className="text-xs text-muted-foreground">
                           {replay.replayed_events}/{replay.total_events} อีเวนต์ &middot; {new Date(replay.created_at).toLocaleString()}
                           {replay.error_message && (
-                            <span className="text-red-500 ml-2">{replay.error_message}</span>
+                            <span className="text-red-500 ml-2">{truncateMessage(replay.error_message)}</span>
                           )}
                         </p>
                       </div>

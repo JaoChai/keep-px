@@ -21,6 +21,7 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/crypto"
 	"github.com/jaochai/pixlinks/backend/internal/repository/postgres"
 	"github.com/jaochai/pixlinks/backend/internal/router"
+	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
 func main() {
@@ -95,6 +96,11 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 	handler, cleanupReplay := router.New(cfg, logger, pool, shutdownCtx)
 
+	// Start event retention cleanup service (daily, deletes events older than 365 days)
+	eventRepo := postgres.NewEventRepo(pool)
+	cleanupService := service.NewCleanupService(eventRepo, logger)
+	cleanupService.Start(shutdownCtx)
+
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		Handler:      handler,
@@ -129,6 +135,9 @@ func main() {
 
 	// Wait for background replay goroutines to finish
 	cleanupReplay()
+
+	// Wait for cleanup service to finish
+	cleanupService.Stop()
 
 	logger.Info("server stopped")
 }

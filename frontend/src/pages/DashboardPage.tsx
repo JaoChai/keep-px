@@ -23,6 +23,7 @@ import { useQuota } from '@/hooks/use-billing'
 import { usePixels } from '@/hooks/use-pixels'
 import { useReplays } from '@/hooks/use-replays'
 import { usePixelNameMap } from '@/hooks/use-pixel-name-map'
+import { QueryErrorAlert } from '@/components/shared/QueryErrorAlert'
 import { eventBadgeVariant, getEventColor } from '@/lib/event-utils'
 import { formatDistanceToNow } from 'date-fns'
 import type { RealtimeEvent } from '@/types'
@@ -447,8 +448,8 @@ function RecentReplays() {
 // --- Dashboard Page ---
 
 export function DashboardPage() {
-  const { data: stats } = useOverviewStats()
-  const { data: recentEvents = [] } = useDashboardRecentEvents(100)
+  const { data: stats, isError: statsError, error: statsErr, refetch: refetchStats } = useOverviewStats()
+  const { data: recentEvents = [], isError: eventsError, error: eventsErr, refetch: refetchEvents } = useDashboardRecentEvents(100)
   const { data: quota } = useQuota()
 
   const capiRate = stats && stats.total_events > 0
@@ -477,6 +478,14 @@ export function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {statsError && (
+        <QueryErrorAlert error={statsErr} onRetry={refetchStats} className="mb-6" />
+      )}
+
+      {eventsError && (
+        <QueryErrorAlert error={eventsErr} onRetry={refetchEvents} className="mb-6" />
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">

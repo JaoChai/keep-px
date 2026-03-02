@@ -25,6 +25,7 @@ import { useEvents } from '@/hooks/use-events'
 import { useOverviewStats } from '@/hooks/use-analytics'
 import { usePixels } from '@/hooks/use-pixels'
 import { usePixelNameMap } from '@/hooks/use-pixel-name-map'
+import { QueryErrorAlert } from '@/components/shared/QueryErrorAlert'
 import { eventBadgeVariant, getEventColor } from '@/lib/event-utils'
 import { formatDistanceToNow } from 'date-fns'
 import {
@@ -95,7 +96,7 @@ export function EventsPage() {
   const { stats, timeBuckets, eventTypeCounts } = useRealtimeStats(realtimeEvents)
   const [historyPage, setHistoryPage] = useState(1)
   const historyQuery = useEvents(historyPage, 50, pixelId)
-  const { data: overviewStats } = useOverviewStats()
+  const { data: overviewStats, isError: overviewError, error: overviewErr, refetch: refetchOverview } = useOverviewStats()
   const { data: pixels } = usePixels()
   const pixelNameMap = usePixelNameMap()
 
@@ -200,6 +201,14 @@ export function EventsPage() {
           )}
         </div>
       </div>
+
+      {overviewError && (
+        <QueryErrorAlert error={overviewErr} onRetry={refetchOverview} className="mb-4" />
+      )}
+
+      {mode === 'history' && historyQuery.isError && (
+        <QueryErrorAlert error={historyQuery.error} onRetry={historyQuery.refetch} className="mb-4" />
+      )}
 
       {/* Pixel filter */}
       <div className="mb-4">

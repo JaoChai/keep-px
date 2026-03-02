@@ -12,6 +12,10 @@ import (
 // entity does not exist or was not affected by the operation.
 var ErrNotFound = errors.New("not found")
 
+// ErrQuotaExceeded is returned when an atomic quota check-and-increment
+// determines that the requested operation would exceed the allowed limit.
+var ErrQuotaExceeded = errors.New("quota exceeded")
+
 type CustomerRepository interface {
 	Create(ctx context.Context, customer *domain.Customer) error
 	GetByID(ctx context.Context, id string) (*domain.Customer, error)
@@ -21,6 +25,7 @@ type CustomerRepository interface {
 	GetByStripeCustomerID(ctx context.Context, stripeCustomerID string) (*domain.Customer, error)
 	Update(ctx context.Context, customer *domain.Customer) error
 	UpdateStripeCustomerID(ctx context.Context, customerID string, stripeCustomerID string) error
+	RegenerateAPIKey(ctx context.Context, customerID, newKey string) (*domain.Customer, error)
 }
 
 type PixelRepository interface {
@@ -43,6 +48,7 @@ type EventRepository interface {
 	GetDistinctEventTypes(ctx context.Context, pixelID string) ([]string, error)
 	ListLatestByCustomerID(ctx context.Context, customerID string, pixelID string, limit int) ([]*domain.RealtimeEvent, error)
 	ListRecentByCustomerID(ctx context.Context, customerID string, since time.Time, pixelID string, limit int) ([]*domain.RealtimeEvent, error)
+	DeleteOlderThan(ctx context.Context, before time.Time, batchSize int) (int64, error)
 }
 
 type ReplaySessionRepository interface {
@@ -110,6 +116,7 @@ type SubscriptionRepository interface {
 type EventUsageRepository interface {
 	IncrementCount(ctx context.Context, customerID string, count int64) error
 	GetCurrentMonth(ctx context.Context, customerID string) (*domain.EventUsage, error)
+	CheckAndIncrement(ctx context.Context, customerID string, count int64, maxAllowed int64) error
 }
 
 type WebhookEventRepository interface {

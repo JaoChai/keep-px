@@ -12,6 +12,7 @@ import { SalePagesPage } from '@/pages/SalePagesPage'
 import { SalePageEditorPage } from '@/pages/SalePageEditorPage'
 import { BlockEditorPage } from '@/pages/BlockEditorPage'
 import { BillingPage } from '@/pages/BillingPage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
   {
@@ -46,6 +47,11 @@ export const router = createBrowserRouter([
       { path: '/replay', element: <ReplayPage /> },
       { path: '/billing', element: <BillingPage /> },
       { path: '/settings', element: <SettingsPage /> },
+      { path: '*', element: <NotFoundPage /> },
     ],
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />,
   },
 ])

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
+	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
 
 func newTestQuotaService() (
@@ -154,33 +155,25 @@ func TestQuotaService_GetCustomerQuota(t *testing.T) {
 	})
 }
 
-func TestQuotaService_CheckEventIngestionQuota(t *testing.T) {
+func TestQuotaService_CheckAndIncrementEventQuota(t *testing.T) {
 	t.Run("under limit passes", func(t *testing.T) {
 		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
 		usage := &domain.EventUsage{EventCount: 100000}
 		setupFreePlanMocks(subRepo, creditRepo, usageRepo, usage)
+		usageRepo.On("CheckAndIncrement", mock.Anything, "cust-1", int64(10), int64(domain.FreeMaxEventsPerMonth)).Return(nil)
 
-		err := svc.CheckEventIngestionQuota(context.Background(), "cust-1", 10)
+		err := svc.CheckAndIncrementEventQuota(context.Background(), "cust-1", 10)
 
 		assert.NoError(t, err)
 	})
 
-	t.Run("at limit returns error", func(t *testing.T) {
+	t.Run("quota exceeded returns error", func(t *testing.T) {
 		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
 		usage := &domain.EventUsage{EventCount: int64(domain.FreeMaxEventsPerMonth)}
 		setupFreePlanMocks(subRepo, creditRepo, usageRepo, usage)
+		usageRepo.On("CheckAndIncrement", mock.Anything, "cust-1", int64(1), int64(domain.FreeMaxEventsPerMonth)).Return(repository.ErrQuotaExceeded)
 
-		err := svc.CheckEventIngestionQuota(context.Background(), "cust-1", 1)
-
-		assert.ErrorIs(t, err, ErrQuotaEventsExceeded)
-	})
-
-	t.Run("exceeds limit returns error", func(t *testing.T) {
-		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
-		usage := &domain.EventUsage{EventCount: int64(domain.FreeMaxEventsPerMonth) - 5}
-		setupFreePlanMocks(subRepo, creditRepo, usageRepo, usage)
-
-		err := svc.CheckEventIngestionQuota(context.Background(), "cust-1", 10)
+		err := svc.CheckAndIncrementEventQuota(context.Background(), "cust-1", 1)
 
 		assert.ErrorIs(t, err, ErrQuotaEventsExceeded)
 	})

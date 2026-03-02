@@ -100,3 +100,11 @@ func (r *CustomerRepo) UpdateStripeCustomerID(ctx context.Context, customerID st
 	)
 	return err
 }
+
+func (r *CustomerRepo) RegenerateAPIKey(ctx context.Context, customerID, newKey string) (*domain.Customer, error) {
+	return scanCustomer(r.pool.QueryRow(ctx,
+		`UPDATE customers SET api_key = $2, updated_at = NOW() WHERE id = $1
+		 RETURNING id, email, password_hash, google_id, name, api_key, plan, stripe_customer_id, created_at, updated_at`,
+		customerID, newKey,
+	))
+}

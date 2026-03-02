@@ -122,6 +122,10 @@ func (m *MockEventUsageRepo) GetCurrentMonth(ctx context.Context, customerID str
 	}
 	return args.Get(0).(*domain.EventUsage), args.Error(1)
 }
+func (m *MockEventUsageRepo) CheckAndIncrement(ctx context.Context, customerID string, count int64, maxAllowed int64) error {
+	args := m.Called(ctx, customerID, count, maxAllowed)
+	return args.Error(0)
+}
 
 // MockSalePageRepo
 type MockSalePageRepo struct{ mock.Mock }
@@ -225,6 +229,13 @@ func (m *MockCustomerRepo) Update(ctx context.Context, c *domain.Customer) error
 func (m *MockCustomerRepo) UpdateStripeCustomerID(ctx context.Context, customerID string, stripeCustomerID string) error {
 	args := m.Called(ctx, customerID, stripeCustomerID)
 	return args.Error(0)
+}
+func (m *MockCustomerRepo) RegenerateAPIKey(ctx context.Context, customerID, newKey string) (*domain.Customer, error) {
+	args := m.Called(ctx, customerID, newKey)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Customer), args.Error(1)
 }
 
 // MockRefreshTokenRepo
@@ -348,6 +359,10 @@ func (m *MockEventRepo) ListRecentByCustomerID(ctx context.Context, customerID s
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.RealtimeEvent), args.Error(1)
+}
+func (m *MockEventRepo) DeleteOlderThan(ctx context.Context, before time.Time, batchSize int) (int64, error) {
+	args := m.Called(ctx, before, batchSize)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 // MockReplaySessionRepo
