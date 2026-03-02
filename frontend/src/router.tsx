@@ -11,6 +11,7 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { SalePagesPage } from '@/pages/SalePagesPage'
 import { SalePageEditorPage } from '@/pages/SalePageEditorPage'
 import { BlockEditorPage } from '@/pages/BlockEditorPage'
+import { BillingPage } from '@/pages/BillingPage'
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: '/events/log', element: <Navigate to="/events?mode=history" replace /> },
       { path: '/events/realtime', element: <Navigate to="/events?mode=live" replace /> },
       { path: '/replay', element: <ReplayPage /> },
+      { path: '/billing', element: <BillingPage /> },
       { path: '/settings', element: <SettingsPage /> },
     ],
   },

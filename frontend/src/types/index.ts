@@ -193,3 +193,53 @@ export interface NotificationListResult {
   notifications: AppNotification[]
   unread_count: number
 }
+
+// Billing types
+export interface Purchase {
+  id: string
+  customer_id: string
+  pack_type: string
+  amount_satang: number
+  currency: string
+  status: string
+  created_at: string
+  completed_at?: string
+}
+
+export interface ReplayCredit {
+  id: string
+  customer_id: string
+  pack_type: string
+  total_replays: number
+  used_replays: number
+  max_events_per_replay: number
+  expires_at: string
+  created_at: string
+}
+
+export interface Subscription {
+  id: string
+  customer_id: string
+  addon_type: string
+  status: string
+  current_period_start?: string
+  current_period_end?: string
+  cancel_at_period_end: boolean
+}
+
+export interface BillingOverview {
+  purchases: Purchase[]
+  credits: ReplayCredit[]
+  subscriptions: Subscription[]
+}
+
+export interface CustomerQuota {
+  max_pixels: number
+  max_events_per_month: number
+  events_used_this_month: number
+  retention_days: number
+  max_sale_pages: number
+  can_replay: boolean
+  remaining_replays: number
+  max_events_per_replay: number
+}

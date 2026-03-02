@@ -6,6 +6,7 @@ import {
   Activity,
   FileText,
   RotateCcw,
+  CreditCard,
   Settings,
   LogOut,
   X,
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/sale-pages', icon: FileText, label: 'Sale Pages' },
   { to: '/events', icon: Activity, label: 'Events' },
   { to: '/replay', icon: RotateCcw, label: 'Replay Center' },
+  { to: '/billing', icon: CreditCard, label: 'Billing' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]
 

@@ -21,7 +21,8 @@ func scanCustomer(row pgx.Row) (*domain.Customer, error) {
 	var passwordHash *string
 	err := row.Scan(
 		&c.ID, &c.Email, &passwordHash, &c.GoogleID,
-		&c.Name, &c.APIKey, &c.Plan, &c.CreatedAt, &c.UpdatedAt,
+		&c.Name, &c.APIKey, &c.Plan, &c.StripeCustomerID,
+		&c.CreatedAt, &c.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, nil
@@ -50,37 +51,52 @@ func (r *CustomerRepo) Create(ctx context.Context, c *domain.Customer) error {
 
 func (r *CustomerRepo) GetByID(ctx context.Context, id string) (*domain.Customer, error) {
 	return scanCustomer(r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, google_id, name, api_key, plan, created_at, updated_at
+		`SELECT id, email, password_hash, google_id, name, api_key, plan, stripe_customer_id, created_at, updated_at
 		 FROM customers WHERE id = $1`, id,
 	))
 }
 
 func (r *CustomerRepo) GetByEmail(ctx context.Context, email string) (*domain.Customer, error) {
 	return scanCustomer(r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, google_id, name, api_key, plan, created_at, updated_at
+		`SELECT id, email, password_hash, google_id, name, api_key, plan, stripe_customer_id, created_at, updated_at
 		 FROM customers WHERE email = $1`, email,
 	))
 }
 
 func (r *CustomerRepo) GetByGoogleID(ctx context.Context, googleID string) (*domain.Customer, error) {
 	return scanCustomer(r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, google_id, name, api_key, plan, created_at, updated_at
+		`SELECT id, email, password_hash, google_id, name, api_key, plan, stripe_customer_id, created_at, updated_at
 		 FROM customers WHERE google_id = $1`, googleID,
 	))
 }
 
 func (r *CustomerRepo) GetByAPIKey(ctx context.Context, apiKey string) (*domain.Customer, error) {
 	return scanCustomer(r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, google_id, name, api_key, plan, created_at, updated_at
+		`SELECT id, email, password_hash, google_id, name, api_key, plan, stripe_customer_id, created_at, updated_at
 		 FROM customers WHERE api_key = $1`, apiKey,
 	))
 }
 
 func (r *CustomerRepo) Update(ctx context.Context, c *domain.Customer) error {
 	_, err := r.pool.Exec(ctx,
-		`UPDATE customers SET email = $2, google_id = $3, name = $4, plan = $5, updated_at = NOW()
+		`UPDATE customers SET email = $2, google_id = $3, name = $4, plan = $5, stripe_customer_id = $6, updated_at = NOW()
 		 WHERE id = $1`,
-		c.ID, c.Email, c.GoogleID, c.Name, c.Plan,
+		c.ID, c.Email, c.GoogleID, c.Name, c.Plan, c.StripeCustomerID,
+	)
+	return err
+}
+
+func (r *CustomerRepo) GetByStripeCustomerID(ctx context.Context, stripeCustomerID string) (*domain.Customer, error) {
+	return scanCustomer(r.pool.QueryRow(ctx,
+		`SELECT id, email, password_hash, google_id, name, api_key, plan, stripe_customer_id, created_at, updated_at
+		 FROM customers WHERE stripe_customer_id = $1`, stripeCustomerID,
+	))
+}
+
+func (r *CustomerRepo) UpdateStripeCustomerID(ctx context.Context, customerID string, stripeCustomerID string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE customers SET stripe_customer_id = $2, updated_at = NOW() WHERE id = $1`,
+		customerID, stripeCustomerID,
 	)
 	return err
 }

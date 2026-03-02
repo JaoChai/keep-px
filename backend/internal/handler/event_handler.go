@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"math"
 	"net"
 	"net/http"
@@ -60,6 +61,10 @@ func (h *EventHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 		FBP:       fbp,
 	})
 	if err != nil {
+		if errors.Is(err, service.ErrQuotaEventsExceeded) {
+			ErrorJSON(w, http.StatusPaymentRequired, "monthly event quota exceeded")
+			return
+		}
 		ErrorJSON(w, http.StatusInternalServerError, "ingestion failed")
 		return
 	}

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { RotateCcw, Play, CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, StopCircle, Eye } from 'lucide-react'
+import { Link } from 'react-router'
+import { RotateCcw, Play, CheckCircle2, XCircle, Clock, Loader2, AlertTriangle, StopCircle, Eye, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { usePixels } from '@/hooks/use-pixels'
 import { useReplays, useReplaySession, useCreateReplay, useCancelReplay, useRetryReplay, useReplayPreview, useEventTypes } from '@/hooks/use-replays'
+import { useQuota } from '@/hooks/use-billing'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import type { ReplayPreview } from '@/types'
 
@@ -44,6 +46,7 @@ function toEndOfDay(dateStr: string): string {
 }
 
 export function ReplayPage() {
+  const { data: quota } = useQuota()
   const { data: pixels } = usePixels()
   const { data: replays, isLoading } = useReplays()
   const createReplay = useCreateReplay()
@@ -147,9 +150,18 @@ export function ReplayPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Replay Center</h1>
-        <p className="text-sm text-muted-foreground mt-1">Replay events from one pixel to another</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Replay Center</h1>
+          <p className="text-sm text-muted-foreground mt-1">Replay events from one pixel to another</p>
+        </div>
+        {quota && (
+          <Badge variant={quota.can_replay ? 'success' : 'secondary'} className="text-sm px-3 py-1">
+            {quota.remaining_replays === -1
+              ? 'Unlimited replays'
+              : `${quota.remaining_replays} replay${quota.remaining_replays !== 1 ? 's' : ''} remaining`}
+          </Badge>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -162,7 +174,22 @@ export function ReplayPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {!preview ? (
+            {quota && !quota.can_replay ? (
+              <div className="text-center py-6 space-y-4">
+                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto">
+                  <CreditCard className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">No replay credits</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Purchase a replay pack to start replaying events to new pixels.
+                  </p>
+                </div>
+                <Link to="/billing">
+                  <Button>View Replay Packs</Button>
+                </Link>
+              </div>
+            ) : !preview ? (
               <form onSubmit={handleSubmit(onPreview)} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Source Pixel</Label>

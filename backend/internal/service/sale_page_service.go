@@ -41,13 +41,15 @@ type SalePageService struct {
 	salePageRepo repository.SalePageRepository
 	customerRepo repository.CustomerRepository
 	pixelRepo    repository.PixelRepository
+	quotaService *QuotaService
 }
 
-func NewSalePageService(salePageRepo repository.SalePageRepository, customerRepo repository.CustomerRepository, pixelRepo repository.PixelRepository) *SalePageService {
+func NewSalePageService(salePageRepo repository.SalePageRepository, customerRepo repository.CustomerRepository, pixelRepo repository.PixelRepository, quotaService *QuotaService) *SalePageService {
 	return &SalePageService{
 		salePageRepo: salePageRepo,
 		customerRepo: customerRepo,
 		pixelRepo:    pixelRepo,
+		quotaService: quotaService,
 	}
 }
 
@@ -121,6 +123,13 @@ func (s *SalePageService) validatePixelOwnership(ctx context.Context, customerID
 }
 
 func (s *SalePageService) Create(ctx context.Context, customerID string, input CreateSalePageInput) (*domain.SalePage, error) {
+	// Check sale page creation quota
+	if s.quotaService != nil {
+		if err := s.quotaService.CheckSalePageCreationQuota(ctx, customerID); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := validateContent(input.Content); err != nil {
 		return nil, err
 	}

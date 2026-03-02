@@ -19,6 +19,7 @@ import {
   useEventChart,
   useDashboardRecentEvents,
 } from '@/hooks/use-analytics'
+import { useQuota } from '@/hooks/use-billing'
 import { usePixels } from '@/hooks/use-pixels'
 import { useReplays } from '@/hooks/use-replays'
 import { usePixelNameMap } from '@/hooks/use-pixel-name-map'
@@ -448,6 +449,7 @@ function RecentReplays() {
 export function DashboardPage() {
   const { data: stats } = useOverviewStats()
   const { data: recentEvents = [] } = useDashboardRecentEvents(100)
+  const { data: quota } = useQuota()
 
   const capiRate = stats && stats.total_events > 0
     ? Math.round((stats.forwarded_events / stats.total_events) * 100)
@@ -509,6 +511,37 @@ export function DashboardPage() {
           icon={<RotateCcw className="h-5 w-5" />}
         />
       </div>
+
+      {/* Event Usage */}
+      {quota && (
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-foreground">Monthly Event Usage</p>
+              <p className="text-sm text-muted-foreground">
+                {quota.events_used_this_month.toLocaleString()} / {quota.max_events_per_month.toLocaleString()}
+              </p>
+            </div>
+            <div className="h-3 bg-secondary rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  quota.events_used_this_month / quota.max_events_per_month > 0.9
+                    ? 'bg-red-500'
+                    : quota.events_used_this_month / quota.max_events_per_month > 0.7
+                      ? 'bg-amber-500'
+                      : 'bg-primary'
+                }`}
+                style={{
+                  width: `${Math.min((quota.events_used_this_month / quota.max_events_per_month) * 100, 100)}%`,
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {Math.round((quota.events_used_this_month / quota.max_events_per_month) * 100)}% used this month
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Event Volume Chart */}
       <div className="mb-6">

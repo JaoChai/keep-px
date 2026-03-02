@@ -30,6 +30,18 @@ type Config struct {
 	S3AccessKey string `env:"S3_ACCESS_KEY"`
 	S3SecretKey string `env:"S3_SECRET_KEY"`
 	S3PublicURL string `env:"S3_PUBLIC_URL"`
+
+	// Stripe
+	StripeSecretKey            string `env:"STRIPE_SECRET_KEY"`
+	StripeWebhookSecret        string `env:"STRIPE_WEBHOOK_SECRET"`
+	StripePublishableKey       string `env:"STRIPE_PUBLISHABLE_KEY"`
+	StripePriceReplay1         string `env:"STRIPE_PRICE_REPLAY_1"`
+	StripePriceReplay3         string `env:"STRIPE_PRICE_REPLAY_3"`
+	StripePriceReplayUnlimited string `env:"STRIPE_PRICE_REPLAY_UNLIMITED"`
+	StripePriceRetention180    string `env:"STRIPE_PRICE_RETENTION_180"`
+	StripePriceRetention365    string `env:"STRIPE_PRICE_RETENTION_365"`
+	StripePriceEvents1M        string `env:"STRIPE_PRICE_EVENTS_1M"`
+	FrontendURL                string `env:"FRONTEND_URL" envDefault:"http://localhost:5173"`
 }
 
 func Load() (*Config, error) {
