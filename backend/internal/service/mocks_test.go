@@ -124,8 +124,8 @@ func (m *MockEventRepo) MarkForwarded(ctx context.Context, id string, code int, 
 	args := m.Called(ctx, id, code, eventsReceived)
 	return args.Error(0)
 }
-func (m *MockEventRepo) GetEventsForReplay(ctx context.Context, pixelID string, types []string, from, to *time.Time) ([]*domain.PixelEvent, error) {
-	args := m.Called(ctx, pixelID, types, from, to)
+func (m *MockEventRepo) GetEventsForReplay(ctx context.Context, pixelID string, types []string, from, to *time.Time, createdBefore *time.Time) ([]*domain.PixelEvent, error) {
+	args := m.Called(ctx, pixelID, types, from, to, createdBefore)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -141,6 +141,13 @@ func (m *MockEventRepo) GetEventsForReplayPreview(ctx context.Context, pixelID s
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.PixelEvent), args.Error(1)
+}
+func (m *MockEventRepo) GetDistinctEventTypes(ctx context.Context, pixelID string) ([]string, error) {
+	args := m.Called(ctx, pixelID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
 }
 func (m *MockEventRepo) ListLatestByCustomerID(ctx context.Context, customerID string, pixelID string, limit int) ([]*domain.RealtimeEvent, error) {
 	args := m.Called(ctx, customerID, pixelID, limit)

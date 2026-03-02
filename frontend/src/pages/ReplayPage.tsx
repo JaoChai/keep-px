@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { usePixels } from '@/hooks/use-pixels'
-import { useReplays, useReplaySession, useCreateReplay, useCancelReplay, useRetryReplay, useReplayPreview } from '@/hooks/use-replays'
+import { useReplays, useReplaySession, useCreateReplay, useCancelReplay, useRetryReplay, useReplayPreview, useEventTypes } from '@/hooks/use-replays'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import type { ReplayPreview } from '@/types'
 
 const replaySchema = z.object({
@@ -34,6 +35,14 @@ function statusBadge(status: string) {
   }
 }
 
+function toStartOfDay(dateStr: string): string {
+  return new Date(dateStr + 'T00:00:00').toISOString()
+}
+
+function toEndOfDay(dateStr: string): string {
+  return new Date(dateStr + 'T23:59:59').toISOString()
+}
+
 export function ReplayPage() {
   const { data: pixels } = usePixels()
   const { data: replays, isLoading } = useReplays()
@@ -45,6 +54,8 @@ export function ReplayPage() {
   const { data: activeReplay } = useReplaySession(activeReplayId)
   const [preview, setPreview] = useState<ReplayPreview | null>(null)
   const [pendingFormData, setPendingFormData] = useState<ReplayForm | null>(null)
+  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([])
+  const [cancelConfirm, setCancelConfirm] = useState<string | null>(null)
 
   const pixelMap = useMemo(() => {
     const map = new Map<string, string>()
@@ -56,6 +67,7 @@ export function ReplayPage() {
     register,
     handleSubmit,
     getValues,
+    watch,
     formState: { errors },
   } = useForm<ReplayForm>({
     resolver: zodResolver(replaySchema),
@@ -65,13 +77,21 @@ export function ReplayPage() {
     },
   })
 
+  const watchedSourcePixelId = watch('source_pixel_id')
+  const { data: eventTypes } = useEventTypes(watchedSourcePixelId)
+
+  useEffect(() => {
+    setSelectedEventTypes([])
+  }, [watchedSourcePixelId])
+
   const onPreview = async (formData: ReplayForm) => {
     try {
       const result = await previewReplay.mutateAsync({
         source_pixel_id: formData.source_pixel_id,
         target_pixel_id: formData.target_pixel_id,
-        date_from: formData.date_from ? new Date(formData.date_from).toISOString() : undefined,
-        date_to: formData.date_to ? new Date(formData.date_to).toISOString() : undefined,
+        event_types: selectedEventTypes.length > 0 ? selectedEventTypes : undefined,
+        date_from: formData.date_from ? toStartOfDay(formData.date_from) : undefined,
+        date_to: formData.date_to ? toEndOfDay(formData.date_to) : undefined,
       })
       setPreview(result)
       setPendingFormData(formData)
@@ -86,8 +106,9 @@ export function ReplayPage() {
       const result = await createReplay.mutateAsync({
         source_pixel_id: pendingFormData.source_pixel_id,
         target_pixel_id: pendingFormData.target_pixel_id,
-        date_from: pendingFormData.date_from ? new Date(pendingFormData.date_from).toISOString() : undefined,
-        date_to: pendingFormData.date_to ? new Date(pendingFormData.date_to).toISOString() : undefined,
+        event_types: selectedEventTypes.length > 0 ? selectedEventTypes : undefined,
+        date_from: pendingFormData.date_from ? toStartOfDay(pendingFormData.date_from) : undefined,
+        date_to: pendingFormData.date_to ? toEndOfDay(pendingFormData.date_to) : undefined,
         time_mode: pendingFormData.time_mode,
         batch_delay_ms: pendingFormData.batch_delay_ms || undefined,
       })
@@ -170,6 +191,32 @@ export function ReplayPage() {
                   </select>
                   {errors.target_pixel_id && <p className="text-sm text-red-500">{errors.target_pixel_id.message}</p>}
                 </div>
+
+                {eventTypes && eventTypes.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Event Types (optional)</Label>
+                    <div className="space-y-1.5 max-h-32 overflow-y-auto rounded-md border border-neutral-200 p-2">
+                      {eventTypes.map((type) => (
+                        <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedEventTypes.includes(type)}
+                            onChange={(e) => {
+                              setSelectedEventTypes(prev =>
+                                e.target.checked
+                                  ? [...prev, type]
+                                  : prev.filter(t => t !== type)
+                              )
+                            }}
+                            className="rounded border-neutral-300"
+                          />
+                          {type}
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-neutral-400">Leave unchecked to include all event types</p>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>Date From (optional)</Label>
@@ -328,7 +375,7 @@ export function ReplayPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleCancel(activeReplay.id)}
+                      onClick={() => setCancelConfirm(activeReplay.id)}
                       disabled={cancelReplay.isPending}
                     >
                       <StopCircle className="h-4 w-4" />
@@ -397,6 +444,34 @@ export function ReplayPage() {
           </Card>
         )}
       </div>
+
+      <Dialog open={cancelConfirm !== null} onOpenChange={(open) => !open && setCancelConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Replay?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this replay? Events already replayed will not be rolled back.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelConfirm(null)}>
+              Keep Running
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (cancelConfirm) {
+                  handleCancel(cancelConfirm)
+                  setCancelConfirm(null)
+                }
+              }}
+              disabled={cancelReplay.isPending}
+            >
+              {cancelReplay.isPending ? 'Cancelling...' : 'Yes, Cancel Replay'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
