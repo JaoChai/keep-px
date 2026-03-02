@@ -44,7 +44,7 @@ export function StyleEditor({ style, onChange }: StyleEditorProps) {
       <CardContent className="space-y-5">
         {/* Preset Themes */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-neutral-700">ธีมสำเร็จรูป</p>
+          <p className="text-sm font-medium text-foreground">ธีมสำเร็จรูป</p>
           <div className="flex flex-wrap gap-2">
             {PRESET_THEMES.map((theme) => {
               const isActive =
@@ -56,7 +56,7 @@ export function StyleEditor({ style, onChange }: StyleEditorProps) {
                   key={theme.name}
                   type="button"
                   title={theme.name}
-                  className={`relative h-8 w-8 rounded-full border-2 transition-all ${isActive ? 'border-indigo-600 ring-2 ring-indigo-200' : 'border-neutral-300 hover:border-neutral-400'}`}
+                  className={`relative h-8 w-8 rounded-full border-2 transition-all ${isActive ? 'border-primary ring-2 ring-ring/20' : 'border-border hover:border-muted-foreground'}`}
                   style={{ background: `linear-gradient(135deg, ${theme.style.bg_color} 50%, ${theme.style.accent_color} 50%)` }}
                   onClick={() => onChange({ ...style, bg_color: theme.style.bg_color, accent_color: theme.style.accent_color, text_color: theme.style.text_color })}
                 />
@@ -72,10 +72,10 @@ export function StyleEditor({ style, onChange }: StyleEditorProps) {
               type="color"
               value={style.bg_color || '#f8f9fa'}
               onChange={(e) => update({ bg_color: e.target.value })}
-              className="h-8 w-8 rounded border border-neutral-200 cursor-pointer p-0"
+              className="h-8 w-8 rounded border border-border cursor-pointer p-0"
             />
             <div className="flex-1 space-y-1">
-              <label className="text-xs font-medium text-neutral-600">สีพื้นหลัง</label>
+              <label className="text-xs font-medium text-muted-foreground">สีพื้นหลัง</label>
               <Input
                 value={style.bg_color || ''}
                 placeholder="#f8f9fa"
@@ -89,10 +89,10 @@ export function StyleEditor({ style, onChange }: StyleEditorProps) {
               type="color"
               value={style.accent_color || '#667eea'}
               onChange={(e) => update({ accent_color: e.target.value })}
-              className="h-8 w-8 rounded border border-neutral-200 cursor-pointer p-0"
+              className="h-8 w-8 rounded border border-border cursor-pointer p-0"
             />
             <div className="flex-1 space-y-1">
-              <label className="text-xs font-medium text-neutral-600">สีปุ่ม/Accent</label>
+              <label className="text-xs font-medium text-muted-foreground">สีปุ่ม/Accent</label>
               <Input
                 value={style.accent_color || ''}
                 placeholder="#667eea"
@@ -106,10 +106,10 @@ export function StyleEditor({ style, onChange }: StyleEditorProps) {
               type="color"
               value={style.text_color || '#1a1a2e'}
               onChange={(e) => update({ text_color: e.target.value })}
-              className="h-8 w-8 rounded border border-neutral-200 cursor-pointer p-0"
+              className="h-8 w-8 rounded border border-border cursor-pointer p-0"
             />
             <div className="flex-1 space-y-1">
-              <label className="text-xs font-medium text-neutral-600">สีตัวอักษร</label>
+              <label className="text-xs font-medium text-muted-foreground">สีตัวอักษร</label>
               <Input
                 value={style.text_color || ''}
                 placeholder="#1a1a2e"
@@ -122,13 +122,13 @@ export function StyleEditor({ style, onChange }: StyleEditorProps) {
 
         {/* Background Image */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-neutral-700">รูปพื้นหลัง</p>
+          <p className="text-sm font-medium text-foreground">รูปพื้นหลัง</p>
           {style.bg_image_url && (
             <div className="relative w-full max-w-[200px]">
               <img
                 src={style.bg_image_url}
                 alt=""
-                className="w-full h-auto rounded-lg border border-neutral-200"
+                className="w-full h-auto rounded-lg border border-border"
               />
               <button
                 type="button"

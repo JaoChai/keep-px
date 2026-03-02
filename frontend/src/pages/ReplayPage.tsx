@@ -148,8 +148,8 @@ export function ReplayPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900">Replay Center</h1>
-        <p className="text-sm text-neutral-500 mt-1">Replay events from one pixel to another</p>
+        <h1 className="text-2xl font-bold text-foreground">Replay Center</h1>
+        <p className="text-sm text-muted-foreground mt-1">Replay events from one pixel to another</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -167,7 +167,7 @@ export function ReplayPage() {
                 <div className="space-y-2">
                   <Label>Source Pixel</Label>
                   <select
-                    className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm"
+                    className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
                     {...register('source_pixel_id')}
                   >
                     <option value="">Select source...</option>
@@ -181,7 +181,7 @@ export function ReplayPage() {
                 <div className="space-y-2">
                   <Label>Target Pixel</Label>
                   <select
-                    className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm"
+                    className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
                     {...register('target_pixel_id')}
                   >
                     <option value="">Select target...</option>
@@ -195,7 +195,7 @@ export function ReplayPage() {
                 {eventTypes && eventTypes.length > 0 && (
                   <div className="space-y-2">
                     <Label>Event Types (optional)</Label>
-                    <div className="space-y-1.5 max-h-32 overflow-y-auto rounded-md border border-neutral-200 p-2">
+                    <div className="space-y-1.5 max-h-32 overflow-y-auto rounded-md border border-border p-2">
                       {eventTypes.map((type) => (
                         <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
                           <input
@@ -208,13 +208,13 @@ export function ReplayPage() {
                                   : prev.filter(t => t !== type)
                               )
                             }}
-                            className="rounded border-neutral-300"
+                            className="rounded border-border"
                           />
                           {type}
                         </label>
                       ))}
                     </div>
-                    <p className="text-xs text-neutral-400">Leave unchecked to include all event types</p>
+                    <p className="text-xs text-muted-foreground">Leave unchecked to include all event types</p>
                   </div>
                 )}
 
@@ -231,13 +231,13 @@ export function ReplayPage() {
                 <div className="space-y-2">
                   <Label>Time Mode</Label>
                   <select
-                    className="flex h-9 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-1 text-sm"
+                    className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
                     {...register('time_mode')}
                   >
                     <option value="original">Original (use original event timestamps)</option>
                     <option value="current">Current (use current time for all events)</option>
                   </select>
-                  <p className="text-xs text-neutral-400">Use "Current" if events are older than 7 days to avoid Facebook rejection</p>
+                  <p className="text-xs text-muted-foreground">Use "Current" if events are older than 7 days to avoid Facebook rejection</p>
                 </div>
 
                 <div className="space-y-2">
@@ -249,7 +249,7 @@ export function ReplayPage() {
                     placeholder="0"
                     {...register('batch_delay_ms', { valueAsNumber: true })}
                   />
-                  <p className="text-xs text-neutral-400">Delay between batches (0-60000ms). Use for warm-up on new pixels.</p>
+                  <p className="text-xs text-muted-foreground">Delay between batches (0-60000ms). Use for warm-up on new pixels.</p>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={previewReplay.isPending}>
@@ -259,12 +259,12 @@ export function ReplayPage() {
               </form>
             ) : (
               <div className="space-y-4">
-                <div className="rounded-lg border border-neutral-200 p-3 space-y-2">
-                  <p className="text-sm font-medium text-neutral-900">Preview Summary</p>
-                  <p className="text-sm text-neutral-600">
+                <div className="rounded-lg border border-border p-3 space-y-2">
+                  <p className="text-sm font-medium text-foreground">Preview Summary</p>
+                  <p className="text-sm text-muted-foreground">
                     <span className="font-semibold">{preview.total_events}</span> events will be replayed
                   </p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-muted-foreground">
                     From: {pixelMap.get(getValues('source_pixel_id')) || 'Unknown'} → To: {pixelMap.get(getValues('target_pixel_id')) || 'Unknown'}
                   </p>
                 </div>
@@ -278,20 +278,20 @@ export function ReplayPage() {
 
                 {(preview.sample_events?.length ?? 0) > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-neutral-500">Sample Events</p>
-                    <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200">
+                    <p className="text-xs font-medium text-muted-foreground">Sample Events</p>
+                    <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
                       <table className="w-full text-xs">
-                        <thead className="bg-neutral-50 sticky top-0">
+                        <thead className="bg-muted sticky top-0">
                           <tr>
-                            <th className="text-left px-2 py-1.5 font-medium text-neutral-600">Event</th>
-                            <th className="text-left px-2 py-1.5 font-medium text-neutral-600">Time</th>
+                            <th className="text-left px-2 py-1.5 font-medium text-muted-foreground">Event</th>
+                            <th className="text-left px-2 py-1.5 font-medium text-muted-foreground">Time</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-neutral-100">
+                        <tbody className="divide-y divide-border">
                           {preview.sample_events.map((event) => (
                             <tr key={event.id}>
-                              <td className="px-2 py-1.5 text-neutral-900">{event.event_name}</td>
-                              <td className="px-2 py-1.5 text-neutral-500">{new Date(event.event_time).toLocaleString()}</td>
+                              <td className="px-2 py-1.5 text-foreground">{event.event_name}</td>
+                              <td className="px-2 py-1.5 text-muted-foreground">{new Date(event.event_time).toLocaleString()}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -344,9 +344,9 @@ export function ReplayPage() {
                   </div>
                 )}
 
-                <div className="w-full bg-neutral-200 rounded-full h-3">
+                <div className="w-full bg-border rounded-full h-3">
                   <div
-                    className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
+                    className="bg-primary h-3 rounded-full transition-all duration-500"
                     style={{
                       width: `${activeReplay.total_events > 0
                         ? ((activeReplay.replayed_events + activeReplay.failed_events) / activeReplay.total_events) * 100
@@ -356,16 +356,16 @@ export function ReplayPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <p className="text-2xl font-bold text-neutral-900">{activeReplay.total_events}</p>
-                    <p className="text-xs text-neutral-500">Total</p>
+                    <p className="text-2xl font-bold text-foreground">{activeReplay.total_events}</p>
+                    <p className="text-xs text-muted-foreground">Total</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-emerald-600">{activeReplay.replayed_events}</p>
-                    <p className="text-xs text-neutral-500">Replayed</p>
+                    <p className="text-xs text-muted-foreground">Replayed</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-red-600">{activeReplay.failed_events}</p>
-                    <p className="text-xs text-neutral-500">Failed</p>
+                    <p className="text-xs text-muted-foreground">Failed</p>
                   </div>
                 </div>
 
@@ -396,7 +396,7 @@ export function ReplayPage() {
                 </div>
 
                 {/* Replay config info */}
-                <div className="flex gap-3 text-xs text-neutral-400 border-t border-neutral-100 pt-3">
+                <div className="flex gap-3 text-xs text-muted-foreground border-t border-border pt-3">
                   <span>Mode: {activeReplay.time_mode}</span>
                   {activeReplay.batch_delay_ms > 0 && <span>Delay: {activeReplay.batch_delay_ms}ms</span>}
                 </div>
@@ -413,22 +413,22 @@ export function ReplayPage() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <p className="text-neutral-500 text-sm">Loading...</p>
+                <p className="text-muted-foreground text-sm">Loading...</p>
               ) : !replays || replays.length === 0 ? (
-                <p className="text-neutral-500 text-sm">No replays yet</p>
+                <p className="text-muted-foreground text-sm">No replays yet</p>
               ) : (
                 <div className="space-y-3">
                   {replays.map((replay) => (
                     <div
                       key={replay.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-neutral-200 cursor-pointer hover:bg-neutral-50"
+                      className="flex items-center justify-between p-3 rounded-lg border border-border cursor-pointer hover:bg-accent"
                       onClick={() => setActiveReplayId(replay.id)}
                     >
                       <div>
-                        <p className="text-sm font-medium text-neutral-900">
+                        <p className="text-sm font-medium text-foreground">
                           {pixelMap.get(replay.source_pixel_id) || replay.source_pixel_id.slice(0, 8)} → {pixelMap.get(replay.target_pixel_id) || replay.target_pixel_id.slice(0, 8)}
                         </p>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-muted-foreground">
                           {replay.replayed_events}/{replay.total_events} events &middot; {new Date(replay.created_at).toLocaleString()}
                           {replay.error_message && (
                             <span className="text-red-500 ml-2">{replay.error_message}</span>

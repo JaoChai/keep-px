@@ -31,8 +31,8 @@ export function SalePagesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Sale Pages</h1>
-          <p className="text-sm text-neutral-500 mt-1">Create and manage your sale pages</p>
+          <h1 className="text-2xl font-bold text-foreground">Sale Pages</h1>
+          <p className="text-sm text-muted-foreground mt-1">Create and manage your sale pages</p>
         </div>
         <Button onClick={() => navigate('/sale-pages/new')}>
           <Plus className="h-4 w-4" />
@@ -41,43 +41,43 @@ export function SalePagesPage() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-neutral-500">Loading...</div>
+        <div className="text-center py-12 text-muted-foreground">Loading...</div>
       ) : !salePages || salePages.length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-neutral-300 rounded-lg">
-          <p className="text-neutral-500 mb-4">No sale pages yet</p>
+        <div className="text-center py-12 border border-dashed border-border rounded-lg">
+          <p className="text-muted-foreground mb-4">No sale pages yet</p>
           <Button variant="outline" onClick={() => navigate('/sale-pages/new')}>
             <Plus className="h-4 w-4" />
             Create your first Sale Page
           </Button>
         </div>
       ) : (
-        <div className="border border-neutral-200 rounded-lg overflow-hidden">
+        <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-neutral-200 bg-neutral-50">
-                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Name</th>
-                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">URL</th>
-                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Pixel</th>
-                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Template</th>
-                <th className="text-left text-sm font-medium text-neutral-500 px-4 py-3">Status</th>
-                <th className="text-right text-sm font-medium text-neutral-500 px-4 py-3">Actions</th>
+              <tr className="border-b border-border bg-muted">
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Name</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">URL</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Pixel</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Template</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Status</th>
+                <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {salePages.map((page) => (
-                <tr key={page.id} className="border-b border-neutral-200 last:border-0">
-                  <td className="px-4 py-3 text-sm font-medium text-neutral-900">{page.name}</td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">
+                <tr key={page.id} className="border-b border-border last:border-0">
+                  <td className="px-4 py-3 text-sm font-medium text-foreground">{page.name}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     <a
                       href={`/p/${page.slug}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-mono truncate max-w-[200px] inline-block text-indigo-600 hover:text-indigo-800 hover:underline"
+                      className="font-mono truncate max-w-[200px] inline-block text-foreground hover:text-foreground/80 hover:underline"
                     >
                       /p/{page.slug}
                     </a>
                   </td>
-                  <td className="px-4 py-3 text-sm text-neutral-600">{getPixelNames(page.pixel_ids)}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{getPixelNames(page.pixel_ids)}</td>
                   <td className="px-4 py-3">
                     <Badge variant={page.template_name === 'blocks' ? 'default' : 'secondary'}>
                       {page.template_name === 'blocks' ? 'Blocks' : 'Classic'}
@@ -133,7 +133,7 @@ export function SalePagesPage() {
           <DialogHeader>
             <DialogTitle>Delete Sale Page</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-neutral-500 mt-2">
+          <p className="text-sm text-muted-foreground mt-2">
             Are you sure you want to delete this sale page? This action cannot be undone.
           </p>
           <DialogFooter>

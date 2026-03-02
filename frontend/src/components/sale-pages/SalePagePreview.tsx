@@ -18,7 +18,7 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style 
 
   return (
     <div
-      className="max-w-[375px] mx-auto rounded-2xl border border-neutral-200 shadow-lg overflow-hidden bg-white"
+      className="max-w-[375px] mx-auto rounded-2xl border border-border shadow-lg overflow-hidden bg-white"
       style={{
         ...(bgColor ? { backgroundColor: bgColor } : {}),
         ...(bgImageUrl ? { backgroundImage: `url(${bgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
@@ -26,7 +26,7 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style 
     >
       {/* Hero Section */}
       <div
-        className={!style?.accent_color ? 'bg-gradient-to-br from-indigo-600 to-purple-600 px-6 py-10 text-center text-white' : 'px-6 py-10 text-center text-white'}
+        className={!style?.accent_color ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 px-6 py-10 text-center text-white' : 'px-6 py-10 text-center text-white'}
         style={style?.accent_color ? { background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)` } : undefined}
       >
         {hero.image_url ? (
@@ -91,7 +91,7 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style 
       <div className="px-6 pb-4">
         <div className="relative">
           <button
-            className={!style?.accent_color ? 'w-full py-3 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-sm shadow-md' : 'w-full py-3 rounded-lg text-white font-semibold text-sm shadow-md'}
+            className={!style?.accent_color ? 'w-full py-3 rounded-lg bg-gradient-to-r from-zinc-800 to-zinc-900 text-white font-semibold text-sm shadow-md' : 'w-full py-3 rounded-lg text-white font-semibold text-sm shadow-md'}
             style={style?.accent_color ? { background: `linear-gradient(to right, ${accentColor}, ${accentColor}cc)` } : undefined}
           >
             {cta.button_text || 'Call to Action'}
@@ -106,8 +106,8 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style 
 
       {/* Contact Section */}
       {(contact.line_id || contact.phone || contact.website_url) && (
-        <div className="px-6 py-4 border-t border-neutral-100">
-          <p className="text-xs font-medium text-neutral-500 mb-3 text-center">ติดต่อเรา</p>
+        <div className="px-6 py-4 border-t border-border">
+          <p className="text-xs font-medium text-muted-foreground mb-3 text-center">ติดต่อเรา</p>
           <div className="space-y-2">
             {contact.line_id && (
               <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: '#06C755' }}>
@@ -132,8 +132,8 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style 
       )}
 
       {/* Footer */}
-      <div className="px-6 py-3 bg-neutral-50 text-center">
-        <p className="text-[10px] text-neutral-400">Powered by Pixlinks</p>
+      <div className="px-6 py-3 bg-muted text-center">
+        <p className="text-[10px] text-muted-foreground">Powered by Pixlinks</p>
       </div>
     </div>
   )

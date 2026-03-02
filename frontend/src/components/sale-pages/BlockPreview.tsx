@@ -15,7 +15,7 @@ export function BlockPreview({ blocks, ctaEventName, style }: BlockPreviewProps)
 
   return (
     <div
-      className="max-w-[375px] mx-auto rounded-2xl border border-neutral-200 shadow-lg overflow-hidden bg-white"
+      className="max-w-[375px] mx-auto rounded-2xl border border-border shadow-lg overflow-hidden bg-white"
       style={{
         ...(bgColor ? { backgroundColor: bgColor } : {}),
         ...(bgImageUrl ? { backgroundImage: `url(${bgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
@@ -38,7 +38,7 @@ export function BlockPreview({ blocks, ctaEventName, style }: BlockPreviewProps)
                 style={{ aspectRatio: '1/1' }}
               />
             ) : (
-              <div className="w-full bg-neutral-100 flex items-center justify-center text-neutral-400 text-xs" style={{ aspectRatio: '1/1' }}>
+              <div className="w-full bg-secondary flex items-center justify-center text-muted-foreground text-xs" style={{ aspectRatio: '1/1' }}>
                 รูปภาพ
               </div>
             )
@@ -86,8 +86,8 @@ export function BlockPreview({ blocks, ctaEventName, style }: BlockPreviewProps)
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-3 bg-neutral-50 text-center mt-2">
-        <p className="text-[10px] text-neutral-400">Powered by Pixlinks</p>
+      <div className="px-6 py-3 bg-muted text-center mt-2">
+        <p className="text-[10px] text-muted-foreground">Powered by Pixlinks</p>
       </div>
     </div>
   )
