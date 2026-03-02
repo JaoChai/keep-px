@@ -96,3 +96,51 @@ func (r *ReplayCreditRepo) IncrementUsed(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+// ConsumeOneCredit atomically selects the earliest-expiring active credit for a
+// customer and increments its used_replays counter. It uses SELECT ... FOR UPDATE
+// SKIP LOCKED to prevent race conditions when multiple concurrent requests try
+// to consume credits simultaneously.
+// Returns nil, nil if no credits are available.
+func (r *ReplayCreditRepo) ConsumeOneCredit(ctx context.Context, customerID string) (*domain.ReplayCredit, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	var credit domain.ReplayCredit
+	err = tx.QueryRow(ctx, `
+		SELECT `+replayCreditCols+`
+		FROM replay_credits
+		WHERE customer_id = $1
+		  AND (total_replays = -1 OR used_replays < total_replays)
+		  AND expires_at > NOW()
+		ORDER BY expires_at ASC
+		LIMIT 1
+		FOR UPDATE SKIP LOCKED`, customerID).Scan(
+		&credit.ID, &credit.CustomerID, &credit.PurchaseID, &credit.PackType,
+		&credit.TotalReplays, &credit.UsedReplays, &credit.MaxEventsPerReplay,
+		&credit.ExpiresAt, &credit.CreatedAt,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE replay_credits SET used_replays = used_replays + 1
+		WHERE id = $1 AND (total_replays = -1 OR used_replays < total_replays)`, credit.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	credit.UsedReplays++
+	return &credit, nil
+}

@@ -133,6 +133,8 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var processErr error
+
 	switch event.Type {
 	case "checkout.session.completed":
 		var sess stripe.CheckoutSession
@@ -141,11 +143,9 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusBadRequest, "invalid event data")
 			return
 		}
-		if err := h.billingService.HandleCheckoutCompleted(r.Context(), &sess); err != nil {
-			h.logger.Error("handle checkout completed failed", "error", err)
-			ErrorJSON(w, http.StatusInternalServerError, "webhook processing failed")
-			return
-		}
+		processErr = h.billingService.ProcessWebhookEvent(r.Context(), event.ID, string(event.Type), func() error {
+			return h.billingService.HandleCheckoutCompleted(r.Context(), &sess)
+		})
 
 	case "customer.subscription.created",
 		"customer.subscription.updated",
@@ -156,14 +156,18 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusBadRequest, "invalid event data")
 			return
 		}
-		if err := h.billingService.HandleSubscriptionEvent(r.Context(), &sub, string(event.Type)); err != nil {
-			h.logger.Error("handle subscription event failed", "error", err, "event_type", event.Type)
-			ErrorJSON(w, http.StatusInternalServerError, "webhook processing failed")
-			return
-		}
+		processErr = h.billingService.ProcessWebhookEvent(r.Context(), event.ID, string(event.Type), func() error {
+			return h.billingService.HandleSubscriptionEvent(r.Context(), &sub, string(event.Type))
+		})
 
 	default:
 		h.logger.Debug("unhandled webhook event type", "type", event.Type)
+	}
+
+	if processErr != nil {
+		h.logger.Error("webhook processing failed", "error", processErr, "event_type", event.Type)
+		ErrorJSON(w, http.StatusInternalServerError, "webhook processing failed")
+		return
 	}
 
 	JSON(w, http.StatusOK, APIResponse{Message: "ok"})

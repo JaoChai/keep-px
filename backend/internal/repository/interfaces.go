@@ -96,6 +96,7 @@ type ReplayCreditRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.ReplayCredit, error)
 	GetActiveByCustomerID(ctx context.Context, customerID string) ([]*domain.ReplayCredit, error)
 	IncrementUsed(ctx context.Context, id string) error
+	ConsumeOneCredit(ctx context.Context, customerID string) (*domain.ReplayCredit, error)
 }
 
 type SubscriptionRepository interface {
@@ -109,4 +110,9 @@ type SubscriptionRepository interface {
 type EventUsageRepository interface {
 	IncrementCount(ctx context.Context, customerID string, count int64) error
 	GetCurrentMonth(ctx context.Context, customerID string) (*domain.EventUsage, error)
+}
+
+type WebhookEventRepository interface {
+	Exists(ctx context.Context, stripeEventID string) (bool, error)
+	Create(ctx context.Context, stripeEventID, eventType string) error
 }
