@@ -20,19 +20,19 @@ export class PixelsPage {
 
   constructor(page: Page) {
     this.page = page
-    this.heading = page.getByRole('heading', { name: 'Pixels' })
-    this.addPixelButton = page.getByRole('button', { name: 'Add Pixel' }).first()
+    this.heading = page.getByRole('heading', { name: 'พิกเซล' })
+    this.addPixelButton = page.getByRole('button', { name: 'เพิ่มพิกเซล' }).first()
     this.pixelTable = page.locator('table')
-    this.emptyState = page.getByText('No pixels yet')
+    this.emptyState = page.getByText('ยังไม่มีพิกเซล')
 
-    this.dialogTitle = page.getByRole('heading', { name: /Add Pixel|Edit Pixel/ })
-    this.nameInput = page.getByLabel('Name')
+    this.dialogTitle = page.getByRole('heading', { name: /เพิ่มพิกเซล|แก้ไขพิกเซล/ })
+    this.nameInput = page.getByLabel('ชื่อ')
     this.pixelIdInput = page.getByLabel('Facebook Pixel ID')
-    this.accessTokenInput = page.getByLabel('Access Token')
-    this.saveButton = page.locator('form').getByRole('button', { name: /Add Pixel|Save Changes/ })
-    this.cancelButton = page.getByRole('button', { name: 'Cancel' })
+    this.accessTokenInput = page.getByLabel(/Access Token/)
+    this.saveButton = page.locator('form').getByRole('button', { name: /เพิ่มพิกเซล|บันทึกการเปลี่ยนแปลง/ })
+    this.cancelButton = page.getByRole('button', { name: 'ยกเลิก' })
 
-    this.deleteConfirmButton = page.getByRole('button', { name: 'Delete' })
+    this.deleteConfirmButton = page.getByRole('button', { name: 'ลบ' })
   }
 
   async goto() {

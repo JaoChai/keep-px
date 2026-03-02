@@ -17,6 +17,6 @@ test.describe('Settings', () => {
     await settingsPage.goto()
 
     await expect(settingsPage.apiKeySection).toBeVisible()
-    await expect(page.getByText('API key for event ingestion')).toBeVisible()
+    await expect(page.getByText('API Key สำหรับรับข้อมูลอีเวนต์')).toBeVisible()
   })
 })

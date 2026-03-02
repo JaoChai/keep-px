@@ -25,7 +25,7 @@ test.describe('Pixels', () => {
     await pixelRow.getByRole('button').filter({ has: page.locator('[class*="lucide-pencil"]') }).click()
 
     // Wait for edit dialog to appear
-    await expect(page.getByRole('heading', { name: 'Edit Pixel' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'แก้ไขพิกเซล' })).toBeVisible()
 
     // Update name (must also fill access token — schema requires it)
     const updatedName = `Updated ${Date.now()}`
@@ -35,7 +35,7 @@ test.describe('Pixels', () => {
     await pixelsPage.saveButton.click()
 
     // Wait for edit dialog to close before asserting
-    await expect(page.getByRole('heading', { name: 'Edit Pixel' })).not.toBeVisible()
+    await expect(page.getByRole('heading', { name: 'แก้ไขพิกเซล' })).not.toBeVisible()
 
     await expect(page.getByText(updatedName)).toBeVisible()
   })
@@ -53,7 +53,7 @@ test.describe('Pixels', () => {
     await pixelRow.getByRole('button').filter({ has: page.locator('[class*="lucide-trash"]') }).click()
 
     // Confirm deletion
-    await expect(page.getByText('Are you sure?')).toBeVisible()
+    await expect(page.getByText('คุณแน่ใจหรือไม่')).toBeVisible()
     await pixelsPage.deleteConfirmButton.click()
 
     await expect(page.getByText(pixelName)).not.toBeVisible()
@@ -65,7 +65,7 @@ test.describe('Pixels', () => {
 
     await pixelsPage.addPixelButton.click()
 
-    await expect(page.getByRole('heading', { name: 'Add Pixel' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'เพิ่มพิกเซล' })).toBeVisible()
     await expect(pixelsPage.nameInput).toBeVisible()
     await expect(pixelsPage.pixelIdInput).toBeVisible()
     await expect(pixelsPage.accessTokenInput).toBeVisible()
