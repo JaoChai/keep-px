@@ -27,7 +27,7 @@ import { usePixels } from '@/hooks/use-pixels'
 import { usePixelNameMap } from '@/hooks/use-pixel-name-map'
 import { QueryErrorAlert } from '@/components/shared/QueryErrorAlert'
 import { eventBadgeVariant, getEventColor } from '@/lib/event-utils'
-import { formatDistanceToNow } from 'date-fns'
+import { timeAgo } from '@/lib/utils'
 import {
   BarChart,
   Bar,
@@ -393,7 +393,7 @@ export function EventsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(event.event_time), { addSuffix: true })}
+                      {timeAgo(event.event_time)}
                     </td>
                   </tr>
                 ))}
@@ -459,7 +459,7 @@ export function EventsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(event.event_time), { addSuffix: true })}
+                      {timeAgo(event.event_time)}
                     </td>
                   </tr>
                 ))}

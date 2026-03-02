@@ -1,10 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Navigate } from 'react-router'
 import { useAuthStore } from '@/stores/auth-store'
 import api from '@/lib/api'
 import type { ReactNode } from 'react'
 import type { APIResponse } from '@/types'
 import type { Customer } from '@/types'
+
+let hasVerifiedThisSession = false
+
+// Reset verification flag on logout
+useAuthStore.subscribe((state, prevState) => {
+  if (prevState.isAuthenticated && !state.isAuthenticated) {
+    hasVerifiedThisSession = false
+  }
+})
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -15,17 +24,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const setCustomer = useAuthStore((s) => s.setCustomer)
   const logout = useAuthStore((s) => s.logout)
-  const [isVerifying, setIsVerifying] = useState(
-    () => !!localStorage.getItem('access_token')
-  )
-  const [isValid, setIsValid] = useState(false)
+  const verifyingRef = useRef(false)
 
   useEffect(() => {
-    if (!hasHydrated) return
+    if (!hasHydrated || !isAuthenticated || hasVerifiedThisSession || verifyingRef.current) return
 
-    const token = localStorage.getItem('access_token')
-    if (!token) return
-
+    verifyingRef.current = true
     const controller = new AbortController()
 
     api
@@ -34,28 +38,29 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         if (controller.signal.aborted) return
         if (data.data) {
           setCustomer(data.data)
-          setIsValid(true)
         } else {
           logout()
-          setIsValid(false)
         }
       })
       .catch((err) => {
         if (controller.signal.aborted) return
         if (err.code === 'ERR_CANCELED') return
-        logout()
-        setIsValid(false)
+        // Only logout on auth errors (401/403), not network errors
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          logout()
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) {
-          setIsVerifying(false)
+          hasVerifiedThisSession = true
+          verifyingRef.current = false
         }
       })
 
     return () => controller.abort()
-  }, [hasHydrated, setCustomer, logout])
+  }, [hasHydrated, isAuthenticated, setCustomer, logout])
 
-  if (!hasHydrated || isVerifying) {
+  if (!hasHydrated) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <div style={{ color: '#666', fontSize: '14px' }}>กำลังโหลด...</div>
@@ -63,7 +68,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  if (!isValid || !isAuthenticated) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
 
