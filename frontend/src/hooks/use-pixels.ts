@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import api from '@/lib/api'
 import type { APIResponse, Pixel } from '@/types'
 
@@ -21,6 +22,10 @@ export function useCreatePixel() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pixels'] })
+      toast.success('สร้าง Pixel สำเร็จ')
+    },
+    onError: () => {
+      toast.error('สร้าง Pixel ไม่สำเร็จ')
     },
   })
 }
@@ -34,6 +39,10 @@ export function useUpdatePixel() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pixels'] })
+      toast.success('อัปเดต Pixel สำเร็จ')
+    },
+    onError: () => {
+      toast.error('อัปเดต Pixel ไม่สำเร็จ')
     },
   })
 }
@@ -46,6 +55,10 @@ export function useDeletePixel() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pixels'] })
+      toast.success('ลบ Pixel สำเร็จ')
+    },
+    onError: () => {
+      toast.error('ลบ Pixel ไม่สำเร็จ')
     },
   })
 }

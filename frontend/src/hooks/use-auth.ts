@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/auth-store'
 import type { APIResponse, AuthTokens } from '@/types'
@@ -42,6 +43,10 @@ export function useRegister() {
       localStorage.setItem('access_token', data.access_token)
       localStorage.setItem('refresh_token', data.refresh_token)
       setCustomer(data.customer)
+      toast.success('สมัครสมาชิกสำเร็จ')
+    },
+    onError: () => {
+      toast.error('สมัครไม่สำเร็จ อีเมลอาจถูกใช้แล้ว')
     },
   })
 }

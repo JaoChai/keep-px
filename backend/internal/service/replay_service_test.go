@@ -28,7 +28,7 @@ func newTestReplayServiceWithConcurrency(maxConcurrent int) (*ReplayService, *Mo
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, maxConcurrent)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, maxConcurrent, nil)
 	return svc, replayRepo, eventRepo, pixelRepo
 }
 
@@ -259,7 +259,7 @@ func TestReplayService_ExecuteReplay_AuthErrorFailFast(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5, nil)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -314,7 +314,7 @@ func TestReplayService_ExecuteReplay_TimeModeCurrentUsesNow(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5, nil)
 
 	oldTime := time.Now().Add(-30 * 24 * time.Hour) // 30 days ago
 	session := &domain.ReplaySession{
@@ -366,7 +366,7 @@ func TestReplayService_ExecuteReplay_BatchDelay(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5, nil)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -417,7 +417,7 @@ func TestReplayService_ExecuteReplay_NonAuthErrorContinues(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5, nil)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -464,7 +464,7 @@ func TestReplayService_ExecuteReplay_CancellationCheck(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5, nil)
 
 	session := &domain.ReplaySession{
 		ID:            "session-1",
@@ -990,7 +990,7 @@ func TestReplayService_Create_ShutdownDuringSemWait(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
 	logger := slog.Default()
-	svc := NewReplayService(shutdownCtx, replayRepo, eventRepo, pixelRepo, capiClient, logger, 1)
+	svc := NewReplayService(shutdownCtx, replayRepo, eventRepo, pixelRepo, capiClient, logger, 1, nil)
 
 	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 		ID: "pixel-1", CustomerID: "cust-1", FBPixelID: "fb-1", FBAccessToken: "token-1",
@@ -1113,7 +1113,7 @@ func TestReplayService_ExecuteReplay_DefaultDelay(t *testing.T) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
-	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5)
+	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, 5, nil)
 
 	session := &domain.ReplaySession{
 		ID:           "session-1",

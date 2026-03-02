@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import { NotificationBell } from './NotificationBell'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -55,13 +56,16 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     <aside className="flex h-full w-[260px] flex-col border-r border-border bg-card">
       <div className="flex h-16 items-center justify-between px-6 border-b border-border">
         <h1 className="text-xl font-bold text-foreground">Pixlinks</h1>
-        <button
-          onClick={onClose}
-          aria-label="Close sidebar"
-          className="lg:hidden rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button
+            onClick={onClose}
+            aria-label="Close sidebar"
+            className="lg:hidden rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3">
