@@ -58,7 +58,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (!hasHydrated || isVerifying) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <div style={{ color: '#666', fontSize: '14px' }}>Loading...</div>
+        <div style={{ color: '#666', fontSize: '14px' }}>กำลังโหลด...</div>
       </div>
     )
   }

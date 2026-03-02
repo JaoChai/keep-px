@@ -16,13 +16,13 @@ import { useAuthStore } from '@/stores/auth-store'
 import { NotificationBell } from './NotificationBell'
 
 const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/pixels', icon: Radio, label: 'Pixels' },
-  { to: '/sale-pages', icon: FileText, label: 'Sale Pages' },
-  { to: '/events', icon: Activity, label: 'Events' },
-  { to: '/replay', icon: RotateCcw, label: 'Replay Center' },
-  { to: '/billing', icon: CreditCard, label: 'Billing' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'แดชบอร์ด' },
+  { to: '/pixels', icon: Radio, label: 'พิกเซล' },
+  { to: '/sale-pages', icon: FileText, label: 'หน้าขาย' },
+  { to: '/events', icon: Activity, label: 'อีเวนต์' },
+  { to: '/replay', icon: RotateCcw, label: 'รีเพลย์' },
+  { to: '/billing', icon: CreditCard, label: 'การเงิน' },
+  { to: '/settings', icon: Settings, label: 'ตั้งค่า' },
 ]
 
 interface SidebarProps {
@@ -99,7 +99,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <LogOut className="h-5 w-5" />
-          Logout
+          ออกจากระบบ
         </button>
       </div>
     </aside>

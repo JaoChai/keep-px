@@ -31,23 +31,23 @@ export function SalePagesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Sale Pages</h1>
-          <p className="text-sm text-muted-foreground mt-1">Create and manage your sale pages</p>
+          <h1 className="text-2xl font-bold text-foreground">หน้าขาย</h1>
+          <p className="text-sm text-muted-foreground mt-1">สร้างและจัดการหน้าขายของคุณ</p>
         </div>
         <Button onClick={() => navigate('/sale-pages/new')}>
           <Plus className="h-4 w-4" />
-          Create Sale Page
+          สร้างหน้าขาย
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+        <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>
       ) : !salePages || salePages.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-border rounded-lg">
-          <p className="text-muted-foreground mb-4">No sale pages yet</p>
+          <p className="text-muted-foreground mb-4">ยังไม่มีหน้าขาย</p>
           <Button variant="outline" onClick={() => navigate('/sale-pages/new')}>
             <Plus className="h-4 w-4" />
-            Create your first Sale Page
+            สร้างหน้าขายแรกของคุณ
           </Button>
         </div>
       ) : (
@@ -55,12 +55,12 @@ export function SalePagesPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted">
-                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Name</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">ชื่อ</th>
                 <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">URL</th>
-                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Pixel</th>
-                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Template</th>
-                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Status</th>
-                <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3">Actions</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">พิกเซล</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">เทมเพลต</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">สถานะ</th>
+                <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3">การดำเนินการ</th>
               </tr>
             </thead>
             <tbody>
@@ -85,7 +85,7 @@ export function SalePagesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={page.is_published ? 'success' : 'secondary'}>
-                      {page.is_published ? 'Published' : 'Draft'}
+                      {page.is_published ? 'เผยแพร่แล้ว' : 'แบบร่าง'}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -93,7 +93,7 @@ export function SalePagesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="View page"
+                        title="ดูหน้า"
                         onClick={() => window.open(`/p/${page.slug}`, '_blank')}
                       >
                         <Eye className="h-4 w-4" />
@@ -101,7 +101,7 @@ export function SalePagesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Edit"
+                        title="แก้ไข"
                         onClick={() => navigate(
                           page.template_name === 'blocks'
                             ? `/sale-pages/${page.id}/edit-blocks`
@@ -113,7 +113,7 @@ export function SalePagesPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Delete"
+                        title="ลบ"
                         onClick={() => setDeleteConfirm(page.id)}
                       >
                         <Trash2 className="h-4 w-4 text-red-500" />
@@ -131,15 +131,15 @@ export function SalePagesPage() {
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <DialogContent onClose={() => setDeleteConfirm(null)}>
           <DialogHeader>
-            <DialogTitle>Delete Sale Page</DialogTitle>
+            <DialogTitle>ลบหน้าขาย</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground mt-2">
-            Are you sure you want to delete this sale page? This action cannot be undone.
+            คุณแน่ใจหรือไม่ว่าต้องการลบหน้าขายนี้? ไม่สามารถย้อนกลับได้
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>ยกเลิก</Button>
             <Button variant="destructive" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>
-              Delete
+              ลบ
             </Button>
           </DialogFooter>
         </DialogContent>

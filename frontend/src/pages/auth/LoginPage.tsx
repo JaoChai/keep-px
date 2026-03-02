@@ -47,7 +47,7 @@ export function LoginPage() {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Google Login is not configured
+            ยังไม่ได้ตั้งค่า Google Login
           </p>
         )}
 

@@ -26,7 +26,7 @@ const REPLAY_PACKS = [
     price: 299,
     replays: 1,
     eventsPerReplay: 100_000,
-    description: 'Perfect for a quick migration',
+    description: 'เหมาะสำหรับการย้ายพิกเซลครั้งเดียว',
     icon: Zap,
     popular: false,
   },
@@ -36,7 +36,7 @@ const REPLAY_PACKS = [
     price: 699,
     replays: 3,
     eventsPerReplay: 100_000,
-    description: 'For frequent pixel changes',
+    description: 'สำหรับการเปลี่ยนพิกเซลบ่อย',
     icon: Package,
     popular: true,
   },
@@ -46,7 +46,7 @@ const REPLAY_PACKS = [
     price: 1490,
     replays: -1,
     eventsPerReplay: 100_000,
-    description: 'Unlimited replays for 365 days',
+    description: 'รีเพลย์ไม่จำกัดเป็นเวลา 365 วัน',
     icon: Crown,
     popular: false,
   },
@@ -57,21 +57,21 @@ const ADDONS = [
     type: 'retention_180',
     name: 'Retention 180d',
     price: 390,
-    description: 'Keep event data for 180 days instead of 60',
+    description: 'เก็บข้อมูลอีเวนต์ 180 วัน แทนที่จะเป็น 60 วัน',
     icon: Database,
   },
   {
     type: 'retention_365',
     name: 'Retention 365d',
     price: 690,
-    description: 'Keep event data for a full year',
+    description: 'เก็บข้อมูลอีเวนต์ครบ 1 ปี',
     icon: CalendarDays,
   },
   {
     type: 'events_1m',
     name: 'Events 1M',
     price: 490,
-    description: 'Increase monthly event limit to 1,000,000',
+    description: 'เพิ่มขีดจำกัดอีเวนต์รายเดือนเป็น 1,000,000',
     icon: Zap,
   },
 ] as const
@@ -90,10 +90,10 @@ export function BillingPage() {
   useEffect(() => {
     const status = searchParams.get('status')
     if (status === 'success') {
-      toast.success('Payment completed successfully!')
+      toast.success('ชำระเงินสำเร็จ!')
       setSearchParams({}, { replace: true })
     } else if (status === 'cancel') {
-      toast.info('Payment was cancelled')
+      toast.info('การชำระเงินถูกยกเลิก')
       setSearchParams({}, { replace: true })
     }
   }, [searchParams, setSearchParams])
@@ -108,9 +108,9 @@ export function BillingPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Billing</h1>
+          <h1 className="text-2xl font-bold text-foreground">การเงิน</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your replay packs, add-ons, and subscriptions
+            จัดการแพ็กรีเพลย์ ส่วนเสริม และการสมัครใช้งาน
           </p>
         </div>
         <Button
@@ -120,7 +120,7 @@ export function BillingPage() {
           disabled={portal.isPending}
         >
           <ExternalLink className="h-4 w-4" />
-          {portal.isPending ? 'Opening...' : 'Manage Payments'}
+          {portal.isPending ? 'กำลังเปิด...' : 'จัดการการชำระเงิน'}
         </Button>
       </div>
 
@@ -130,23 +130,23 @@ export function BillingPage() {
           <CardContent className="p-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
-                <p className="text-xs text-muted-foreground">Events This Month</p>
+                <p className="text-xs text-muted-foreground">อีเวนต์เดือนนี้</p>
                 <p className="text-lg font-bold text-foreground">
                   {quota.events_used_this_month.toLocaleString()} / {quota.max_events_per_month.toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Remaining Replays</p>
+                <p className="text-xs text-muted-foreground">รีเพลย์คงเหลือ</p>
                 <p className="text-lg font-bold text-foreground">
-                  {quota.remaining_replays === -1 ? 'Unlimited' : quota.remaining_replays}
+                  {quota.remaining_replays === -1 ? 'ไม่จำกัด' : quota.remaining_replays}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Retention</p>
-                <p className="text-lg font-bold text-foreground">{quota.retention_days} days</p>
+                <p className="text-xs text-muted-foreground">ระยะเวลาเก็บข้อมูล</p>
+                <p className="text-lg font-bold text-foreground">{quota.retention_days} วัน</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Max Pixels</p>
+                <p className="text-xs text-muted-foreground">พิกเซลสูงสุด</p>
                 <p className="text-lg font-bold text-foreground">{quota.max_pixels}</p>
               </div>
             </div>
@@ -156,7 +156,7 @@ export function BillingPage() {
 
       {/* Replay Packs */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Replay Packs</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">แพ็กรีเพลย์</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {REPLAY_PACKS.map((pack) => (
             <Card
@@ -165,7 +165,7 @@ export function BillingPage() {
             >
               {pack.popular && (
                 <div className="bg-primary text-primary-foreground text-center text-xs font-medium py-1 rounded-t-lg">
-                  Most Popular
+                  ยอดนิยม
                 </div>
               )}
               <CardContent className="p-6">
@@ -185,15 +185,15 @@ export function BillingPage() {
                 <ul className="space-y-2 mb-4 text-sm text-muted-foreground">
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                    {pack.replays === -1 ? 'Unlimited replays' : `${pack.replays} replay${pack.replays > 1 ? 's' : ''}`}
+                    {pack.replays === -1 ? 'รีเพลย์ไม่จำกัด' : `${pack.replays} รีเพลย์`}
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                    Up to {pack.eventsPerReplay.toLocaleString()} events/replay
+                    สูงสุด {pack.eventsPerReplay.toLocaleString()} อีเวนต์/รีเพลย์
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                    Valid for 30 days
+                    ใช้ได้ 30 วัน
                   </li>
                 </ul>
                 <Button
@@ -207,7 +207,7 @@ export function BillingPage() {
                   ) : (
                     <CreditCard className="h-4 w-4" />
                   )}
-                  Buy Now
+                  ซื้อเลย
                 </Button>
               </CardContent>
             </Card>
@@ -218,22 +218,22 @@ export function BillingPage() {
       {/* Active Credits */}
       {activeCredits.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Active Credits</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">เครดิตที่ใช้งานอยู่</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeCredits.map((credit) => (
               <Card key={credit.id}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-3">
-                    <Badge variant="success">Active</Badge>
+                    <Badge variant="success">ใช้งาน</Badge>
                     <span className="text-xs text-muted-foreground">
-                      Expires {formatDistanceToNow(new Date(credit.expires_at), { addSuffix: true })}
+                      หมดอายุ {formatDistanceToNow(new Date(credit.expires_at), { addSuffix: true })}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-foreground capitalize mb-2">{credit.pack_type} Pack</p>
+                  <p className="text-sm font-medium text-foreground capitalize mb-2">แพ็ก {credit.pack_type}</p>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Replays used</span>
+                    <span className="text-muted-foreground">รีเพลย์ที่ใช้แล้ว</span>
                     <span className="font-semibold text-foreground">
-                      {credit.used_replays} / {credit.total_replays === -1 ? 'Unlimited' : credit.total_replays}
+                      {credit.used_replays} / {credit.total_replays === -1 ? 'ไม่จำกัด' : credit.total_replays}
                     </span>
                   </div>
                   <div className="mt-2">
@@ -249,7 +249,7 @@ export function BillingPage() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Up to {credit.max_events_per_replay.toLocaleString()} events per replay
+                    สูงสุด {credit.max_events_per_replay.toLocaleString()} อีเวนต์ต่อรีเพลย์
                   </p>
                 </CardContent>
               </Card>
@@ -260,7 +260,7 @@ export function BillingPage() {
 
       {/* Add-ons */}
       <div className="mb-8">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Add-ons</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">ส่วนเสริม</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {ADDONS.map((addon) => {
             const isActive = activeSubscriptions.some((s) => s.addon_type === addon.type)
@@ -278,12 +278,12 @@ export function BillingPage() {
                   </div>
                   <div className="mb-4">
                     <span className="text-3xl font-bold text-foreground">{addon.price}</span>
-                    <span className="text-sm text-muted-foreground"> THB/mo</span>
+                    <span className="text-sm text-muted-foreground"> THB/เดือน</span>
                   </div>
                   {isActive ? (
                     <Button variant="outline" className="w-full" disabled>
                       <ShieldCheck className="h-4 w-4" />
-                      Active
+                      ใช้งานอยู่
                     </Button>
                   ) : (
                     <Button
@@ -297,7 +297,7 @@ export function BillingPage() {
                       ) : (
                         <CreditCard className="h-4 w-4" />
                       )}
-                      Subscribe
+                      สมัครใช้งาน
                     </Button>
                   )}
                 </CardContent>
@@ -309,24 +309,24 @@ export function BillingPage() {
 
       {/* Purchase History */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-4">Purchase History</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">ประวัติการซื้อ</h2>
         <Card>
           <CardContent className="p-0">
             {overviewLoading ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">Loading...</div>
+              <div className="p-6 text-center text-sm text-muted-foreground">กำลังโหลด...</div>
             ) : !overview?.purchases || overview.purchases.length === 0 ? (
               <div className="p-6 text-center text-sm text-muted-foreground">
-                No purchases yet
+                ยังไม่มีประวัติการซื้อ
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-muted">
                     <tr>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Pack</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Amount</th>
-                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">วันที่</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">แพ็ก</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">จำนวนเงิน</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">สถานะ</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -349,7 +349,7 @@ export function BillingPage() {
                                   : 'destructive'
                             }
                           >
-                            {purchase.status}
+                            {purchase.status === 'completed' ? 'สำเร็จ' : purchase.status === 'pending' ? 'รอดำเนินการ' : 'ล้มเหลว'}
                           </Badge>
                         </td>
                       </tr>

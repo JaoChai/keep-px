@@ -37,15 +37,15 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style 
           />
         ) : (
           <div className="w-24 h-24 mx-auto rounded-full bg-white/20 mb-4 flex items-center justify-center">
-            <span className="text-white/50 text-xs">Image</span>
+            <span className="text-white/50 text-xs">รูปภาพ</span>
           </div>
         )}
         <h1 className="text-xl font-bold leading-tight">
-          {hero.title || <span className="text-white/40">Page Title</span>}
+          {hero.title || <span className="text-white/40">หัวข้อเพจ</span>}
         </h1>
         {(hero.subtitle || !hero.title) && (
           <p className="mt-2 text-sm text-white/80">
-            {hero.subtitle || <span className="text-white/30">Subtitle text</span>}
+            {hero.subtitle || <span className="text-white/30">ข้อความบรรยาย</span>}
           </p>
         )}
       </div>
@@ -55,7 +55,7 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style 
         {body.description ? (
           <p className="text-sm leading-relaxed" style={{ color: textColor || undefined }}>{body.description}</p>
         ) : (
-          <p className="text-sm text-neutral-300">Description text will appear here...</p>
+          <p className="text-sm text-neutral-300">ข้อความคำอธิบายจะแสดงที่นี่...</p>
         )}
 
         {/* Features */}
@@ -72,7 +72,7 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style 
           <ul className="mt-4 space-y-2">
             <li className="flex items-start gap-2 text-sm text-neutral-300">
               <CheckCircle className="h-4 w-4 text-neutral-300 mt-0.5 shrink-0" />
-              <span>Feature item</span>
+              <span>จุดเด่น</span>
             </li>
           </ul>
         )}
@@ -94,7 +94,7 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style 
             className={!style?.accent_color ? 'w-full py-3 rounded-lg bg-gradient-to-r from-zinc-800 to-zinc-900 text-white font-semibold text-sm shadow-md' : 'w-full py-3 rounded-lg text-white font-semibold text-sm shadow-md'}
             style={style?.accent_color ? { background: `linear-gradient(to right, ${accentColor}, ${accentColor}cc)` } : undefined}
           >
-            {cta.button_text || 'Call to Action'}
+            {cta.button_text || 'ปุ่มกดดำเนินการ'}
           </button>
           {ctaEventName && (
             <span className="absolute -top-2 -right-2 px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-700 rounded-full border border-amber-200">
