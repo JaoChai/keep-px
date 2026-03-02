@@ -13,7 +13,7 @@ export class SidebarPage {
 
   constructor(page: Page) {
     this.page = page
-    this.brand = page.getByText('Pixlinks')
+    this.brand = page.getByRole('heading', { name: 'Pixlinks' })
     this.dashboardLink = page.getByRole('link', { name: 'Dashboard' })
     this.pixelsLink = page.getByRole('link', { name: 'Pixels' })
     this.salePagesLink = page.getByRole('link', { name: 'Sale Pages' })
