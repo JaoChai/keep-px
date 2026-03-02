@@ -62,7 +62,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         }
       })
 
-    return () => controller.abort()
+    return () => {
+      controller.abort()
+      verifyingRef.current = false
+    }
   }, [hasHydrated, isAuthenticated, setCustomer, logout])
 
   if (!hasHydrated) {
