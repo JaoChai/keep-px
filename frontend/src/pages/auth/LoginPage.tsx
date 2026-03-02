@@ -3,6 +3,8 @@ import { toast } from 'sonner'
 import { GoogleLogin } from '@react-oauth/google'
 import { useGoogleAuth } from '@/hooks/use-auth'
 
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
 export function LoginPage() {
   const navigate = useNavigate()
   const googleAuth = useGoogleAuth()
@@ -19,29 +21,35 @@ export function LoginPage() {
 
         <div className="my-8 border-t border-border" />
 
-        <div className="flex justify-center">
-          <GoogleLogin
-            onSuccess={async (response) => {
-              if (response.credential) {
-                try {
-                  await googleAuth.mutateAsync(response.credential)
-                  toast.success('เข้าสู่ระบบสำเร็จ')
-                  navigate('/dashboard')
-                } catch {
-                  toast.error('เข้าสู่ระบบด้วย Google ไม่สำเร็จ')
+        {googleClientId ? (
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={async (response) => {
+                if (response.credential) {
+                  try {
+                    await googleAuth.mutateAsync(response.credential)
+                    toast.success('เข้าสู่ระบบสำเร็จ')
+                    navigate('/dashboard')
+                  } catch {
+                    toast.error('เข้าสู่ระบบด้วย Google ไม่สำเร็จ')
+                  }
                 }
-              }
-            }}
-            onError={() => {
-              toast.error('เข้าสู่ระบบด้วย Google ไม่สำเร็จ')
-            }}
-            theme="filled_black"
-            size="large"
-            shape="rectangular"
-            width={320}
-            text="continue_with"
-          />
-        </div>
+              }}
+              onError={() => {
+                toast.error('เข้าสู่ระบบด้วย Google ไม่สำเร็จ')
+              }}
+              theme="filled_black"
+              size="large"
+              shape="rectangular"
+              width={320}
+              text="continue_with"
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Google Login is not configured
+          </p>
+        )}
 
         <p className="mt-8 text-xs text-muted-foreground">
           การเข้าสู่ระบบแสดงว่าคุณยอมรับเงื่อนไขการใช้งาน
