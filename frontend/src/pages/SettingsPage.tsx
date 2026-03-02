@@ -20,26 +20,26 @@ export function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-6">Settings</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-6">ตั้งค่า</h1>
 
       <div className="space-y-6 max-w-2xl">
         {/* Profile */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Profile</CardTitle>
-            <CardDescription>Your account information</CardDescription>
+            <CardTitle className="text-base">โปรไฟล์</CardTitle>
+            <CardDescription>ข้อมูลบัญชีของคุณ</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>ชื่อ</Label>
               <Input value={customer?.name || ''} readOnly />
             </div>
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label>อีเมล</Label>
               <Input value={customer?.email || ''} readOnly />
             </div>
             <div className="space-y-2">
-              <Label>Plan</Label>
+              <Label>แพลน</Label>
               <Input value={customer?.plan || 'free'} readOnly />
             </div>
           </CardContent>
@@ -52,7 +52,7 @@ export function SettingsPage() {
               <Key className="h-4 w-4" />
               API Key
             </CardTitle>
-            <CardDescription>API key for event ingestion</CardDescription>
+            <CardDescription>API Key สำหรับรับข้อมูลอีเวนต์</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">
@@ -66,7 +66,7 @@ export function SettingsPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              This key is used by sale page templates to send events to your pixels.
+              คีย์นี้ใช้สำหรับเทมเพลตหน้าขายเพื่อส่งอีเวนต์ไปยังพิกเซลของคุณ
             </p>
           </CardContent>
         </Card>

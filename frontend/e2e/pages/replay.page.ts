@@ -14,16 +14,16 @@ export class ReplayPage {
 
   constructor(page: Page) {
     this.page = page
-    this.heading = page.getByRole('heading', { name: 'Replay Center' })
+    this.heading = page.getByRole('heading', { name: 'ศูนย์รีเพลย์' })
     // Labels lack htmlFor — use CSS sibling combinator with Playwright text matching
-    this.sourcePixelSelect = page.locator('label:has-text("Source Pixel") + select')
-    this.targetPixelSelect = page.locator('label:has-text("Target Pixel") + select')
-    this.dateFromInput = page.locator('label:has-text("Date From") + input')
-    this.dateToInput = page.locator('label:has-text("Date To") + input')
-    this.previewButton = page.getByRole('button', { name: 'Preview' })
-    this.replayHistory = page.getByText('Replay History')
-    this.paywallMessage = page.getByText('No replay credits')
-    this.viewReplayPacksButton = page.getByRole('button', { name: 'View Replay Packs' })
+    this.sourcePixelSelect = page.locator('label:has-text("พิกเซลต้นทาง") + select')
+    this.targetPixelSelect = page.locator('label:has-text("พิกเซลปลายทาง") + select')
+    this.dateFromInput = page.locator('label:has-text("วันที่เริ่มต้น") + input')
+    this.dateToInput = page.locator('label:has-text("วันที่สิ้นสุด") + input')
+    this.previewButton = page.getByRole('button', { name: 'ตัวอย่าง' })
+    this.replayHistory = page.getByText('ประวัติรีเพลย์')
+    this.paywallMessage = page.getByText('ไม่มีเครดิตรีเพลย์')
+    this.viewReplayPacksButton = page.getByRole('button', { name: 'ดูแพ็กรีเพลย์' })
   }
 
   async goto() {

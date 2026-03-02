@@ -8,9 +8,9 @@ export class DashboardPage {
 
   constructor(page: Page) {
     this.page = page
-    this.heading = page.getByRole('heading', { name: 'Dashboard' })
+    this.heading = page.getByRole('heading', { name: 'แดชบอร์ด' })
     this.statCards = page.locator('[class*="card"]').filter({ has: page.locator('p.text-2xl') })
-    this.chartSection = page.getByText('Event Volume')
+    this.chartSection = page.getByText('ปริมาณอีเวนต์')
   }
 
   async goto() {

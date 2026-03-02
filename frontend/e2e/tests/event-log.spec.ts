@@ -24,7 +24,7 @@ test.describe('Event Log', () => {
     const hasTable = await eventLogPage.eventTable.isVisible()
     if (hasTable) {
       // Page info text should be visible
-      await expect(page.getByText(/Page \d+ of \d+/)).toBeVisible()
+      await expect(page.getByText(/หน้า \d+ จาก \d+/)).toBeVisible()
     }
   })
 })

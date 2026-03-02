@@ -131,18 +131,18 @@ export function EventsPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Events</h1>
+            <h1 className="text-2xl font-bold text-foreground">อีเวนต์</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {mode === 'live'
-                ? `${realtimeEvents.length} events${stats.eventsPerMinute > 0 ? ` (${stats.eventsPerMinute}/min)` : ''}`
+                ? `${realtimeEvents.length} อีเวนต์${stats.eventsPerMinute > 0 ? ` (${stats.eventsPerMinute}/นาที)` : ''}`
                 : historyQuery.data
-                  ? `${historyQuery.data.total} events total`
-                  : 'Loading events...'}
+                  ? `ทั้งหมด ${historyQuery.data.total} อีเวนต์`
+                  : 'กำลังโหลดอีเวนต์...'}
             </p>
           </div>
           {mode === 'live' && (
             <Badge variant={isLive ? 'success' : 'warning'}>
-              {isLive ? 'Live' : 'Paused'}
+              {isLive ? 'สด' : 'หยุดชั่วคราว'}
             </Badge>
           )}
         </div>
@@ -157,7 +157,7 @@ export function EventsPage() {
               className={mode === 'live' ? '' : 'text-muted-foreground'}
             >
               <Activity className="h-4 w-4 mr-1" />
-              Live
+              สด
             </Button>
             <Button
               variant={mode === 'history' ? 'default' : 'ghost'}
@@ -166,7 +166,7 @@ export function EventsPage() {
               className={mode === 'history' ? '' : 'text-muted-foreground'}
             >
               <ScrollText className="h-4 w-4 mr-1" />
-              History
+              ประวัติ
             </Button>
           </div>
 
@@ -179,11 +179,11 @@ export function EventsPage() {
                 ) : (
                   <Pause className="h-4 w-4 mr-1" />
                 )}
-                {isPaused ? 'Resume' : 'Pause'}
+                {isPaused ? 'ดำเนินต่อ' : 'หยุด'}
               </Button>
               <Button variant="outline" size="sm" onClick={clear}>
                 <Trash2 className="h-4 w-4 mr-1" />
-                Clear
+                ล้าง
               </Button>
               <Button
                 variant="outline"
@@ -194,7 +194,7 @@ export function EventsPage() {
                 <RefreshCw
                   className={`h-4 w-4 mr-1 ${realtimeLoading ? 'animate-spin' : ''}`}
                 />
-                Refresh
+                รีเฟรช
               </Button>
             </div>
           )}
@@ -208,7 +208,7 @@ export function EventsPage() {
           value={pixelId ?? ''}
           onChange={(e) => setPixelFilter(e.target.value || null)}
         >
-          <option value="">All Pixels</option>
+          <option value="">พิกเซลทั้งหมด</option>
           {pixels?.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -220,31 +220,31 @@ export function EventsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
-          title="Events Today"
+          title="อีเวนต์วันนี้"
           value={overviewStats?.events_today ?? '-'}
-          subtitle="Today's total"
+          subtitle="รวมวันนี้"
           icon={<Clock className="h-5 w-5" />}
         />
         <StatCard
-          title="Total Events"
+          title="อีเวนต์ทั้งหมด"
           value={
             overviewStats?.total_events != null
               ? overviewStats.total_events.toLocaleString()
               : '-'
           }
-          subtitle="All time"
+          subtitle="ตลอดทั้งหมด"
           icon={<Hash className="h-5 w-5" />}
         />
         <StatCard
-          title="CAPI Rate"
+          title="อัตรา CAPI"
           value={capiRate}
-          subtitle="Forwarded to Facebook"
+          subtitle="ส่งต่อไป Facebook แล้ว"
           icon={<CheckCircle className="h-5 w-5" />}
         />
         <StatCard
-          title="Events/Min"
+          title="อีเวนต์/นาที"
           value={mode === 'live' ? stats.eventsPerMinute : '-'}
-          subtitle={mode === 'live' ? 'Last 60 seconds' : 'Live mode only'}
+          subtitle={mode === 'live' ? '60 วินาทีล่าสุด' : 'เฉพาะโหมดสด'}
           icon={<Zap className="h-5 w-5" />}
         />
       </div>
@@ -255,7 +255,7 @@ export function EventsPage() {
           {/* Event Rate Chart */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base">Event Rate (5 min window)</CardTitle>
+              <CardTitle className="text-base">อัตราอีเวนต์ (5 นาที)</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
@@ -283,7 +283,7 @@ export function EventsPage() {
           {/* Event Type Breakdown */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Event Types</CardTitle>
+              <CardTitle className="text-base">ประเภทอีเวนต์</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -306,7 +306,7 @@ export function EventsPage() {
                   </div>
                 ))}
                 {eventTypeCounts.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">No data</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">ไม่มีข้อมูล</p>
                 )}
               </div>
             </CardContent>
@@ -322,16 +322,16 @@ export function EventsPage() {
             {realtimeLoading ? (
               <>
                 <RefreshCw className="h-6 w-6 animate-spin text-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">Loading recent events...</p>
+                <p className="text-muted-foreground">กำลังโหลดอีเวนต์ล่าสุด...</p>
               </>
             ) : (
               <>
                 <div className="animate-pulse mb-3">
                   <div className="inline-block h-3 w-3 rounded-full bg-emerald-400" />
                 </div>
-                <p className="text-muted-foreground">Waiting for events...</p>
+                <p className="text-muted-foreground">รอรับอีเวนต์...</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  New events will appear here in realtime
+                  อีเวนต์ใหม่จะปรากฏที่นี่แบบเรียลไทม์
                 </p>
               </>
             )}
@@ -342,19 +342,19 @@ export function EventsPage() {
               <thead>
                 <tr className="border-b border-border bg-muted">
                   <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                    Event
+                    อีเวนต์
                   </th>
                   <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                    Pixel
+                    พิกเซล
                   </th>
                   <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                    Source URL
+                    URL ต้นทาง
                   </th>
                   <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     CAPI
                   </th>
                   <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                    Time
+                    เวลา
                   </th>
                 </tr>
               </thead>
@@ -394,12 +394,12 @@ export function EventsPage() {
         )
       ) : /* History mode table */
       historyQuery.isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading events...</div>
+        <div className="text-center py-12 text-muted-foreground">กำลังโหลดอีเวนต์...</div>
       ) : historyEvents.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-border rounded-lg">
-          <p className="text-muted-foreground">No events recorded yet</p>
+          <p className="text-muted-foreground">ยังไม่มีอีเวนต์ที่บันทึก</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Events will appear here once your sale pages start receiving traffic
+            อีเวนต์จะปรากฏที่นี่เมื่อหน้าขายของคุณเริ่มได้รับการเข้าชม
           </p>
         </div>
       ) : (
@@ -409,19 +409,19 @@ export function EventsPage() {
               <thead>
                 <tr className="border-b border-border bg-muted">
                   <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                    Event
+                    อีเวนต์
                   </th>
                   <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                    Pixel
+                    พิกเซล
                   </th>
                   <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                    Source URL
+                    URL ต้นทาง
                   </th>
                   <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
                     CAPI
                   </th>
                   <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                    Time
+                    เวลา
                   </th>
                 </tr>
               </thead>
@@ -461,7 +461,7 @@ export function EventsPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
-                Page {historyPage} of {totalPages}
+                หน้า {historyPage} จาก {totalPages}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -471,7 +471,7 @@ export function EventsPage() {
                   onClick={() => setHistoryPage((p) => p - 1)}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Previous
+                  ก่อนหน้า
                 </Button>
                 <Button
                   variant="outline"
@@ -479,7 +479,7 @@ export function EventsPage() {
                   disabled={historyPage >= totalPages}
                   onClick={() => setHistoryPage((p) => p + 1)}
                 >
-                  Next
+                  ถัดไป
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

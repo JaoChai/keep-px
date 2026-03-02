@@ -17,8 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import type { ReplayPreview } from '@/types'
 
 const replaySchema = z.object({
-  source_pixel_id: z.string().min(1, 'Source pixel is required'),
-  target_pixel_id: z.string().min(1, 'Target pixel is required'),
+  source_pixel_id: z.string().min(1, 'กรุณาเลือกพิกเซลต้นทาง'),
+  target_pixel_id: z.string().min(1, 'กรุณาเลือกพิกเซลปลายทาง'),
   date_from: z.string().optional(),
   date_to: z.string().optional(),
   time_mode: z.enum(['original', 'current']),
@@ -29,11 +29,11 @@ type ReplayForm = z.infer<typeof replaySchema>
 
 function statusBadge(status: string) {
   switch (status) {
-    case 'completed': return <Badge variant="success"><CheckCircle2 className="h-3 w-3 mr-1" />Completed</Badge>
-    case 'running': return <Badge variant="default"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Running</Badge>
-    case 'failed': return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Failed</Badge>
-    case 'cancelled': return <Badge variant="outline"><StopCircle className="h-3 w-3 mr-1" />Cancelled</Badge>
-    default: return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
+    case 'completed': return <Badge variant="success"><CheckCircle2 className="h-3 w-3 mr-1" />เสร็จสิ้น</Badge>
+    case 'running': return <Badge variant="default"><Loader2 className="h-3 w-3 mr-1 animate-spin" />กำลังทำงาน</Badge>
+    case 'failed': return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />ล้มเหลว</Badge>
+    case 'cancelled': return <Badge variant="outline"><StopCircle className="h-3 w-3 mr-1" />ยกเลิกแล้ว</Badge>
+    default: return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />รอดำเนินการ</Badge>
   }
 }
 
@@ -99,7 +99,7 @@ export function ReplayPage() {
       setPreview(result)
       setPendingFormData(formData)
     } catch {
-      toast.error('Failed to load preview')
+      toast.error('ไม่สามารถโหลดตัวอย่างได้')
     }
   }
 
@@ -122,16 +122,16 @@ export function ReplayPage() {
         toast.warning(result.warning)
       }
     } catch {
-      toast.error('Failed to start replay')
+      toast.error('ไม่สามารถเริ่มรีเพลย์ได้')
     }
   }
 
   const handleCancel = async (id: string) => {
     try {
       await cancelReplay.mutateAsync(id)
-      toast.success('Replay cancelled')
+      toast.success('ยกเลิกรีเพลย์แล้ว')
     } catch {
-      toast.error('Failed to cancel replay')
+      toast.error('ไม่สามารถยกเลิกรีเพลย์ได้')
     }
   }
 
@@ -139,9 +139,9 @@ export function ReplayPage() {
     try {
       const result = await retryReplay.mutateAsync(id)
       setActiveReplayId(result.id)
-      toast.success('Retry started')
+      toast.success('เริ่มลองใหม่แล้ว')
     } catch {
-      toast.error('Failed to retry replay')
+      toast.error('ไม่สามารถลองรีเพลย์ใหม่ได้')
     }
   }
 
@@ -152,14 +152,14 @@ export function ReplayPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Replay Center</h1>
-          <p className="text-sm text-muted-foreground mt-1">Replay events from one pixel to another</p>
+          <h1 className="text-2xl font-bold text-foreground">ศูนย์รีเพลย์</h1>
+          <p className="text-sm text-muted-foreground mt-1">รีเพลย์อีเวนต์จากพิกเซลหนึ่งไปยังอีกพิกเซลหนึ่ง</p>
         </div>
         {quota && (
           <Badge variant={quota.can_replay ? 'success' : 'secondary'} className="text-sm px-3 py-1">
             {quota.remaining_replays === -1
-              ? 'Unlimited replays'
-              : `${quota.remaining_replays} replay${quota.remaining_replays !== 1 ? 's' : ''} remaining`}
+              ? 'รีเพลย์ไม่จำกัด'
+              : `เหลือ ${quota.remaining_replays} รีเพลย์`}
           </Badge>
         )}
       </div>
@@ -170,7 +170,7 @@ export function ReplayPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Play className="h-4 w-4" />
-              New Replay
+              รีเพลย์ใหม่
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -180,24 +180,24 @@ export function ReplayPage() {
                   <CreditCard className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">No replay credits</p>
+                  <p className="font-medium text-foreground">ไม่มีเครดิตรีเพลย์</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Purchase a replay pack to start replaying events to new pixels.
+                    ซื้อแพ็กรีเพลย์เพื่อเริ่มรีเพลย์อีเวนต์ไปยังพิกเซลใหม่
                   </p>
                 </div>
                 <Link to="/billing">
-                  <Button>View Replay Packs</Button>
+                  <Button>ดูแพ็กรีเพลย์</Button>
                 </Link>
               </div>
             ) : !preview ? (
               <form onSubmit={handleSubmit(onPreview)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Source Pixel</Label>
+                  <Label>พิกเซลต้นทาง</Label>
                   <select
                     className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
                     {...register('source_pixel_id')}
                   >
-                    <option value="">Select source...</option>
+                    <option value="">เลือกต้นทาง...</option>
                     {pixels?.map((p) => (
                       <option key={p.id} value={p.id}>{p.name} ({p.fb_pixel_id})</option>
                     ))}
@@ -206,12 +206,12 @@ export function ReplayPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Target Pixel</Label>
+                  <Label>พิกเซลปลายทาง</Label>
                   <select
                     className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
                     {...register('target_pixel_id')}
                   >
-                    <option value="">Select target...</option>
+                    <option value="">เลือกปลายทาง...</option>
                     {pixels?.map((p) => (
                       <option key={p.id} value={p.id}>{p.name} ({p.fb_pixel_id})</option>
                     ))}
@@ -221,7 +221,7 @@ export function ReplayPage() {
 
                 {eventTypes && eventTypes.length > 0 && (
                   <div className="space-y-2">
-                    <Label>Event Types (optional)</Label>
+                    <Label>ประเภทอีเวนต์ (ไม่บังคับ)</Label>
                     <div className="space-y-1.5 max-h-32 overflow-y-auto rounded-md border border-border p-2">
                       {eventTypes.map((type) => (
                         <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -241,34 +241,34 @@ export function ReplayPage() {
                         </label>
                       ))}
                     </div>
-                    <p className="text-xs text-muted-foreground">Leave unchecked to include all event types</p>
+                    <p className="text-xs text-muted-foreground">ไม่เลือกเพื่อรวมอีเวนต์ทุกประเภท</p>
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <Label>Date From (optional)</Label>
+                  <Label>วันที่เริ่มต้น (ไม่บังคับ)</Label>
                   <Input type="date" {...register('date_from')} />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Date To (optional)</Label>
+                  <Label>วันที่สิ้นสุด (ไม่บังคับ)</Label>
                   <Input type="date" {...register('date_to')} />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Time Mode</Label>
+                  <Label>โหมดเวลา</Label>
                   <select
                     className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
                     {...register('time_mode')}
                   >
-                    <option value="original">Original (use original event timestamps)</option>
-                    <option value="current">Current (use current time for all events)</option>
+                    <option value="original">ต้นฉบับ (ใช้เวลาเดิมของอีเวนต์)</option>
+                    <option value="current">ปัจจุบัน (ใช้เวลาปัจจุบันสำหรับทุกอีเวนต์)</option>
                   </select>
-                  <p className="text-xs text-muted-foreground">Use "Current" if events are older than 7 days to avoid Facebook rejection</p>
+                  <p className="text-xs text-muted-foreground">ใช้ "ปัจจุบัน" หากอีเวนต์เก่ากว่า 7 วัน เพื่อป้องกัน Facebook ปฏิเสธ</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Batch Delay (ms)</Label>
+                  <Label>ดีเลย์ต่อชุด (ms)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -276,23 +276,23 @@ export function ReplayPage() {
                     placeholder="0"
                     {...register('batch_delay_ms', { valueAsNumber: true })}
                   />
-                  <p className="text-xs text-muted-foreground">Delay between batches (0-60000ms). Use for warm-up on new pixels.</p>
+                  <p className="text-xs text-muted-foreground">ดีเลย์ระหว่างชุด (0-60000ms) ใช้สำหรับ warm-up พิกเซลใหม่</p>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={previewReplay.isPending}>
                   <Eye className="h-4 w-4" />
-                  {previewReplay.isPending ? 'Loading Preview...' : 'Preview'}
+                  {previewReplay.isPending ? 'กำลังโหลดตัวอย่าง...' : 'ตัวอย่าง'}
                 </Button>
               </form>
             ) : (
               <div className="space-y-4">
                 <div className="rounded-lg border border-border p-3 space-y-2">
-                  <p className="text-sm font-medium text-foreground">Preview Summary</p>
+                  <p className="text-sm font-medium text-foreground">สรุปตัวอย่าง</p>
                   <p className="text-sm text-muted-foreground">
-                    <span className="font-semibold">{preview.total_events}</span> events will be replayed
+                    จะรีเพลย์ <span className="font-semibold">{preview.total_events}</span> อีเวนต์
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    From: {pixelMap.get(getValues('source_pixel_id')) || 'Unknown'} → To: {pixelMap.get(getValues('target_pixel_id')) || 'Unknown'}
+                    จาก: {pixelMap.get(getValues('source_pixel_id')) || 'ไม่ทราบ'} → ไปยัง: {pixelMap.get(getValues('target_pixel_id')) || 'ไม่ทราบ'}
                   </p>
                 </div>
 
@@ -305,13 +305,13 @@ export function ReplayPage() {
 
                 {(preview.sample_events?.length ?? 0) > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Sample Events</p>
+                    <p className="text-xs font-medium text-muted-foreground">ตัวอย่างอีเวนต์</p>
                     <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
                       <table className="w-full text-xs">
                         <thead className="bg-muted sticky top-0">
                           <tr>
-                            <th className="text-left px-2 py-1.5 font-medium text-muted-foreground">Event</th>
-                            <th className="text-left px-2 py-1.5 font-medium text-muted-foreground">Time</th>
+                            <th className="text-left px-2 py-1.5 font-medium text-muted-foreground">อีเวนต์</th>
+                            <th className="text-left px-2 py-1.5 font-medium text-muted-foreground">เวลา</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -333,7 +333,7 @@ export function ReplayPage() {
                     className="flex-1"
                     onClick={() => { setPreview(null); setPendingFormData(null) }}
                   >
-                    Back
+                    ย้อนกลับ
                   </Button>
                   <Button
                     className="flex-1"
@@ -341,7 +341,7 @@ export function ReplayPage() {
                     disabled={createReplay.isPending}
                   >
                     <RotateCcw className="h-4 w-4" />
-                    {createReplay.isPending ? 'Starting...' : 'Confirm Replay'}
+                    {createReplay.isPending ? 'กำลังเริ่ม...' : 'ยืนยันรีเพลย์'}
                   </Button>
                 </div>
               </div>
@@ -354,7 +354,7 @@ export function ReplayPage() {
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center justify-between text-base">
-                <span>Replay Progress</span>
+                <span>ความคืบหน้ารีเพลย์</span>
                 {statusBadge(activeReplay.status)}
               </CardTitle>
             </CardHeader>
@@ -365,7 +365,7 @@ export function ReplayPage() {
                   <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
                     <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-red-800">Replay Failed</p>
+                      <p className="text-sm font-medium text-red-800">รีเพลย์ล้มเหลว</p>
                       <p className="text-sm text-red-600 mt-1">{activeReplay.error_message}</p>
                     </div>
                   </div>
@@ -384,15 +384,15 @@ export function ReplayPage() {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-2xl font-bold text-foreground">{activeReplay.total_events}</p>
-                    <p className="text-xs text-muted-foreground">Total</p>
+                    <p className="text-xs text-muted-foreground">ทั้งหมด</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-emerald-600">{activeReplay.replayed_events}</p>
-                    <p className="text-xs text-muted-foreground">Replayed</p>
+                    <p className="text-xs text-muted-foreground">รีเพลย์แล้ว</p>
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-red-600">{activeReplay.failed_events}</p>
-                    <p className="text-xs text-muted-foreground">Failed</p>
+                    <p className="text-xs text-muted-foreground">ล้มเหลว</p>
                   </div>
                 </div>
 
@@ -406,7 +406,7 @@ export function ReplayPage() {
                       disabled={cancelReplay.isPending}
                     >
                       <StopCircle className="h-4 w-4" />
-                      {cancelReplay.isPending ? 'Cancelling...' : 'Cancel'}
+                      {cancelReplay.isPending ? 'กำลังยกเลิก...' : 'ยกเลิก'}
                     </Button>
                   )}
                   {canRetry && (
@@ -417,15 +417,15 @@ export function ReplayPage() {
                       disabled={retryReplay.isPending}
                     >
                       <RotateCcw className="h-4 w-4" />
-                      {retryReplay.isPending ? 'Retrying...' : 'Retry Failed'}
+                      {retryReplay.isPending ? 'กำลังลองใหม่...' : 'ลองใหม่ที่ล้มเหลว'}
                     </Button>
                   )}
                 </div>
 
                 {/* Replay config info */}
                 <div className="flex gap-3 text-xs text-muted-foreground border-t border-border pt-3">
-                  <span>Mode: {activeReplay.time_mode}</span>
-                  {activeReplay.batch_delay_ms > 0 && <span>Delay: {activeReplay.batch_delay_ms}ms</span>}
+                  <span>โหมด: {activeReplay.time_mode === 'original' ? 'ต้นฉบับ' : 'ปัจจุบัน'}</span>
+                  {activeReplay.batch_delay_ms > 0 && <span>ดีเลย์: {activeReplay.batch_delay_ms}ms</span>}
                 </div>
               </div>
             </CardContent>
@@ -436,13 +436,13 @@ export function ReplayPage() {
         {!activeReplay && (
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base">Replay History</CardTitle>
+              <CardTitle className="text-base">ประวัติรีเพลย์</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <p className="text-muted-foreground text-sm">Loading...</p>
+                <p className="text-muted-foreground text-sm">กำลังโหลด...</p>
               ) : !replays || replays.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No replays yet</p>
+                <p className="text-muted-foreground text-sm">ยังไม่มีรีเพลย์</p>
               ) : (
                 <div className="space-y-3">
                   {replays.map((replay) => (
@@ -456,7 +456,7 @@ export function ReplayPage() {
                           {pixelMap.get(replay.source_pixel_id) || replay.source_pixel_id.slice(0, 8)} → {pixelMap.get(replay.target_pixel_id) || replay.target_pixel_id.slice(0, 8)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {replay.replayed_events}/{replay.total_events} events &middot; {new Date(replay.created_at).toLocaleString()}
+                          {replay.replayed_events}/{replay.total_events} อีเวนต์ &middot; {new Date(replay.created_at).toLocaleString()}
                           {replay.error_message && (
                             <span className="text-red-500 ml-2">{replay.error_message}</span>
                           )}
@@ -475,14 +475,14 @@ export function ReplayPage() {
       <Dialog open={cancelConfirm !== null} onOpenChange={(open) => !open && setCancelConfirm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel Replay?</DialogTitle>
+            <DialogTitle>ยกเลิกรีเพลย์?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel this replay? Events already replayed will not be rolled back.
+              คุณแน่ใจหรือไม่ว่าต้องการยกเลิกรีเพลย์นี้? อีเวนต์ที่รีเพลย์ไปแล้วจะไม่ถูกย้อนกลับ
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCancelConfirm(null)}>
-              Keep Running
+              ทำงานต่อ
             </Button>
             <Button
               variant="destructive"
@@ -494,7 +494,7 @@ export function ReplayPage() {
               }}
               disabled={cancelReplay.isPending}
             >
-              {cancelReplay.isPending ? 'Cancelling...' : 'Yes, Cancel Replay'}
+              {cancelReplay.isPending ? 'กำลังยกเลิก...' : 'ใช่ ยกเลิกรีเพลย์'}
             </Button>
           </DialogFooter>
         </DialogContent>

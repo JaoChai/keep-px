@@ -14,13 +14,13 @@ export class SidebarPage {
   constructor(page: Page) {
     this.page = page
     this.brand = page.getByRole('heading', { name: 'Pixlinks' })
-    this.dashboardLink = page.getByRole('link', { name: 'Dashboard' })
-    this.pixelsLink = page.getByRole('link', { name: 'Pixels' })
-    this.salePagesLink = page.getByRole('link', { name: 'Sale Pages' })
-    this.eventsLink = page.getByRole('link', { name: 'Events' })
-    this.replayCenterLink = page.getByRole('link', { name: 'Replay Center' })
-    this.settingsLink = page.getByRole('link', { name: 'Settings' })
-    this.logoutButton = page.getByRole('button', { name: 'Logout' })
+    this.dashboardLink = page.getByRole('link', { name: 'แดชบอร์ด' })
+    this.pixelsLink = page.getByRole('link', { name: 'พิกเซล' })
+    this.salePagesLink = page.getByRole('link', { name: 'หน้าขาย' })
+    this.eventsLink = page.getByRole('link', { name: 'อีเวนต์' })
+    this.replayCenterLink = page.getByRole('link', { name: 'รีเพลย์' })
+    this.settingsLink = page.getByRole('link', { name: 'ตั้งค่า' })
+    this.logoutButton = page.getByRole('button', { name: 'ออกจากระบบ' })
   }
 
   async navigateTo(linkName: string) {

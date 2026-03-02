@@ -9,11 +9,11 @@ test.describe('Dashboard @smoke', () => {
     await expect(dashboardPage.heading).toBeVisible()
 
     // Verify all 5 stat card titles are visible
-    await expect(page.getByText('Active Pixels')).toBeVisible()
-    await expect(page.getByText('Events Today')).toBeVisible()
-    await expect(page.getByText('CAPI Rate')).toBeVisible()
-    await expect(page.getByText('Events This Week')).toBeVisible()
-    await expect(page.getByText('Active Replays')).toBeVisible()
+    await expect(page.getByText('พิกเซลที่ใช้งาน')).toBeVisible()
+    await expect(page.getByText('อีเวนต์วันนี้')).toBeVisible()
+    await expect(page.getByText('อัตรา CAPI')).toBeVisible()
+    await expect(page.getByText('อีเวนต์สัปดาห์นี้')).toBeVisible()
+    await expect(page.getByText('รีเพลย์ที่ทำงาน')).toBeVisible()
   })
 
   test('chart section renders', async ({ page }) => {

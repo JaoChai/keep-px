@@ -117,7 +117,7 @@ function EventVolumeChart() {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Event Volume</CardTitle>
+          <CardTitle className="text-base">ปริมาณอีเวนต์</CardTitle>
           <div className="flex rounded-lg border border-border p-0.5 bg-secondary">
             {TIME_RANGES.map((range) => (
               <button
@@ -181,7 +181,7 @@ function EventVolumeChart() {
           </ResponsiveContainer>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-            No event data yet
+            ยังไม่มีข้อมูลอีเวนต์
           </div>
         )}
       </CardContent>
@@ -198,12 +198,12 @@ function RecentActivityFeed({ events }: { events: RealtimeEvent[] }) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Recent Activity</CardTitle>
+          <CardTitle className="text-base">กิจกรรมล่าสุด</CardTitle>
           <Link
             to="/events"
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            View all <ArrowRight className="h-4 w-4 ml-1" />
+            ดูทั้งหมด <ArrowRight className="h-4 w-4 ml-1" />
           </Link>
         </div>
       </CardHeader>
@@ -220,7 +220,7 @@ function RecentActivityFeed({ events }: { events: RealtimeEvent[] }) {
                     {event.event_name}
                   </Badge>
                   <span className="text-sm text-foreground truncate">
-                    {event.pixel_name || pixelNameMap.get(event.pixel_id) || 'Unknown'}
+                    {event.pixel_name || pixelNameMap.get(event.pixel_id) || 'ไม่ทราบ'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -238,7 +238,7 @@ function RecentActivityFeed({ events }: { events: RealtimeEvent[] }) {
           </div>
         ) : (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            No recent events
+            ยังไม่มีกิจกรรมล่าสุด
           </div>
         )}
       </CardContent>
@@ -255,12 +255,12 @@ function PixelStatusList() {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Pixel Status</CardTitle>
+          <CardTitle className="text-base">สถานะพิกเซล</CardTitle>
           <Link
             to="/pixels"
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Manage <ArrowRight className="h-4 w-4 ml-1" />
+            จัดการ <ArrowRight className="h-4 w-4 ml-1" />
           </Link>
         </div>
       </CardHeader>
@@ -281,14 +281,14 @@ function PixelStatusList() {
                   <span className="text-sm font-medium text-foreground">{pixel.name}</span>
                 </div>
                 <Badge variant={pixel.is_active ? 'success' : 'secondary'} className="text-xs">
-                  {pixel.is_active ? 'Active' : 'Paused'}
+                  {pixel.is_active ? 'ใช้งาน' : 'หยุดชั่วคราว'}
                 </Badge>
               </div>
             ))}
           </div>
         ) : (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            No pixels configured
+            ยังไม่ได้ตั้งค่าพิกเซล
           </div>
         )}
       </CardContent>
@@ -319,7 +319,7 @@ function TopEventTypes({ events }: { events: RealtimeEvent[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Top Event Types</CardTitle>
+        <CardTitle className="text-base">ประเภทอีเวนต์ยอดนิยม</CardTitle>
       </CardHeader>
       <CardContent>
         {eventTypeCounts.length > 0 ? (
@@ -345,7 +345,7 @@ function TopEventTypes({ events }: { events: RealtimeEvent[] }) {
           </div>
         ) : (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            No event data yet
+            ยังไม่มีข้อมูลอีเวนต์
           </div>
         )}
       </CardContent>
@@ -369,15 +369,15 @@ function RecentReplays() {
   const statusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Badge variant="success" className="text-xs">Completed</Badge>
+        return <Badge variant="success" className="text-xs">เสร็จสิ้น</Badge>
       case 'running':
-        return <Badge variant="warning" className="text-xs">Running</Badge>
+        return <Badge variant="warning" className="text-xs">กำลังทำงาน</Badge>
       case 'pending':
-        return <Badge variant="secondary" className="text-xs">Pending</Badge>
+        return <Badge variant="secondary" className="text-xs">รอดำเนินการ</Badge>
       case 'failed':
-        return <Badge variant="destructive" className="text-xs">Failed</Badge>
+        return <Badge variant="destructive" className="text-xs">ล้มเหลว</Badge>
       case 'cancelled':
-        return <Badge variant="outline" className="text-xs">Cancelled</Badge>
+        return <Badge variant="outline" className="text-xs">ยกเลิกแล้ว</Badge>
       default:
         return <Badge variant="outline" className="text-xs">{status}</Badge>
     }
@@ -387,12 +387,12 @@ function RecentReplays() {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Recent Replays</CardTitle>
+          <CardTitle className="text-base">รีเพลย์ล่าสุด</CardTitle>
           <Link
             to="/replay"
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            View all <ArrowRight className="h-4 w-4 ml-1" />
+            ดูทั้งหมด <ArrowRight className="h-4 w-4 ml-1" />
           </Link>
         </div>
       </CardHeader>
@@ -411,9 +411,9 @@ function RecentReplays() {
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm text-foreground">
-                      {pixelNameMap.get(replay.source_pixel_id) || 'Source'}{' '}
+                      {pixelNameMap.get(replay.source_pixel_id) || 'ต้นทาง'}{' '}
                       <span className="text-muted-foreground">→</span>{' '}
-                      {pixelNameMap.get(replay.target_pixel_id) || 'Target'}
+                      {pixelNameMap.get(replay.target_pixel_id) || 'ปลายทาง'}
                     </span>
                     {statusBadge(replay.status)}
                   </div>
@@ -436,7 +436,7 @@ function RecentReplays() {
           </div>
         ) : (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            No replay sessions yet
+            ยังไม่มีรีเพลย์
           </div>
         )}
       </CardContent>
@@ -463,7 +463,7 @@ export function DashboardPage() {
         value: Math.round(
           ((stats.events_today - stats.events_yesterday) / stats.events_yesterday) * 100
         ),
-        label: 'vs yesterday',
+        label: 'เทียบกับเมื่อวาน',
       }
     : null
 
@@ -471,9 +471,9 @@ export function DashboardPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-foreground">แดชบอร์ด</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Overview of your pixel tracking system
+            ภาพรวมระบบติดตามพิกเซลของคุณ
           </p>
         </div>
       </div>
@@ -481,33 +481,33 @@ export function DashboardPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <StatCard
-          title="Active Pixels"
+          title="พิกเซลที่ใช้งาน"
           value={`${stats?.active_pixels ?? 0}/${stats?.total_pixels ?? 0}`}
-          subtitle={`${stats?.total_pixels ?? 0} total`}
+          subtitle={`ทั้งหมด ${stats?.total_pixels ?? 0}`}
           icon={<Radio className="h-5 w-5" />}
         />
         <StatCard
-          title="Events Today"
+          title="อีเวนต์วันนี้"
           value={(stats?.events_today ?? 0).toLocaleString()}
           trend={eventsTrend}
           icon={<Zap className="h-5 w-5" />}
         />
         <StatCard
-          title="CAPI Rate"
+          title="อัตรา CAPI"
           value={stats ? `${capiRate}%` : '-'}
-          subtitle="Forwarded to Facebook"
+          subtitle="ส่งต่อไป Facebook แล้ว"
           indicator={stats ? capiIndicator : undefined}
           icon={<Send className="h-5 w-5" />}
         />
         <StatCard
-          title="Events This Week"
+          title="อีเวนต์สัปดาห์นี้"
           value={(stats?.events_this_week ?? 0).toLocaleString()}
           icon={<Activity className="h-5 w-5" />}
         />
         <StatCard
-          title="Active Replays"
+          title="รีเพลย์ที่ทำงาน"
           value={stats?.active_replays ?? 0}
-          subtitle={`${stats?.total_replays ?? 0} total`}
+          subtitle={`ทั้งหมด ${stats?.total_replays ?? 0}`}
           icon={<RotateCcw className="h-5 w-5" />}
         />
       </div>
@@ -517,7 +517,7 @@ export function DashboardPage() {
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-foreground">Monthly Event Usage</p>
+              <p className="text-sm font-medium text-foreground">ปริมาณอีเวนต์รายเดือน</p>
               <p className="text-sm text-muted-foreground">
                 {quota.events_used_this_month.toLocaleString()} / {quota.max_events_per_month.toLocaleString()}
               </p>
@@ -537,7 +537,7 @@ export function DashboardPage() {
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {Math.round((quota.events_used_this_month / quota.max_events_per_month) * 100)}% used this month
+              ใช้ไปแล้ว {Math.round((quota.events_used_this_month / quota.max_events_per_month) * 100)}% ในเดือนนี้
             </p>
           </CardContent>
         </Card>

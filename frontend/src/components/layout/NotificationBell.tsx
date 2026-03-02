@@ -65,13 +65,13 @@ export function NotificationBell() {
 
       <PopoverContent align="end" className="w-80 p-0">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
+          <h3 className="text-sm font-semibold text-foreground">การแจ้งเตือน</h3>
           {unreadCount > 0 && (
             <button
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => markAllRead.mutate()}
             >
-              Mark all read
+              อ่านทั้งหมด
             </button>
           )}
         </div>
@@ -80,7 +80,7 @@ export function NotificationBell() {
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <Bell className="mb-2 h-8 w-8 opacity-30" />
-              <p className="text-sm">No notifications</p>
+              <p className="text-sm">ไม่มีการแจ้งเตือน</p>
             </div>
           ) : (
             <div className="divide-y divide-border">

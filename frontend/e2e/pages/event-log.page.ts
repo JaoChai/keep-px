@@ -10,11 +10,11 @@ export class EventLogPage {
 
   constructor(page: Page) {
     this.page = page
-    this.heading = page.getByRole('heading', { name: 'Events' })
+    this.heading = page.getByRole('heading', { name: 'อีเวนต์' })
     this.eventTable = page.locator('table')
-    this.emptyState = page.getByText('No events recorded yet')
-    this.previousButton = page.getByRole('button', { name: 'Previous' })
-    this.nextButton = page.getByRole('button', { name: 'Next' })
+    this.emptyState = page.getByText('ยังไม่มีอีเวนต์ที่บันทึก')
+    this.previousButton = page.getByRole('button', { name: 'ก่อนหน้า' })
+    this.nextButton = page.getByRole('button', { name: 'ถัดไป' })
   }
 
   async goto() {

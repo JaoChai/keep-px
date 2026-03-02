@@ -22,12 +22,12 @@ test.describe('Navigation @smoke', () => {
     const sidebar = new SidebarPage(page)
 
     const routes = [
-      { name: 'Pixels', url: '/pixels' },
-      { name: 'Sale Pages', url: '/sale-pages' },
-      { name: 'Events', url: '/events' },
-      { name: 'Replay Center', url: '/replay' },
-      { name: 'Settings', url: '/settings' },
-      { name: 'Dashboard', url: '/dashboard' },
+      { name: 'พิกเซล', url: '/pixels' },
+      { name: 'หน้าขาย', url: '/sale-pages' },
+      { name: 'อีเวนต์', url: '/events' },
+      { name: 'รีเพลย์', url: '/replay' },
+      { name: 'ตั้งค่า', url: '/settings' },
+      { name: 'แดชบอร์ด', url: '/dashboard' },
     ]
 
     for (const route of routes) {

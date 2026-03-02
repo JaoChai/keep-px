@@ -25,7 +25,7 @@ const CTA_EVENT_OPTIONS = [
 ] as const
 
 const salePageSchema = z.object({
-  name: z.string().min(1, 'Page name is required'),
+  name: z.string().min(1, 'กรุณากรอกชื่อเพจ'),
   slug: z.string().refine(
     (val) => val === '' || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(val),
     'ใช้ได้เฉพาะตัวอักษรภาษาอังกฤษพิมพ์เล็ก ตัวเลข และเครื่องหมาย -'
@@ -252,7 +252,7 @@ export function SalePageEditorPage() {
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          Sale Pages
+          เซลเพจ
         </Link>
         <div className="flex items-center gap-2">
           <Button
@@ -260,13 +260,13 @@ export function SalePageEditorPage() {
             disabled={isSubmitting}
             onClick={handleSubmit((data: SalePageForm) => onSubmit(data, false))}
           >
-            {isSubmitting ? 'Saving...' : 'Save Draft'}
+            {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกแบบร่าง'}
           </Button>
           <Button
             disabled={isSubmitting}
             onClick={handleSubmit((data: SalePageForm) => onSubmit(data, true))}
           >
-            {isSubmitting ? 'Publishing...' : isEditing && existingPage?.is_published ? 'Update' : 'Publish'}
+            {isSubmitting ? 'กำลังเผยแพร่...' : isEditing && existingPage?.is_published ? 'อัปเดต' : 'เผยแพร่'}
           </Button>
         </div>
       </div>
@@ -278,12 +278,12 @@ export function SalePageEditorPage() {
           {/* Basic Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Basic Info</CardTitle>
+              <CardTitle>ข้อมูลพื้นฐาน</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Page Name</Label>
-                <Input id="name" placeholder="My Sale Page" {...register('name')} />
+                <Label htmlFor="name">ชื่อเพจ</Label>
+                <Input id="name" placeholder="เซลเพจของฉัน" {...register('name')} />
                 {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
               </div>
               <div className="space-y-2">
@@ -314,10 +314,10 @@ export function SalePageEditorPage() {
                 {errors.slug && <p className="text-sm text-red-500">{errors.slug.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label>Pixels (optional)</Label>
+                <Label>พิกเซล (ไม่บังคับ)</Label>
                 <div className="max-h-40 overflow-y-auto border border-border rounded-md p-2 space-y-1">
                   {(!pixels || pixels.length === 0) && (
-                    <p className="text-xs text-muted-foreground">No pixels available</p>
+                    <p className="text-xs text-muted-foreground">ไม่มีพิกเซลที่ใช้ได้</p>
                   )}
                   {pixels?.map((pixel) => (
                     <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-accent cursor-pointer">
@@ -344,19 +344,19 @@ export function SalePageEditorPage() {
           {/* Hero Section */}
           <Card>
             <CardHeader>
-              <CardTitle>Hero Section</CardTitle>
+              <CardTitle>ส่วน Hero</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="hero_title">Title</Label>
-                <Input id="hero_title" placeholder="Your Amazing Product" {...register('hero_title')} />
+                <Label htmlFor="hero_title">หัวข้อ</Label>
+                <Input id="hero_title" placeholder="ชื่อสินค้าของคุณ" {...register('hero_title')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="hero_subtitle">Subtitle</Label>
-                <Input id="hero_subtitle" placeholder="A short description..." {...register('hero_subtitle')} />
+                <Label htmlFor="hero_subtitle">คำบรรยาย</Label>
+                <Input id="hero_subtitle" placeholder="คำอธิบายสั้นๆ..." {...register('hero_subtitle')} />
               </div>
               <div className="space-y-2">
-                <Label>Hero Image</Label>
+                <Label>รูปภาพ Hero</Label>
                 {watchedValues.hero_image_url && (
                   <div className="relative w-full max-w-[200px]">
                     <img src={watchedValues.hero_image_url} alt="" className="w-full h-auto rounded-lg border border-border" />
@@ -390,25 +390,25 @@ export function SalePageEditorPage() {
           {/* Description */}
           <Card>
             <CardHeader>
-              <CardTitle>Description</CardTitle>
+              <CardTitle>คำอธิบาย</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">รายละเอียด</Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe your product or service..."
+                  placeholder="อธิบายสินค้าหรือบริการของคุณ..."
                   rows={4}
                   {...register('description')}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Features</Label>
+                <Label>จุดเด่น</Label>
                 <div className="space-y-2">
                   {features.map((feature, index) => (
                     <div key={index} className="flex items-center gap-2">
                       <Input
-                        placeholder={`Feature ${index + 1}`}
+                        placeholder={`จุดเด่นที่ ${index + 1}`}
                         value={feature}
                         onChange={(e) => updateFeature(index, e.target.value)}
                       />
@@ -428,7 +428,7 @@ export function SalePageEditorPage() {
                 {features.length < 10 && (
                   <Button variant="outline" size="sm" type="button" onClick={addFeature}>
                     <Plus className="h-3.5 w-3.5" />
-                    Add Feature
+                    เพิ่มจุดเด่น
                   </Button>
                 )}
               </div>
@@ -470,15 +470,15 @@ export function SalePageEditorPage() {
           {/* Call to Action */}
           <Card>
             <CardHeader>
-              <CardTitle>Call to Action</CardTitle>
+              <CardTitle>ปุ่มกดดำเนินการ</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="cta_button_text">Button Text</Label>
-                <Input id="cta_button_text" placeholder="Buy Now" {...register('cta_button_text')} />
+                <Label htmlFor="cta_button_text">ข้อความปุ่ม</Label>
+                <Input id="cta_button_text" placeholder="ซื้อเลย" {...register('cta_button_text')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cta_button_link">Button Link</Label>
+                <Label htmlFor="cta_button_link">ลิงก์ปุ่ม</Label>
                 <Input id="cta_button_link" placeholder="https://example.com/buy" {...register('cta_button_link')} />
               </div>
             </CardContent>
@@ -556,7 +556,7 @@ export function SalePageEditorPage() {
           {/* Contact Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Contact Info</CardTitle>
+              <CardTitle>ข้อมูลติดต่อ</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -564,11 +564,11 @@ export function SalePageEditorPage() {
                 <Input id="contact_line_id" placeholder="@yourlineid" {...register('contact_line_id')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contact_phone">Phone Number</Label>
+                <Label htmlFor="contact_phone">เบอร์โทรศัพท์</Label>
                 <Input id="contact_phone" placeholder="08x-xxx-xxxx" {...register('contact_phone')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contact_website_url">Website URL</Label>
+                <Label htmlFor="contact_website_url">URL เว็บไซต์</Label>
                 <Input
                   id="contact_website_url"
                   placeholder="https://yourwebsite.com"
@@ -582,7 +582,7 @@ export function SalePageEditorPage() {
         {/* Right Column - Preview */}
         <div className="hidden lg:block lg:w-1/3">
           <div className="sticky top-8">
-            <p className="text-sm font-medium text-muted-foreground mb-3">Preview</p>
+            <p className="text-sm font-medium text-muted-foreground mb-3">ตัวอย่าง</p>
             <SalePagePreview
               hero={{
                 title: watchedValues.hero_title ?? '',
@@ -614,10 +614,10 @@ export function SalePageEditorPage() {
       <Dialog open={!!publishedDialog} onOpenChange={() => setPublishedDialog(null)}>
         <DialogContent onClose={() => setPublishedDialog(null)}>
           <DialogHeader>
-            <DialogTitle>Sale Page Published!</DialogTitle>
+            <DialogTitle>เผยแพร่เซลเพจสำเร็จ!</DialogTitle>
           </DialogHeader>
           <div className="mt-4 space-y-3">
-            <p className="text-sm text-muted-foreground">Your page is live at:</p>
+            <p className="text-sm text-muted-foreground">เพจของคุณเปิดให้ใช้งานที่:</p>
             <div className="flex items-center gap-2 p-2 bg-muted rounded-md border border-border">
               <code className="text-sm text-foreground flex-1 truncate">
                 {publishedDialog && `${window.location.origin}/p/${publishedDialog.slug}`}
@@ -632,7 +632,7 @@ export function SalePageEditorPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Share this link on your bio link, LINE, or Facebook to start tracking.
+              แชร์ลิงก์นี้ใน bio link, LINE หรือ Facebook เพื่อเริ่มติดตาม
             </p>
           </div>
           <DialogFooter>
@@ -641,10 +641,10 @@ export function SalePageEditorPage() {
               onClick={() => publishedDialog && window.open(`/p/${publishedDialog.slug}`, '_blank')}
             >
               <ExternalLink className="h-4 w-4" />
-              Open Page
+              เปิดเพจ
             </Button>
             <Button onClick={() => { setPublishedDialog(null); navigate('/sale-pages') }}>
-              Back to Sale Pages
+              กลับไปเซลเพจ
             </Button>
           </DialogFooter>
         </DialogContent>

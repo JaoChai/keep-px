@@ -22,7 +22,7 @@ authTest.describe('Authenticated', () => {
     await page.goto('/dashboard')
     await authExpect(page).toHaveURL(/\/dashboard/)
 
-    await page.getByRole('button', { name: 'Logout' }).click()
+    await page.getByRole('button', { name: 'ออกจากระบบ' }).click()
     await authExpect(page).toHaveURL(/\/login/)
   })
 })

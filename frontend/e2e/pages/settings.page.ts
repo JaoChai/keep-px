@@ -10,12 +10,12 @@ export class SettingsPage {
 
   constructor(page: Page) {
     this.page = page
-    this.heading = page.getByRole('heading', { name: 'Settings' })
-    this.profileSection = page.getByText('Profile')
+    this.heading = page.getByRole('heading', { name: 'ตั้งค่า' })
+    this.profileSection = page.getByText('โปรไฟล์')
     this.apiKeySection = page.getByText('API Key', { exact: true })
     // Labels lack htmlFor — use CSS sibling combinator with Playwright text matching
-    this.nameInput = page.locator('label:has-text("Name") + input').first()
-    this.emailInput = page.locator('label:has-text("Email") + input')
+    this.nameInput = page.locator('label:has-text("ชื่อ") + input').first()
+    this.emailInput = page.locator('label:has-text("อีเมล") + input')
   }
 
   async goto() {

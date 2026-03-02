@@ -13,9 +13,9 @@ import { usePixels, useCreatePixel, useUpdatePixel, useDeletePixel, useTestPixel
 import type { Pixel } from '@/types'
 
 const pixelSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  fb_pixel_id: z.string().min(1, 'Facebook Pixel ID is required'),
-  fb_access_token: z.string().min(1, 'Access Token is required'),
+  name: z.string().min(1, 'กรุณากรอกชื่อ'),
+  fb_pixel_id: z.string().min(1, 'กรุณากรอก Facebook Pixel ID'),
+  fb_access_token: z.string().min(1, 'กรุณากรอก Access Token'),
   test_event_code: z.string().optional(),
 })
 
@@ -96,23 +96,23 @@ export function PixelsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Pixels</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your Facebook Pixels</p>
+          <h1 className="text-2xl font-bold text-foreground">พิกเซล</h1>
+          <p className="text-sm text-muted-foreground mt-1">จัดการ Facebook Pixel ของคุณ</p>
         </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4" />
-          Add Pixel
+          เพิ่มพิกเซล
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+        <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>
       ) : !pixels || pixels.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-border rounded-lg">
-          <p className="text-muted-foreground mb-4">No pixels yet</p>
+          <p className="text-muted-foreground mb-4">ยังไม่มีพิกเซล</p>
           <Button variant="outline" onClick={openCreate}>
             <Plus className="h-4 w-4" />
-            Add your first Pixel
+            เพิ่มพิกเซลแรกของคุณ
           </Button>
         </div>
       ) : (
@@ -120,12 +120,12 @@ export function PixelsPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted">
-                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Name</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">ชื่อ</th>
                 <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Pixel ID</th>
-                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Status</th>
-                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Backup</th>
-                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Created</th>
-                <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3">Actions</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">สถานะ</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">สำรอง</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">สร้างเมื่อ</th>
+                <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3">การดำเนินการ</th>
               </tr>
             </thead>
             <tbody>
@@ -136,7 +136,7 @@ export function PixelsPage() {
                   <td className="px-4 py-3">
                     <button onClick={() => handleToggleActive(pixel)}>
                       <Badge variant={pixel.is_active ? 'success' : 'warning'}>
-                        {pixel.is_active ? 'Active' : 'Paused'}
+                        {pixel.is_active ? 'ใช้งาน' : 'หยุดชั่วคราว'}
                       </Badge>
                     </button>
                   </td>
@@ -144,10 +144,10 @@ export function PixelsPage() {
                     {pixel.backup_pixel_id ? (
                       <Badge variant="outline" className="gap-1">
                         <Shield className="h-3 w-3" />
-                        {pixels?.find(p => p.id === pixel.backup_pixel_id)?.name || 'Unknown'}
+                        {pixels?.find(p => p.id === pixel.backup_pixel_id)?.name || 'ไม่ทราบ'}
                       </Badge>
                     ) : (
-                      <span className="text-xs text-muted-foreground">None</span>
+                      <span className="text-xs text-muted-foreground">ไม่มี</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">
@@ -187,12 +187,12 @@ export function PixelsPage() {
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent onClose={() => setShowDialog(false)}>
           <DialogHeader>
-            <DialogTitle>{editingPixel ? 'Edit Pixel' : 'Add Pixel'}</DialogTitle>
+            <DialogTitle>{editingPixel ? 'แก้ไขพิกเซล' : 'เพิ่มพิกเซล'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" placeholder="My Pixel" {...register('name')} />
+              <Label htmlFor="name">ชื่อ</Label>
+              <Input id="name" placeholder="พิกเซลของฉัน" {...register('name')} />
               {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
@@ -202,21 +202,21 @@ export function PixelsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="fb_access_token">
-                Access Token {editingPixel && <span className="text-muted-foreground font-normal">(leave blank to keep current)</span>}
+                Access Token {editingPixel && <span className="text-muted-foreground font-normal">(เว้นว่างเพื่อใช้ค่าเดิม)</span>}
               </Label>
               <Input id="fb_access_token" type="password" placeholder="EAAxxxxxxx..." {...register('fb_access_token')} />
               {errors.fb_access_token && <p className="text-sm text-red-500">{errors.fb_access_token.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="test_event_code">
-                Test Event Code <span className="text-muted-foreground font-normal">(optional)</span>
+                Test Event Code <span className="text-muted-foreground font-normal">(ไม่บังคับ)</span>
               </Label>
               <Input id="test_event_code" placeholder="TEST12345" {...register('test_event_code')} />
               <p className="text-xs text-muted-foreground">คัดลอกจาก Facebook Events Manager → เหตุการณ์ทดสอบ เพื่อ debug events</p>
             </div>
             {editingPixel && (
               <div className="space-y-2">
-                <Label>Backup Pixel</Label>
+                <Label>พิกเซลสำรอง</Label>
                 <select
                   className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
                   defaultValue={editingPixel.backup_pixel_id || ''}
@@ -227,18 +227,18 @@ export function PixelsPage() {
                     })
                   }}
                 >
-                  <option value="">No backup</option>
+                  <option value="">ไม่มีสำรอง</option>
                   {pixels?.filter(p => p.id !== editingPixel.id).map((p) => (
                     <option key={p.id} value={p.id}>{p.name} ({p.fb_pixel_id})</option>
                   ))}
                 </select>
-                <p className="text-xs text-muted-foreground">Events will also be forwarded to the backup pixel via CAPI</p>
+                <p className="text-xs text-muted-foreground">อีเวนต์จะถูกส่งต่อไปยังพิกเซลสำรองผ่าน CAPI ด้วย</p>
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>Cancel</Button>
+              <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>ยกเลิก</Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : editingPixel ? 'Save Changes' : 'Add Pixel'}
+                {isSubmitting ? 'กำลังบันทึก...' : editingPixel ? 'บันทึกการเปลี่ยนแปลง' : 'เพิ่มพิกเซล'}
               </Button>
             </DialogFooter>
           </form>
@@ -249,15 +249,15 @@ export function PixelsPage() {
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <DialogContent onClose={() => setDeleteConfirm(null)}>
           <DialogHeader>
-            <DialogTitle>Delete Pixel</DialogTitle>
+            <DialogTitle>ลบพิกเซล</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground mt-2">
-            Are you sure? This will also delete all events and rules associated with this pixel. This action cannot be undone.
+            คุณแน่ใจหรือไม่? การดำเนินการนี้จะลบอีเวนต์และกฎทั้งหมดที่เกี่ยวข้องกับพิกเซลนี้ด้วย ไม่สามารถย้อนกลับได้
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>ยกเลิก</Button>
             <Button variant="destructive" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>
-              Delete
+              ลบ
             </Button>
           </DialogFooter>
         </DialogContent>
