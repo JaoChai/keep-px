@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
@@ -36,17 +38,31 @@ func (s *NotificationService) List(ctx context.Context, customerID string, limit
 		limit = 20
 	}
 
-	notifications, err := s.repo.ListByCustomerID(ctx, customerID, limit)
-	if err != nil {
+	var (
+		notifications []*domain.Notification
+		unreadCount   int
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		notifications, err = s.repo.ListByCustomerID(ctx, customerID, limit)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		unreadCount, err = s.repo.CountUnread(ctx, customerID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, fmt.Errorf("list notifications: %w", err)
 	}
+
 	if notifications == nil {
 		notifications = []*domain.Notification{}
-	}
-
-	unreadCount, err := s.repo.CountUnread(ctx, customerID)
-	if err != nil {
-		return nil, fmt.Errorf("count unread notifications: %w", err)
 	}
 
 	return &NotificationListResult{

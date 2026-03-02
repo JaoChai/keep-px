@@ -96,6 +96,10 @@ func (m *MockSubscriptionRepo) GetActiveByCustomerID(ctx context.Context, custom
 	}
 	return args.Get(0).([]*domain.Subscription), args.Error(1)
 }
+func (m *MockSubscriptionRepo) GetMaxEventsPerMonth(ctx context.Context, customerID string) (int64, error) {
+	args := m.Called(ctx, customerID)
+	return args.Get(0).(int64), args.Error(1)
+}
 func (m *MockSubscriptionRepo) Update(ctx context.Context, sub *domain.Subscription) error {
 	args := m.Called(ctx, sub)
 	return args.Error(0)
@@ -155,6 +159,10 @@ func (m *MockSalePageRepo) ListByCustomerID(ctx context.Context, customerID stri
 	}
 	return args.Get(0).([]*domain.SalePage), args.Error(1)
 }
+func (m *MockSalePageRepo) CountByCustomerID(ctx context.Context, customerID string) (int, error) {
+	args := m.Called(ctx, customerID)
+	return args.Int(0), args.Error(1)
+}
 func (m *MockSalePageRepo) Update(ctx context.Context, page *domain.SalePage) error {
 	args := m.Called(ctx, page)
 	return args.Error(0)
@@ -171,12 +179,12 @@ func (m *MockSalePageRepo) SlugExists(ctx context.Context, slug string) (bool, e
 // MockWebhookEventRepo
 type MockWebhookEventRepo struct{ mock.Mock }
 
-func (m *MockWebhookEventRepo) Exists(ctx context.Context, stripeEventID string) (bool, error) {
-	args := m.Called(ctx, stripeEventID)
+func (m *MockWebhookEventRepo) CreateIfNotExists(ctx context.Context, stripeEventID, eventType string) (bool, error) {
+	args := m.Called(ctx, stripeEventID, eventType)
 	return args.Bool(0), args.Error(1)
 }
-func (m *MockWebhookEventRepo) Create(ctx context.Context, stripeEventID, eventType string) error {
-	args := m.Called(ctx, stripeEventID, eventType)
+func (m *MockWebhookEventRepo) Delete(ctx context.Context, stripeEventID string) error {
+	args := m.Called(ctx, stripeEventID)
 	return args.Error(0)
 }
 
@@ -272,12 +280,23 @@ func (m *MockPixelRepo) GetByID(ctx context.Context, id string) (*domain.Pixel, 
 	}
 	return args.Get(0).(*domain.Pixel), args.Error(1)
 }
+func (m *MockPixelRepo) GetByIDs(ctx context.Context, ids []string) ([]*domain.Pixel, error) {
+	args := m.Called(ctx, ids)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Pixel), args.Error(1)
+}
 func (m *MockPixelRepo) ListByCustomerID(ctx context.Context, customerID string) ([]*domain.Pixel, error) {
 	args := m.Called(ctx, customerID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.Pixel), args.Error(1)
+}
+func (m *MockPixelRepo) CountByCustomerID(ctx context.Context, customerID string) (int, error) {
+	args := m.Called(ctx, customerID)
+	return args.Int(0), args.Error(1)
 }
 func (m *MockPixelRepo) Update(ctx context.Context, p *domain.Pixel) error {
 	args := m.Called(ctx, p)
@@ -416,6 +435,10 @@ func (m *MockReplaySessionRepo) CancelSession(ctx context.Context, id string) (*
 func (m *MockReplaySessionRepo) RecoverOrphanedSessions(ctx context.Context) (int, error) {
 	args := m.Called(ctx)
 	return args.Int(0), args.Error(1)
+}
+func (m *MockReplaySessionRepo) UpdateTotalEvents(ctx context.Context, id string, totalEvents int) error {
+	args := m.Called(ctx, id, totalEvents)
+	return args.Error(0)
 }
 
 // MockNotificationRepo

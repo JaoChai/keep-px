@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 )
 
@@ -82,6 +83,20 @@ func (r *SubscriptionRepo) GetActiveByCustomerID(ctx context.Context, customerID
 		subs = append(subs, s)
 	}
 	return subs, rows.Err()
+}
+
+func (r *SubscriptionRepo) GetMaxEventsPerMonth(ctx context.Context, customerID string) (int64, error) {
+	var extra int64
+	err := r.pool.QueryRow(ctx,
+		`SELECT COALESCE(SUM(CASE WHEN addon_type = 'events_1m' THEN 1000000 ELSE 0 END), 0)
+		 FROM subscriptions
+		 WHERE customer_id = $1 AND status = 'active'`,
+		customerID,
+	).Scan(&extra)
+	if err != nil {
+		return 0, err
+	}
+	return int64(domain.FreeMaxEventsPerMonth) + extra, nil
 }
 
 func (r *SubscriptionRepo) Update(ctx context.Context, s *domain.Subscription) error {

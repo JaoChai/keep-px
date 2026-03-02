@@ -296,7 +296,7 @@ func TestBillingService_ProcessWebhookEvent(t *testing.T) {
 	t.Run("idempotent - duplicate event skipped", func(t *testing.T) {
 		svc, _, _, _, _, webhookRepo := newTestBillingService()
 
-		webhookRepo.On("Exists", mock.Anything, "evt_duplicate").Return(true, nil)
+		webhookRepo.On("CreateIfNotExists", mock.Anything, "evt_duplicate", "checkout.session.completed").Return(false, nil)
 
 		processCalled := false
 		err := svc.ProcessWebhookEvent(context.Background(), "evt_duplicate", "checkout.session.completed", func() error {
@@ -312,8 +312,7 @@ func TestBillingService_ProcessWebhookEvent(t *testing.T) {
 	t.Run("new event - processes and records", func(t *testing.T) {
 		svc, _, _, _, _, webhookRepo := newTestBillingService()
 
-		webhookRepo.On("Exists", mock.Anything, "evt_new").Return(false, nil)
-		webhookRepo.On("Create", mock.Anything, "evt_new", "checkout.session.completed").Return(nil)
+		webhookRepo.On("CreateIfNotExists", mock.Anything, "evt_new", "checkout.session.completed").Return(true, nil)
 
 		processCalled := false
 		err := svc.ProcessWebhookEvent(context.Background(), "evt_new", "checkout.session.completed", func() error {
@@ -326,10 +325,11 @@ func TestBillingService_ProcessWebhookEvent(t *testing.T) {
 		webhookRepo.AssertExpectations(t)
 	})
 
-	t.Run("process error propagated", func(t *testing.T) {
+	t.Run("process error - deletes record for retry", func(t *testing.T) {
 		svc, _, _, _, _, webhookRepo := newTestBillingService()
 
-		webhookRepo.On("Exists", mock.Anything, "evt_fail").Return(false, nil)
+		webhookRepo.On("CreateIfNotExists", mock.Anything, "evt_fail", "checkout.session.completed").Return(true, nil)
+		webhookRepo.On("Delete", mock.Anything, "evt_fail").Return(nil)
 
 		processErr := errors.New("processing failed")
 		err := svc.ProcessWebhookEvent(context.Background(), "evt_fail", "checkout.session.completed", func() error {
@@ -340,10 +340,10 @@ func TestBillingService_ProcessWebhookEvent(t *testing.T) {
 		webhookRepo.AssertExpectations(t)
 	})
 
-	t.Run("exists check error propagated", func(t *testing.T) {
+	t.Run("insert error propagated", func(t *testing.T) {
 		svc, _, _, _, _, webhookRepo := newTestBillingService()
 
-		webhookRepo.On("Exists", mock.Anything, "evt_db_err").Return(false, errors.New("db error"))
+		webhookRepo.On("CreateIfNotExists", mock.Anything, "evt_db_err", "checkout.session.completed").Return(false, errors.New("db error"))
 
 		err := svc.ProcessWebhookEvent(context.Background(), "evt_db_err", "checkout.session.completed", func() error {
 			return nil
@@ -444,9 +444,12 @@ func TestBillingService_GetBillingOverview(t *testing.T) {
 	})
 
 	t.Run("purchase repo error", func(t *testing.T) {
-		svc, purchaseRepo, _, _, _, _ := newTestBillingService()
+		svc, purchaseRepo, creditRepo, subRepo, _, _ := newTestBillingService()
 
 		purchaseRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return(nil, errors.New("db error"))
+		// These may or may not be called due to errgroup cancellation
+		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return(nil, nil).Maybe()
+		subRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return(nil, nil).Maybe()
 
 		_, err := svc.GetBillingOverview(context.Background(), "cust-1")
 

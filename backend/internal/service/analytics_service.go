@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/sync/errgroup"
 )
 
 type AnalyticsService struct {
@@ -30,37 +31,40 @@ type OverviewStats struct {
 func (s *AnalyticsService) GetOverview(ctx context.Context, customerID string) (*OverviewStats, error) {
 	stats := &OverviewStats{}
 
-	err := s.pool.QueryRow(ctx,
-		`SELECT COUNT(*), COUNT(*) FILTER (WHERE is_active) FROM pixels WHERE customer_id = $1`, customerID,
-	).Scan(&stats.TotalPixels, &stats.ActivePixels)
-	if err != nil {
-		return nil, fmt.Errorf("count pixels: %w", err)
-	}
+	g, ctx := errgroup.WithContext(ctx)
 
-	err = s.pool.QueryRow(ctx,
-		`SELECT
-			COUNT(*),
-			COUNT(*) FILTER (WHERE pe.event_time >= CURRENT_DATE),
-			COUNT(*) FILTER (WHERE pe.event_time >= CURRENT_DATE - INTERVAL '1 day'
-			                   AND pe.event_time < CURRENT_DATE),
-			COUNT(*) FILTER (WHERE pe.event_time >= CURRENT_DATE - INTERVAL '7 days'),
-			COUNT(*) FILTER (WHERE pe.forwarded_to_capi)
-		 FROM pixel_events pe
-		 JOIN pixels p ON p.id = pe.pixel_id
-		 WHERE p.customer_id = $1`, customerID,
-	).Scan(&stats.TotalEvents, &stats.EventsToday, &stats.EventsYesterday, &stats.EventsThisWeek, &stats.ForwardedEvents)
-	if err != nil {
-		return nil, fmt.Errorf("count events: %w", err)
-	}
+	g.Go(func() error {
+		return s.pool.QueryRow(ctx,
+			`SELECT COUNT(*), COUNT(*) FILTER (WHERE is_active) FROM pixels WHERE customer_id = $1`, customerID,
+		).Scan(&stats.TotalPixels, &stats.ActivePixels)
+	})
 
-	err = s.pool.QueryRow(ctx,
-		`SELECT
-			COUNT(*),
-			COUNT(*) FILTER (WHERE status IN ('running', 'pending'))
-		 FROM replay_sessions WHERE customer_id = $1`, customerID,
-	).Scan(&stats.TotalReplays, &stats.ActiveReplays)
-	if err != nil {
-		return nil, fmt.Errorf("count replays: %w", err)
+	g.Go(func() error {
+		return s.pool.QueryRow(ctx,
+			`SELECT
+				COUNT(*),
+				COUNT(*) FILTER (WHERE pe.event_time >= CURRENT_DATE),
+				COUNT(*) FILTER (WHERE pe.event_time >= CURRENT_DATE - INTERVAL '1 day'
+				                   AND pe.event_time < CURRENT_DATE),
+				COUNT(*) FILTER (WHERE pe.event_time >= CURRENT_DATE - INTERVAL '7 days'),
+				COUNT(*) FILTER (WHERE pe.forwarded_to_capi)
+			 FROM pixel_events pe
+			 JOIN pixels p ON p.id = pe.pixel_id
+			 WHERE p.customer_id = $1`, customerID,
+		).Scan(&stats.TotalEvents, &stats.EventsToday, &stats.EventsYesterday, &stats.EventsThisWeek, &stats.ForwardedEvents)
+	})
+
+	g.Go(func() error {
+		return s.pool.QueryRow(ctx,
+			`SELECT
+				COUNT(*),
+				COUNT(*) FILTER (WHERE status IN ('running', 'pending'))
+			 FROM replay_sessions WHERE customer_id = $1`, customerID,
+		).Scan(&stats.TotalReplays, &stats.ActiveReplays)
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, fmt.Errorf("get overview: %w", err)
 	}
 
 	return stats, nil

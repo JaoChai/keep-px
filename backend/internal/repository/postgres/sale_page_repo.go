@@ -84,6 +84,14 @@ func (r *SalePageRepo) GetBySlug(ctx context.Context, slug string) (*domain.Sale
 	return p, nil
 }
 
+func (r *SalePageRepo) CountByCustomerID(ctx context.Context, customerID string) (int, error) {
+	var count int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM sale_pages WHERE customer_id = $1`, customerID,
+	).Scan(&count)
+	return count, err
+}
+
 func (r *SalePageRepo) ListByCustomerID(ctx context.Context, customerID string) ([]*domain.SalePage, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, customer_id, name, slug, template_name, content, is_published, created_at, updated_at

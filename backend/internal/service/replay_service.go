@@ -179,18 +179,6 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 		return nil, fmt.Errorf("get events for replay: %w", err)
 	}
 
-	// Consume a replay credit if quota service is available
-	if s.quotaService != nil {
-		credit, err := s.quotaService.ConsumeReplayCredit(ctx, customerID, len(events))
-		if err != nil {
-			return nil, err
-		}
-		// Cap events to the credit's limit if lower than the global max
-		if credit.MaxEventsPerReplay > 0 && len(events) > credit.MaxEventsPerReplay {
-			events = events[:credit.MaxEventsPerReplay]
-		}
-	}
-
 	// Default TimeMode to "original"
 	timeMode := input.TimeMode
 	if timeMode == "" {
@@ -213,6 +201,7 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 		}
 	}
 
+	// Create session FIRST (before consuming credit) so we have a record
 	session := &domain.ReplaySession{
 		CustomerID:    customerID,
 		SourcePixelID: input.SourcePixelID,
@@ -227,6 +216,26 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 
 	if err := s.replayRepo.Create(ctx, session); err != nil {
 		return nil, fmt.Errorf("create replay session: %w", err)
+	}
+
+	// Consume a replay credit if quota service is available
+	if s.quotaService != nil {
+		credit, err := s.quotaService.ConsumeReplayCredit(ctx, customerID, len(events))
+		if err != nil {
+			// Mark session as failed since credit consumption failed
+			if updateErr := s.replayRepo.UpdateStatusWithError(ctx, session.ID, "failed", err.Error()); updateErr != nil {
+				s.logger.Error("failed to mark session failed after credit error", "error", updateErr, "session_id", session.ID)
+			}
+			return nil, err
+		}
+		// Cap events to the credit's limit if lower than the global max
+		if credit.MaxEventsPerReplay > 0 && len(events) > credit.MaxEventsPerReplay {
+			events = events[:credit.MaxEventsPerReplay]
+			session.TotalEvents = len(events)
+			if updateErr := s.replayRepo.UpdateTotalEvents(ctx, session.ID, len(events)); updateErr != nil {
+				s.logger.Warn("failed to update total events after cap", "error", updateErr, "session_id", session.ID)
+			}
+		}
 	}
 
 	// Start replay in background (semaphore-limited)
@@ -607,7 +616,7 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 		retryEvents = allEvents
 	}
 
-	// Create a NEW session (preserve history)
+	// Create a NEW session FIRST (preserve history, before consuming credit)
 	newSession := &domain.ReplaySession{
 		CustomerID:    customerID,
 		SourcePixelID: session.SourcePixelID,
@@ -622,6 +631,26 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 
 	if err := s.replayRepo.Create(ctx, newSession); err != nil {
 		return nil, fmt.Errorf("create retry replay session: %w", err)
+	}
+
+	// Consume a replay credit if quota service is available
+	if s.quotaService != nil {
+		credit, err := s.quotaService.ConsumeReplayCredit(ctx, customerID, len(retryEvents))
+		if err != nil {
+			// Mark session as failed since credit consumption failed
+			if updateErr := s.replayRepo.UpdateStatusWithError(ctx, newSession.ID, "failed", err.Error()); updateErr != nil {
+				s.logger.Error("failed to mark retry session failed after credit error", "error", updateErr, "session_id", newSession.ID)
+			}
+			return nil, err
+		}
+		// Cap events to the credit's limit if lower
+		if credit.MaxEventsPerReplay > 0 && len(retryEvents) > credit.MaxEventsPerReplay {
+			retryEvents = retryEvents[:credit.MaxEventsPerReplay]
+			newSession.TotalEvents = len(retryEvents)
+			if updateErr := s.replayRepo.UpdateTotalEvents(ctx, newSession.ID, len(retryEvents)); updateErr != nil {
+				s.logger.Warn("failed to update total events after cap", "error", updateErr, "session_id", newSession.ID)
+			}
+		}
 	}
 
 	// Start replay in background (semaphore-limited)

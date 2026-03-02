@@ -45,11 +45,11 @@ func TestEventService_Ingest(t *testing.T) {
 				},
 			},
 			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
-				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
 					IsActive:   true,
-				}, nil)
+				}}, nil)
 				er.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(true, nil)
 			},
 			wantCreated: 1,
@@ -68,11 +68,11 @@ func TestEventService_Ingest(t *testing.T) {
 				},
 			},
 			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
-				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
 					IsActive:   true,
-				}, nil)
+				}}, nil)
 				er.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(false, nil)
 			},
 			wantCreated: 0,
@@ -89,7 +89,7 @@ func TestEventService_Ingest(t *testing.T) {
 				},
 			},
 			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
-				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
+				pr.On("GetByIDs", mock.Anything, []string{"nonexistent"}).Return([]*domain.Pixel{}, nil)
 			},
 			wantCreated: 0,
 		},
@@ -105,11 +105,11 @@ func TestEventService_Ingest(t *testing.T) {
 				},
 			},
 			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
-				pr.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
+				pr.On("GetByIDs", mock.Anything, []string{"pixel-2"}).Return([]*domain.Pixel{{
 					ID:         "pixel-2",
 					CustomerID: "cust-1",
 					IsActive:   false,
-				}, nil)
+				}}, nil)
 			},
 			wantCreated: 0,
 		},
@@ -125,11 +125,11 @@ func TestEventService_Ingest(t *testing.T) {
 				},
 			},
 			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
-				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
 					IsActive:   true,
-				}, nil)
+				}}, nil)
 			},
 			wantCreated: 0,
 		},
@@ -147,11 +147,11 @@ func TestEventService_Ingest(t *testing.T) {
 				},
 			},
 			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
-				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
 					IsActive:   true,
-				}, nil)
+				}}, nil)
 				er.On("Create", mock.Anything, mock.MatchedBy(func(e *domain.PixelEvent) bool {
 					return e.EventID == "custom-event-id-123"
 				})).Return(true, nil)
@@ -172,11 +172,11 @@ func TestEventService_Ingest(t *testing.T) {
 				},
 			},
 			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
-				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
 					IsActive:   true,
-				}, nil)
+				}}, nil)
 				er.On("Create", mock.Anything, mock.MatchedBy(func(e *domain.PixelEvent) bool {
 					var ud map[string]interface{}
 					if err := json.Unmarshal(e.UserData, &ud); err != nil {
@@ -202,11 +202,11 @@ func TestEventService_Ingest(t *testing.T) {
 				},
 			},
 			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
-				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
 					IsActive:   true,
-				}, nil)
+				}}, nil)
 				er.On("Create", mock.Anything, mock.MatchedBy(func(e *domain.PixelEvent) bool {
 					return e.EventID != "" && len(e.EventID) == 36
 				})).Return(true, nil)
@@ -236,13 +236,13 @@ func TestEventService_Ingest(t *testing.T) {
 func TestEventService_Ingest_WithFBCookies(t *testing.T) {
 	svc, eventRepo, pixelRepo := newTestEventService()
 
-	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+	pixelRepo.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 		ID:            "pixel-1",
 		CustomerID:    "cust-1",
 		IsActive:      true,
 		FBPixelID:     "fb-pixel-1",
 		FBAccessToken: "token-1",
-	}, nil)
+	}}, nil)
 	eventRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(true, nil)
 
 	input := IngestBatchInput{
@@ -354,15 +354,15 @@ func TestEventService_Ingest_BackupPixelFanOut(t *testing.T) {
 	svc, eventRepo, pixelRepo := newTestEventService()
 
 	backupID := "pixel-backup"
-	pixelRepo.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
+	pixelRepo.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 		ID:            "pixel-1",
 		CustomerID:    "cust-1",
 		IsActive:      true,
 		FBPixelID:     "fb-pixel-1",
 		FBAccessToken: "token-1",
 		BackupPixelID: &backupID,
-	}, nil)
-	// The backup pixel lookup happens in a goroutine — set it up so it doesn't panic
+	}}, nil)
+	// The backup pixel lookup happens in a goroutine via GetByID — set it up so it doesn't panic
 	pixelRepo.On("GetByID", mock.Anything, "pixel-backup").Return(&domain.Pixel{
 		ID:            "pixel-backup",
 		CustomerID:    "cust-1",
