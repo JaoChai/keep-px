@@ -228,12 +228,14 @@ export interface Subscription {
 }
 
 export interface BillingOverview {
+  plan: string
   purchases: Purchase[]
   credits: ReplayCredit[]
   subscriptions: Subscription[]
 }
 
 export interface CustomerQuota {
+  plan: string
   max_pixels: number
   max_events_per_month: number
   events_used_this_month: number

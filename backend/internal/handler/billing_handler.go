@@ -56,6 +56,7 @@ func (h *BillingHandler) GetQuota(w http.ResponseWriter, r *http.Request) {
 type createCheckoutInput struct {
 	PackType  string `json:"pack_type,omitempty"`
 	AddonType string `json:"addon_type,omitempty"`
+	PlanType  string `json:"plan_type,omitempty"`
 }
 
 func (h *BillingHandler) CreateCheckout(w http.ResponseWriter, r *http.Request) {
@@ -71,12 +72,14 @@ func (h *BillingHandler) CreateCheckout(w http.ResponseWriter, r *http.Request) 
 	var err error
 
 	switch {
+	case input.PlanType != "":
+		checkoutURL, err = h.billingService.CreatePlanSubscriptionCheckout(r.Context(), customerID, input.PlanType)
 	case input.PackType != "":
 		checkoutURL, err = h.billingService.CreateReplayPackCheckout(r.Context(), customerID, input.PackType)
 	case input.AddonType != "":
 		checkoutURL, err = h.billingService.CreateAddonSubscriptionCheckout(r.Context(), customerID, input.AddonType)
 	default:
-		ErrorJSON(w, http.StatusBadRequest, "pack_type or addon_type is required")
+		ErrorJSON(w, http.StatusBadRequest, "plan_type, pack_type, or addon_type is required")
 		return
 	}
 
@@ -86,6 +89,10 @@ func (h *BillingHandler) CreateCheckout(w http.ResponseWriter, r *http.Request) 
 			ErrorJSON(w, http.StatusBadRequest, "invalid pack type")
 		case errors.Is(err, service.ErrInvalidAddonType):
 			ErrorJSON(w, http.StatusBadRequest, "invalid addon type")
+		case errors.Is(err, service.ErrInvalidPlanType):
+			ErrorJSON(w, http.StatusBadRequest, "invalid plan type")
+		case errors.Is(err, service.ErrAlreadyOnPlan):
+			ErrorJSON(w, http.StatusConflict, "already subscribed to a plan")
 		case errors.Is(err, service.ErrStripeNotConfigured):
 			ErrorJSON(w, http.StatusServiceUnavailable, "billing is not configured")
 		case errors.Is(err, service.ErrCustomerNotFound):

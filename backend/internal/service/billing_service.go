@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/stripe/stripe-go/v82"
@@ -20,14 +21,18 @@ import (
 )
 
 var (
-	ErrInvalidPackType     = errors.New("invalid pack type")
-	ErrInvalidAddonType    = errors.New("invalid addon type")
-	ErrStripeNotConfigured = errors.New("stripe is not configured")
-	ErrCustomerNotFound    = errors.New("customer not found")
+	ErrInvalidPackType      = errors.New("invalid pack type")
+	ErrInvalidAddonType     = errors.New("invalid addon type")
+	ErrInvalidPlanType      = errors.New("invalid plan type")
+	ErrStripeNotConfigured  = errors.New("stripe is not configured")
+	ErrCustomerNotFound     = errors.New("customer not found")
+	ErrAlreadyOnPlan        = errors.New("already subscribed to a plan")
+	ErrPlanUpgradeRequired  = errors.New("paid plan required for this add-on")
 )
 
 // BillingOverview contains all billing info for a customer.
 type BillingOverview struct {
+	Plan          string                 `json:"plan"`
 	Purchases     []*domain.Purchase     `json:"purchases"`
 	Credits       []*domain.ReplayCredit `json:"credits"`
 	Subscriptions []*domain.Subscription `json:"subscriptions"`
@@ -51,6 +56,7 @@ type BillingService struct {
 	cfg           *config.Config
 	packConfigs   map[string]PackConfig
 	addonPriceIDs map[string]string // addon type -> Stripe price ID
+	planPriceIDs  map[string]string // plan sub type -> Stripe price ID
 }
 
 func NewBillingService(
@@ -78,36 +84,50 @@ func NewBillingService(
 	s.packConfigs = map[string]PackConfig{
 		domain.PackReplay1: {
 			PriceID:            cfg.StripePriceReplay1,
-			AmountSatang:       29900,
+			AmountSatang:       49900,
 			TotalReplays:       1,
-			MaxEventsPerReplay: domain.FreeMaxEventsPerReplay,
+			MaxEventsPerReplay: domain.DefaultMaxEventsPerReplay,
 			ExpiryDays:         90,
 		},
 		domain.PackReplay3: {
 			PriceID:            cfg.StripePriceReplay3,
-			AmountSatang:       69900,
+			AmountSatang:       99900,
 			TotalReplays:       3,
-			MaxEventsPerReplay: domain.FreeMaxEventsPerReplay,
+			MaxEventsPerReplay: domain.DefaultMaxEventsPerReplay,
 			ExpiryDays:         180,
 		},
 		domain.PackReplayUnlimited: {
 			PriceID:            cfg.StripePriceReplayUnlimited,
-			AmountSatang:       149000,
+			AmountSatang:       299000,
 			TotalReplays:       -1,
-			MaxEventsPerReplay: domain.FreeMaxEventsPerReplay,
+			MaxEventsPerReplay: domain.DefaultMaxEventsPerReplay,
 			ExpiryDays:         365,
 		},
 	}
 
 	s.addonPriceIDs = map[string]string{
-		domain.AddonRetention180: cfg.StripePriceRetention180,
-		domain.AddonRetention365: cfg.StripePriceRetention365,
-		domain.AddonEvents1M:     cfg.StripePriceEvents1M,
-		domain.AddonSalePages25:  cfg.StripePriceSalePages25,
-		domain.AddonPixels40:     cfg.StripePricePixels40,
+		domain.AddonEvents1M:    cfg.StripePriceEvents1M,
+		domain.AddonSalePages10: cfg.StripePriceSalePages10,
+		domain.AddonPixels10:    cfg.StripePricePixels10,
+	}
+
+	s.planPriceIDs = map[string]string{
+		domain.SubTypePlanLaunch: cfg.StripePricePlanLaunch,
+		domain.SubTypePlanShield: cfg.StripePricePlanShield,
+		domain.SubTypePlanVault:  cfg.StripePricePlanVault,
 	}
 
 	return s
+}
+
+// isPlanType checks if the addon type is a plan subscription.
+func isPlanType(addonType string) bool {
+	return strings.HasPrefix(addonType, "plan_")
+}
+
+// planNameFromType extracts the plan name from a plan subscription type.
+func planNameFromType(subType string) string {
+	return strings.TrimPrefix(subType, "plan_")
 }
 
 // EnsureStripeCustomer creates a Stripe customer if the customer doesn't have one yet.
@@ -240,6 +260,64 @@ func (s *BillingService) CreateAddonSubscriptionCheckout(ctx context.Context, cu
 			Metadata: map[string]string{
 				"customer_id": customerID,
 				"addon_type":  addonType,
+			},
+		},
+	}
+
+	sess, err := checkoutsession.New(params)
+	if err != nil {
+		return "", fmt.Errorf("create checkout session: %w", err)
+	}
+
+	return sess.URL, nil
+}
+
+// CreatePlanSubscriptionCheckout creates a Stripe Checkout session for a plan subscription.
+func (s *BillingService) CreatePlanSubscriptionCheckout(ctx context.Context, customerID string, planType string) (string, error) {
+	priceID, ok := s.planPriceIDs[planType]
+	if !ok || priceID == "" {
+		return "", ErrInvalidPlanType
+	}
+
+	customer, err := s.customerRepo.GetByID(ctx, customerID)
+	if err != nil {
+		return "", fmt.Errorf("get customer: %w", err)
+	}
+	if customer == nil {
+		return "", ErrCustomerNotFound
+	}
+
+	// Check existing plan subscription
+	subs, err := s.subRepo.GetActiveByCustomerID(ctx, customerID)
+	if err != nil {
+		return "", fmt.Errorf("get active subscriptions: %w", err)
+	}
+	for _, sub := range subs {
+		if isPlanType(sub.AddonType) {
+			return "", ErrAlreadyOnPlan
+		}
+	}
+
+	stripeCustomerID, err := s.EnsureStripeCustomer(ctx, customer)
+	if err != nil {
+		return "", err
+	}
+
+	params := &stripe.CheckoutSessionParams{
+		Customer: stripe.String(stripeCustomerID),
+		Mode:     stripe.String(string(stripe.CheckoutSessionModeSubscription)),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				Price:    stripe.String(priceID),
+				Quantity: stripe.Int64(1),
+			},
+		},
+		SuccessURL: stripe.String(s.cfg.FrontendURL + "/billing?status=success"),
+		CancelURL:  stripe.String(s.cfg.FrontendURL + "/billing?status=cancel"),
+		Params: stripe.Params{
+			Metadata: map[string]string{
+				"customer_id": customerID,
+				"plan_type":   planType,
 			},
 		},
 	}
@@ -403,20 +481,69 @@ func (s *BillingService) upsertSubscription(ctx context.Context, sub *stripe.Sub
 		existing.CurrentPeriodEnd = periodEnd
 		existing.CancelAtPeriodEnd = sub.CancelAtPeriodEnd
 		existing.UpdatedAt = time.Now()
-		return s.subRepo.Update(ctx, existing)
+		if err := s.subRepo.Update(ctx, existing); err != nil {
+			return err
+		}
+	} else {
+		newSub := &domain.Subscription{
+			CustomerID:           customer.ID,
+			StripeSubscriptionID: sub.ID,
+			StripePriceID:        priceID,
+			AddonType:            addonType,
+			Status:               status,
+			CurrentPeriodStart:   periodStart,
+			CurrentPeriodEnd:     periodEnd,
+			CancelAtPeriodEnd:    sub.CancelAtPeriodEnd,
+		}
+		if err := s.subRepo.Create(ctx, newSub); err != nil {
+			return err
+		}
 	}
 
-	newSub := &domain.Subscription{
-		CustomerID:           customer.ID,
-		StripeSubscriptionID: sub.ID,
-		StripePriceID:        priceID,
-		AddonType:            addonType,
-		Status:               status,
-		CurrentPeriodStart:   periodStart,
-		CurrentPeriodEnd:     periodEnd,
-		CancelAtPeriodEnd:    sub.CancelAtPeriodEnd,
+	// If this is a plan subscription, update customer plan and grant credits
+	if isPlanType(addonType) && status == string(stripe.SubscriptionStatusActive) {
+		planName := planNameFromType(addonType)
+		if err := s.customerRepo.UpdatePlan(ctx, customer.ID, planName); err != nil {
+			return fmt.Errorf("update customer plan: %w", err)
+		}
+		if periodEnd != nil {
+			if err := s.grantPlanReplayCredits(ctx, customer.ID, planName, *periodEnd); err != nil {
+				return fmt.Errorf("grant plan replay credits: %w", err)
+			}
+		}
 	}
-	return s.subRepo.Create(ctx, newSub)
+
+	return nil
+}
+
+// grantPlanReplayCredits grants replay credits based on PlanLimitsMap.IncludedReplays.
+func (s *BillingService) grantPlanReplayCredits(ctx context.Context, customerID string, planName string, periodEnd time.Time) error {
+	limits, ok := domain.PlanLimitsMap[planName]
+	if !ok || limits.IncludedReplays == 0 {
+		return nil // Plan doesn't include replay credits
+	}
+
+	// Dedup: check if a credit with pack_type=PackPlanGrant and same expires_at already exists
+	credits, err := s.creditRepo.GetActiveByCustomerID(ctx, customerID)
+	if err != nil {
+		return fmt.Errorf("check existing credits: %w", err)
+	}
+	for _, c := range credits {
+		if c.PackType == domain.PackPlanGrant && c.ExpiresAt.Round(time.Second).Equal(periodEnd.Round(time.Second)) {
+			return nil // Already granted for this period
+		}
+	}
+
+	credit := &domain.ReplayCredit{
+		CustomerID:         customerID,
+		PackType:           domain.PackPlanGrant,
+		TotalReplays:       limits.IncludedReplays,
+		UsedReplays:        0,
+		MaxEventsPerReplay: domain.DefaultMaxEventsPerReplay,
+		ExpiresAt:          periodEnd,
+	}
+
+	return s.creditRepo.Create(ctx, credit)
 }
 
 func (s *BillingService) cancelSubscription(ctx context.Context, sub *stripe.Subscription) error {
@@ -430,18 +557,42 @@ func (s *BillingService) cancelSubscription(ctx context.Context, sub *stripe.Sub
 
 	existing.Status = domain.SubStatusCanceled
 	existing.UpdatedAt = time.Now()
-	return s.subRepo.Update(ctx, existing)
+	if err := s.subRepo.Update(ctx, existing); err != nil {
+		return err
+	}
+
+	// If this is a plan subscription, revert customer to sandbox
+	if isPlanType(existing.AddonType) {
+		customer, err := s.customerRepo.GetByStripeCustomerID(ctx, sub.Customer.ID)
+		if err != nil {
+			return fmt.Errorf("get customer for plan revert: %w", err)
+		}
+		if customer != nil {
+			if err := s.customerRepo.UpdatePlan(ctx, customer.ID, domain.PlanSandbox); err != nil {
+				return fmt.Errorf("revert customer plan to sandbox: %w", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetBillingOverview returns all billing information for a customer.
 func (s *BillingService) GetBillingOverview(ctx context.Context, customerID string) (*BillingOverview, error) {
 	var (
+		customer      *domain.Customer
 		purchases     []*domain.Purchase
 		credits       []*domain.ReplayCredit
 		subscriptions []*domain.Subscription
 	)
 
 	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		customer, err = s.customerRepo.GetByID(gCtx, customerID)
+		return err
+	})
 
 	g.Go(func() error {
 		var err error
@@ -475,7 +626,13 @@ func (s *BillingService) GetBillingOverview(ctx context.Context, customerID stri
 		subscriptions = []*domain.Subscription{}
 	}
 
+	plan := domain.PlanSandbox
+	if customer != nil {
+		plan = customer.Plan
+	}
+
 	return &BillingOverview{
+		Plan:          plan,
 		Purchases:     purchases,
 		Credits:       credits,
 		Subscriptions: subscriptions,
@@ -496,6 +653,11 @@ func (s *BillingService) resolveAddonType(priceID string) string {
 	for addonType, id := range s.addonPriceIDs {
 		if id == priceID {
 			return addonType
+		}
+	}
+	for planType, id := range s.planPriceIDs {
+		if id == priceID {
+			return planType
 		}
 	}
 	return "unknown"

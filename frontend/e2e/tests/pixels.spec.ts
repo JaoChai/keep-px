@@ -1,7 +1,32 @@
 import { test, expect } from '../fixtures/auth.fixture'
 import { PixelsPage } from '../pages/pixels.page'
 
+// Helper to delete a pixel by row text
+async function deletePixelByName(page: import('@playwright/test').Page, name: string) {
+  const row = page.locator('tr', { hasText: name })
+  if (await row.count() === 0) return
+  await row.getByRole('button').filter({ has: page.locator('[class*="lucide-trash"]') }).click()
+  await page.getByRole('button', { name: 'ลบ' }).click()
+  await expect(row).not.toBeVisible()
+}
+
 test.describe('Pixels', () => {
+  // Clean up test-created pixels after each test to stay within quota
+  test.afterEach(async ({ page }) => {
+    await page.goto('/pixels')
+    for (const pattern of ['Test Pixel', 'Edit Test', 'Updated', 'Delete Test']) {
+      const rows = page.locator('tr', { hasText: pattern })
+      const count = await rows.count()
+      for (let i = count - 1; i >= 0; i--) {
+        const rowText = await rows.nth(i).innerText()
+        const name = rowText.split('\t')[0]?.trim()
+        if (name) {
+          await deletePixelByName(page, name)
+        }
+      }
+    }
+  })
+
   test('create pixel and see in table', async ({ page }) => {
     const pixelsPage = new PixelsPage(page)
     await pixelsPage.goto()
@@ -19,6 +44,7 @@ test.describe('Pixels', () => {
     // Create a pixel first
     const originalName = `Edit Test ${Date.now()}`
     await pixelsPage.createPixel(originalName, '123456789012345', 'EAAtest123token')
+    await expect(page.getByText(originalName)).toBeVisible()
 
     // Click edit button on the pixel row
     const pixelRow = page.locator('tr', { hasText: originalName })
@@ -47,6 +73,9 @@ test.describe('Pixels', () => {
     // Create a pixel first
     const pixelName = `Delete Test ${Date.now()}`
     await pixelsPage.createPixel(pixelName, '123456789012345', 'EAAtest123token')
+
+    // Wait for pixel to appear in table before trying to delete
+    await expect(page.getByText(pixelName)).toBeVisible()
 
     // Click delete button
     const pixelRow = page.locator('tr', { hasText: pixelName })

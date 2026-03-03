@@ -4,6 +4,7 @@ import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { useBillingOverview, useQuota, useCreateCheckout, useCreatePortalSession } from '@/hooks/use-billing'
+import { PlanSection } from '@/components/billing/PlanSection'
 import { UsageDashboard } from '@/components/billing/UsageDashboard'
 import { ReplayPackSection } from '@/components/billing/ReplayPackSection'
 import { ActiveCreditsSection } from '@/components/billing/ActiveCreditsSection'
@@ -18,8 +19,8 @@ export function BillingPage() {
   const portal = useCreatePortalSession()
   const [pendingCheckoutType, setPendingCheckoutType] = useState<string | null>(null)
 
-  const handleCheckout = (params: { pack_type?: string; addon_type?: string }) => {
-    const key = params.pack_type ?? params.addon_type ?? null
+  const handleCheckout = (params: { pack_type?: string; addon_type?: string; plan_type?: string }) => {
+    const key = params.plan_type ?? params.pack_type ?? params.addon_type ?? null
     setPendingCheckoutType(key)
     checkout.mutate(params, {
       onSettled: () => setPendingCheckoutType(null),
@@ -41,6 +42,7 @@ export function BillingPage() {
   const activeSubscriptions = overview?.subscriptions?.filter(
     (s) => s.status === 'active'
   ) ?? []
+  const currentPlan = overview?.plan ?? quota?.plan ?? 'sandbox'
 
   return (
     <div className="space-y-8">
@@ -48,10 +50,18 @@ export function BillingPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">การเงิน</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            จัดการแพ็กรีเพลย์ ส่วนเสริม และการสมัครใช้งาน
+            จัดการแผน ส่วนเสริม และแพ็กรีเพลย์
           </p>
         </div>
       </div>
+
+      <PlanSection
+        currentPlan={currentPlan}
+        pendingCheckoutType={pendingCheckoutType}
+        isPending={checkout.isPending}
+        onCheckout={handleCheckout}
+        onManageBilling={() => portal.mutate()}
+      />
 
       {quota && <UsageDashboard quota={quota} />}
 

@@ -24,7 +24,7 @@ export function useQuota() {
 
 export function useCreateCheckout() {
   return useMutation({
-    mutationFn: async (params: { pack_type?: string; addon_type?: string }) => {
+    mutationFn: async (params: { pack_type?: string; addon_type?: string; plan_type?: string }) => {
       const { data } = await api.post<{ data: { url: string } }>('/billing/checkout', params)
       return data.data
     },

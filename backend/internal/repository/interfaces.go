@@ -24,6 +24,7 @@ type CustomerRepository interface {
 	GetByAPIKey(ctx context.Context, apiKey string) (*domain.Customer, error)
 	GetByStripeCustomerID(ctx context.Context, stripeCustomerID string) (*domain.Customer, error)
 	Update(ctx context.Context, customer *domain.Customer) error
+	UpdatePlan(ctx context.Context, customerID string, plan string) error
 	UpdateStripeCustomerID(ctx context.Context, customerID string, stripeCustomerID string) error
 	RegenerateAPIKey(ctx context.Context, customerID, newKey string) (*domain.Customer, error)
 }

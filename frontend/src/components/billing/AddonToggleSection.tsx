@@ -2,7 +2,6 @@ import {
   LayoutGrid,
   Radio,
   Zap,
-  CalendarDays,
   Loader2,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,44 +11,25 @@ import type { Subscription } from '@/types'
 
 const ADDONS = [
   {
-    type: 'sale_pages_25',
-    name: 'Sale Pages +25',
-    price: 199,
-    freeLabel: 'ฟรี 5',
-    upgradeLabel: 'เพิ่มเป็น 30 หน้า',
-    icon: LayoutGrid,
-  },
-  {
-    type: 'pixels_40',
-    name: 'Pixels +40',
-    price: 149,
-    freeLabel: 'ฟรี 10',
-    upgradeLabel: 'เพิ่มเป็น 50',
+    type: 'pixels_10',
+    name: 'Pixels +10',
+    price: 290,
+    description: 'เพิ่มพิกเซลอีก 10',
     icon: Radio,
   },
   {
+    type: 'sale_pages_10',
+    name: 'Sale Pages +10',
+    price: 190,
+    description: 'เพิ่ม Sale Pages อีก 10 หน้า',
+    icon: LayoutGrid,
+  },
+  {
     type: 'events_1m',
-    name: 'Events 1M',
+    name: 'Events +1M',
     price: 490,
-    freeLabel: 'ฟรี 200K',
-    upgradeLabel: 'เพิ่มเป็น 1M/เดือน',
+    description: 'เพิ่ม 1,000,000 events/เดือน',
     icon: Zap,
-  },
-  {
-    type: 'retention_180',
-    name: 'Retention 180d',
-    price: 390,
-    freeLabel: 'ฟรี 60 วัน',
-    upgradeLabel: 'เพิ่มเป็น 180 วัน',
-    icon: CalendarDays,
-  },
-  {
-    type: 'retention_365',
-    name: 'Retention 365d',
-    price: 690,
-    freeLabel: 'ฟรี 60 วัน',
-    upgradeLabel: 'เพิ่มเป็น 365 วัน',
-    icon: CalendarDays,
   },
 ] as const
 
@@ -93,7 +73,7 @@ export function AddonToggleSection({
                     <p className="text-sm font-medium text-foreground">{addon.name}</p>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {addon.freeLabel} → {addon.upgradeLabel}
+                    {addon.description}
                   </p>
                   {isActive && activeSub.current_period_end && (
                     <p className="text-xs text-emerald-600 mt-0.5">
