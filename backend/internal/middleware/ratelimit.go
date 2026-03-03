@@ -81,8 +81,3 @@ func RateLimitWithContext(ctx context.Context, rps int) func(http.Handler) http.
 	}
 }
 
-// RateLimit returns a per-IP rate limiting middleware.
-// Deprecated: prefer RateLimitWithContext to avoid goroutine leaks.
-func RateLimit(rps int) func(http.Handler) http.Handler {
-	return RateLimitWithContext(context.Background(), rps)
-}

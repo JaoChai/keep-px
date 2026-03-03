@@ -3,7 +3,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import type { NotificationListResult } from '@/types'
 
-export function invalidateNotifications(qc: QueryClient) {
+function invalidateNotifications(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ['notifications'], exact: true })
   qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'], exact: true })
 }
