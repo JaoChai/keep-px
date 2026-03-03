@@ -11,6 +11,8 @@ import {
   ShieldCheck,
   Database,
   CalendarDays,
+  LayoutGrid,
+  Radio,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -76,6 +78,20 @@ const ADDONS = [
     price: 490,
     description: 'เพิ่มขีดจำกัดอีเวนต์รายเดือนเป็น 1,000,000',
     icon: Zap,
+  },
+  {
+    type: 'sale_pages_25',
+    name: 'Sale Pages +25',
+    price: 199,
+    description: 'เพิ่มจำนวนเซลเพจจาก 5 เป็น 30 หน้า',
+    icon: LayoutGrid,
+  },
+  {
+    type: 'pixels_40',
+    name: 'Pixels +40',
+    price: 149,
+    description: 'เพิ่มจำนวนพิกเซลจาก 10 เป็น 50',
+    icon: Radio,
   },
 ] as const
 
@@ -269,7 +285,7 @@ export function BillingPage() {
       {/* Add-ons */}
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-foreground mb-4">ส่วนเสริม</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {ADDONS.map((addon) => {
             const isActive = activeSubscriptions.some((s) => s.addon_type === addon.type)
             return (

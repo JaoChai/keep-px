@@ -41,6 +41,8 @@ type Config struct {
 	StripePriceRetention180    string `env:"STRIPE_PRICE_RETENTION_180"`
 	StripePriceRetention365    string `env:"STRIPE_PRICE_RETENTION_365"`
 	StripePriceEvents1M        string `env:"STRIPE_PRICE_EVENTS_1M"`
+	StripePriceSalePages25     string `env:"STRIPE_PRICE_SALE_PAGES_25"`
+	StripePricePixels40        string `env:"STRIPE_PRICE_PIXELS_40"`
 	FrontendURL                string `env:"FRONTEND_URL" envDefault:"http://localhost:5173"`
 
 	// Token encryption (32-byte hex-encoded key, optional)

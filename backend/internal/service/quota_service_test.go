@@ -132,6 +132,46 @@ func TestQuotaService_GetCustomerQuota(t *testing.T) {
 		usageRepo.AssertExpectations(t)
 	})
 
+	t.Run("with sale pages addon increases limit", func(t *testing.T) {
+		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
+
+		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{
+			{AddonType: domain.AddonSalePages25, Status: domain.SubStatusActive},
+		}, nil)
+		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
+		usageRepo.On("GetCurrentMonth", mock.Anything, "cust-1").Return(nil, nil)
+
+		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.FreeMaxSalePages+domain.AddonSalePages25Extra, quota.MaxSalePages)
+		assert.Equal(t, domain.FreeMaxPixels, quota.MaxPixels) // pixels unchanged
+
+		subRepo.AssertExpectations(t)
+		creditRepo.AssertExpectations(t)
+		usageRepo.AssertExpectations(t)
+	})
+
+	t.Run("with pixels addon increases limit", func(t *testing.T) {
+		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
+
+		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{
+			{AddonType: domain.AddonPixels40, Status: domain.SubStatusActive},
+		}, nil)
+		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
+		usageRepo.On("GetCurrentMonth", mock.Anything, "cust-1").Return(nil, nil)
+
+		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.FreeMaxPixels+domain.AddonPixels40Extra, quota.MaxPixels)
+		assert.Equal(t, domain.FreeMaxSalePages, quota.MaxSalePages) // sale pages unchanged
+
+		subRepo.AssertExpectations(t)
+		creditRepo.AssertExpectations(t)
+		usageRepo.AssertExpectations(t)
+	})
+
 	t.Run("with usage this month", func(t *testing.T) {
 		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
 		usage := &domain.EventUsage{EventCount: 50000}
