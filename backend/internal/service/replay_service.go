@@ -150,13 +150,19 @@ func parseDateFilter(s string) (*time.Time, error) {
 func (s *ReplayService) Create(ctx context.Context, customerID string, input CreateReplayInput) (*CreateReplayResult, error) {
 	// Verify source pixel
 	sourcePixel, err := s.pixelRepo.GetByID(ctx, input.SourcePixelID)
-	if err != nil || sourcePixel == nil || sourcePixel.CustomerID != customerID {
+	if err != nil {
+		return nil, fmt.Errorf("get source pixel: %w", err)
+	}
+	if sourcePixel == nil || sourcePixel.CustomerID != customerID {
 		return nil, ErrPixelNotFound
 	}
 
 	// Verify target pixel
 	targetPixel, err := s.pixelRepo.GetByID(ctx, input.TargetPixelID)
-	if err != nil || targetPixel == nil || targetPixel.CustomerID != customerID {
+	if err != nil {
+		return nil, fmt.Errorf("get target pixel: %w", err)
+	}
+	if targetPixel == nil || targetPixel.CustomerID != customerID {
 		return nil, ErrPixelNotFound
 	}
 
@@ -488,13 +494,19 @@ const MaxReplayEvents = 100000
 func (s *ReplayService) Preview(ctx context.Context, customerID string, input CreateReplayInput) (*PreviewReplayResult, error) {
 	// Verify source pixel
 	sourcePixel, err := s.pixelRepo.GetByID(ctx, input.SourcePixelID)
-	if err != nil || sourcePixel == nil || sourcePixel.CustomerID != customerID {
+	if err != nil {
+		return nil, fmt.Errorf("get source pixel: %w", err)
+	}
+	if sourcePixel == nil || sourcePixel.CustomerID != customerID {
 		return nil, ErrPixelNotFound
 	}
 
 	// Verify target pixel
 	targetPixel, err := s.pixelRepo.GetByID(ctx, input.TargetPixelID)
-	if err != nil || targetPixel == nil || targetPixel.CustomerID != customerID {
+	if err != nil {
+		return nil, fmt.Errorf("get target pixel: %w", err)
+	}
+	if targetPixel == nil || targetPixel.CustomerID != customerID {
 		return nil, ErrPixelNotFound
 	}
 
@@ -578,7 +590,10 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 
 	// Verify target pixel still exists and is owned
 	targetPixel, err := s.pixelRepo.GetByID(ctx, session.TargetPixelID)
-	if err != nil || targetPixel == nil || targetPixel.CustomerID != customerID {
+	if err != nil {
+		return nil, fmt.Errorf("get target pixel: %w", err)
+	}
+	if targetPixel == nil || targetPixel.CustomerID != customerID {
 		return nil, ErrPixelNotFound
 	}
 
@@ -679,7 +694,10 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 
 func (s *ReplayService) GetEventTypes(ctx context.Context, customerID, pixelID string) ([]string, error) {
 	pixel, err := s.pixelRepo.GetByID(ctx, pixelID)
-	if err != nil || pixel == nil || pixel.CustomerID != customerID {
+	if err != nil {
+		return nil, fmt.Errorf("get pixel: %w", err)
+	}
+	if pixel == nil || pixel.CustomerID != customerID {
 		return nil, ErrPixelNotFound
 	}
 	types, err := s.eventRepo.GetDistinctEventTypes(ctx, pixelID)

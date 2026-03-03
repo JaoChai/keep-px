@@ -69,13 +69,9 @@ func TestTamperedCiphertext(t *testing.T) {
 
 	// Tamper with the encrypted string
 	tampered := encrypted[:len(encrypted)-2] + "XX"
-	decrypted, err := enc.Decrypt(tampered)
-	if err != nil {
-		t.Fatalf("Decrypt tampered should not error: %v", err)
-	}
-	// Should return as-is since decrypt fails gracefully
-	if decrypted != tampered {
-		t.Fatalf("expected tampered string returned as-is, got %q", decrypted)
+	_, err = enc.Decrypt(tampered)
+	if err == nil {
+		t.Fatal("Decrypt tampered should return error")
 	}
 }
 

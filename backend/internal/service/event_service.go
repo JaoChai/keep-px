@@ -236,7 +236,11 @@ func (s *EventService) forwardToCAPI(ctx context.Context, event *domain.PixelEve
 
 func (s *EventService) forwardToBackupPixel(ctx context.Context, event *domain.PixelEvent, backupPixelID string, client ClientContext) {
 	backupPixel, err := s.pixelRepo.GetByID(ctx, backupPixelID)
-	if err != nil || backupPixel == nil || !backupPixel.IsActive {
+	if err != nil {
+		s.logger.Error("get backup pixel failed", "backup_pixel_id", backupPixelID, "error", err)
+		return
+	}
+	if backupPixel == nil || !backupPixel.IsActive {
 		s.logger.Warn("backup pixel not available", "backup_pixel_id", backupPixelID)
 		return
 	}
