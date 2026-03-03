@@ -14,10 +14,6 @@ type apiKeyCacheEntry struct {
 	expiry     time.Time
 }
 
-func APIKeyAuth(customerRepo repository.CustomerRepository) func(http.Handler) http.Handler {
-	return APIKeyAuthWithContext(context.Background(), customerRepo)
-}
-
 func APIKeyAuthWithContext(ctx context.Context, customerRepo repository.CustomerRepository) func(http.Handler) http.Handler {
 	var cache sync.Map
 	const cacheTTL = 5 * time.Minute

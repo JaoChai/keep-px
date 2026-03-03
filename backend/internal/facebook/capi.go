@@ -124,22 +124,3 @@ func (c *CAPIClient) SendEvent(ctx context.Context, pixelID, accessToken, testEv
 	return c.SendEvents(ctx, pixelID, accessToken, testEventCode, []CAPIEvent{event})
 }
 
-func (c *CAPIClient) SendEventsBatch(ctx context.Context, pixelID, accessToken, testEventCode string, events []CAPIEvent) ([]*CAPIResponse, error) {
-	const maxBatchSize = 1000
-	var responses []*CAPIResponse
-
-	for i := 0; i < len(events); i += maxBatchSize {
-		end := i + maxBatchSize
-		if end > len(events) {
-			end = len(events)
-		}
-		batch := events[i:end]
-
-		resp, err := c.SendEvents(ctx, pixelID, accessToken, testEventCode, batch)
-		if err != nil {
-			return responses, fmt.Errorf("batch %d-%d: %w", i, end, err)
-		}
-		responses = append(responses, resp)
-	}
-	return responses, nil
-}

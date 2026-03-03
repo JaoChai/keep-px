@@ -16,7 +16,7 @@ export function formatBaht(satang: number): string {
   return `${(satang / 100).toLocaleString('th-TH')}`
 }
 
-export const UNLIMITED_REPLAYS = -1
+const UNLIMITED_REPLAYS = -1
 
 export function isUnlimited(value: number): boolean {
   return value === UNLIMITED_REPLAYS
