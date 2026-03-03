@@ -126,7 +126,9 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sigHeader := r.Header.Get("Stripe-Signature")
-	event, err := webhook.ConstructEvent(body, sigHeader, h.cfg.StripeWebhookSecret)
+	event, err := webhook.ConstructEventWithOptions(body, sigHeader, h.cfg.StripeWebhookSecret, webhook.ConstructEventOptions{
+		IgnoreAPIVersionMismatch: true,
+	})
 	if err != nil {
 		h.logger.Warn("webhook signature verification failed", "error", err)
 		ErrorJSON(w, http.StatusBadRequest, "invalid signature")
