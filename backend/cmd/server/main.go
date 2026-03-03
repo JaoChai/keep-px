@@ -196,9 +196,15 @@ func migrateTokens(ctx context.Context, pool *pgxpool.Pool, encryptor *crypto.To
 			continue
 		}
 		if crypto.IsEncrypted(token) {
-			continue // already encrypted
+			continue // already has enc: prefix
 		}
-		encrypted, err := encryptor.Encrypt(token)
+		// Decrypt handles both legacy encrypted and plaintext tokens gracefully
+		plaintext, err := encryptor.Decrypt(token)
+		if err != nil {
+			logger.Error("token migration: failed to decrypt legacy token", "pixel_id", id, "error", err)
+			continue
+		}
+		encrypted, err := encryptor.Encrypt(plaintext)
 		if err != nil {
 			logger.Error("token migration: failed to encrypt", "pixel_id", id, "error", err)
 			continue
@@ -213,8 +219,8 @@ func migrateTokens(ctx context.Context, pool *pgxpool.Pool, encryptor *crypto.To
 		logger.Error("token migration: rows iteration error", "error", err)
 	}
 	if migrated > 0 {
-		logger.Info("token migration: encrypted plaintext tokens", "count", migrated)
+		logger.Info("token migration: upgraded tokens to enc: format", "count", migrated)
 	} else {
-		logger.Info("token migration: no plaintext tokens to migrate")
+		logger.Info("token migration: all tokens already in enc: format")
 	}
 }

@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -18,6 +19,9 @@ func TestRoundTrip(t *testing.T) {
 	encrypted, err := enc.Encrypt(original)
 	if err != nil {
 		t.Fatalf("Encrypt: %v", err)
+	}
+	if !strings.HasPrefix(encrypted, "enc:") {
+		t.Fatalf("encrypted should have enc: prefix, got %q", encrypted)
 	}
 	if encrypted == original {
 		t.Fatal("encrypted should differ from original")
@@ -67,11 +71,11 @@ func TestTamperedCiphertext(t *testing.T) {
 		t.Fatalf("Encrypt: %v", err)
 	}
 
-	// Tamper with the encrypted string
+	// Tamper with the encrypted string (keep enc: prefix)
 	tampered := encrypted[:len(encrypted)-2] + "XX"
 	_, err = enc.Decrypt(tampered)
 	if err == nil {
-		t.Fatal("Decrypt tampered should return error")
+		t.Fatal("Decrypt tampered enc: token should return error")
 	}
 }
 
@@ -117,7 +121,7 @@ func TestDecryptPlaintext(t *testing.T) {
 		t.Fatalf("NewTokenEncryptor: %v", err)
 	}
 
-	// A plaintext FB token that's not base64 should be returned as-is
+	// A plaintext FB token should be returned as-is
 	plaintext := "EAABsbCS1iHgBO_plaintext_token"
 	decrypted, err := enc.Decrypt(plaintext)
 	if err != nil {
@@ -125,5 +129,23 @@ func TestDecryptPlaintext(t *testing.T) {
 	}
 	if decrypted != plaintext {
 		t.Fatalf("expected %q, got %q", plaintext, decrypted)
+	}
+}
+
+func TestDecryptLongBase64Plaintext(t *testing.T) {
+	enc, err := NewTokenEncryptor(testKey())
+	if err != nil {
+		t.Fatalf("NewTokenEncryptor: %v", err)
+	}
+
+	// FB access tokens are often long valid base64 strings (≥29 bytes decoded).
+	// These should be returned as-is (not error), since they're plaintext.
+	longToken := "EAABsbCS1iHgBOzBCxZAhJ1gZBYq5ZBrJ3xK7mz9ZC"
+	decrypted, err := enc.Decrypt(longToken)
+	if err != nil {
+		t.Fatalf("Decrypt long base64 plaintext should not error: %v", err)
+	}
+	if decrypted != longToken {
+		t.Fatalf("expected %q, got %q", longToken, decrypted)
 	}
 }
