@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { CheckCircle, Phone, MessageCircle, Globe } from 'lucide-react'
 import type { PageStyle } from '@/types'
 
@@ -10,7 +11,7 @@ interface SalePagePreviewProps {
   style?: PageStyle
 }
 
-export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style }: SalePagePreviewProps) {
+export const SalePagePreview = memo(function SalePagePreview({ hero, body, cta, contact, ctaEventName, style }: SalePagePreviewProps) {
   const accentColor = style?.accent_color || '#667eea'
   const bgColor = style?.bg_color
   const textColor = style?.text_color
@@ -137,4 +138,4 @@ export function SalePagePreview({ hero, body, cta, contact, ctaEventName, style 
       </div>
     </div>
   )
-}
+})

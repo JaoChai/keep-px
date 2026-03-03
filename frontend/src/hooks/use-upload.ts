@@ -25,19 +25,19 @@ export function useUploadImage() {
 export function useUploadImages() {
   return useMutation({
     mutationFn: async (files: File[]) => {
-      const urls: string[] = []
-      for (const file of files) {
-        try {
+      const results = await Promise.allSettled(
+        files.map(async (file) => {
           const formData = new FormData()
           formData.append('file', file)
           const { data } = await api.post<{ data: UploadResponse }>('/uploads/image', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           })
-          urls.push(data.data.url)
-        } catch (err) {
-          console.error(`Failed to upload ${file.name}:`, err)
-        }
-      }
+          return data.data.url
+        })
+      )
+      const urls = results
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+        .map((r) => r.value)
       if (urls.length === 0) {
         throw new Error('All uploads failed')
       }

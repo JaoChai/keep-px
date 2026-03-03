@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ArrowLeft, Plus, X, Copy, Check, ExternalLink, Info, Upload, Loader2, ChevronDown } from 'lucide-react'
@@ -71,12 +71,18 @@ export function SalePageEditorPage() {
 
   const existingPage = isEditing ? salePages?.find((p) => p.id === id) : undefined
 
+  // Redirect v2 pages to blocks editor
+  const isV2 = existingPage && 'version' in existingPage.content && (existingPage.content as SalePageContentV2).version === 2
+  useEffect(() => {
+    if (isV2) navigate(`/sale-pages/${id}/edit-blocks`, { replace: true })
+  }, [isV2, id, navigate])
+
   const {
     register,
     handleSubmit,
     reset,
-    watch,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<SalePageForm>({
     resolver: zodResolver(salePageSchema),
@@ -101,16 +107,16 @@ export function SalePageEditorPage() {
   })
 
   const [selectedPixelIds, setSelectedPixelIds] = useState<string[]>([])
+  const [initializedId, setInitializedId] = useState<string | null>(null)
 
-  // Load existing data when editing — redirect to blocks editor if v2
+  // Load existing data when editing — hydrates form + local state from server data
   useEffect(() => {
-    if (existingPage) {
-      if ('version' in existingPage.content && (existingPage.content as SalePageContentV2).version === 2) {
-        navigate(`/sale-pages/${id}/edit-blocks`, { replace: true })
-        return
-      }
+    if (existingPage && !isV2 && initializedId !== existingPage.id) {
       const c = existingPage.content as SalePageContent
       const featuresList = c.body.features.length > 0 ? c.body.features : ['']
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from server
+      setInitializedId(existingPage.id)
+       
       setSelectedPixelIds(existingPage.pixel_ids ?? [])
       reset({
         name: existingPage.name,
@@ -130,19 +136,62 @@ export function SalePageEditorPage() {
         tracking_content_value: c.tracking?.content_value || 0,
         tracking_currency: c.tracking?.currency || 'THB',
       })
-      setFeatures(featuresList)
-      setBodyImages(c.body.images ?? [])
-      setPageStyle(c.style ?? {})
-      setShowCustomSlug(true)
+      setFeatures(featuresList)  
+      setBodyImages(c.body.images ?? [])  
+      setPageStyle(c.style ?? {})  
+      setShowCustomSlug(true)  
     }
-  }, [existingPage, reset, id, navigate])
+  }, [existingPage, isV2, initializedId, reset])
 
   // Sync features state to form
   useEffect(() => {
     setValue('features', features)
   }, [features, setValue])
 
-  const watchedValues = watch()
+  // Watch only fields used by the preview and hero image thumbnail
+  const previewFields = useWatch({
+    control,
+    name: [
+      'hero_title',
+      'hero_subtitle',
+      'hero_image_url',
+      'description',
+      'cta_button_text',
+      'cta_button_link',
+      'contact_line_id',
+      'contact_phone',
+      'contact_website_url',
+      'cta_event_name',
+    ],
+  })
+  const [
+    heroTitle, heroSubtitle, heroImageUrl, description,
+    ctaButtonText, ctaButtonLink, contactLineId, contactPhone,
+    contactWebsiteUrl, ctaEventName,
+  ] = previewFields
+
+  const previewHero = useMemo(() => ({
+    title: heroTitle ?? '',
+    subtitle: heroSubtitle ?? '',
+    image_url: heroImageUrl ?? '',
+  }), [heroTitle, heroSubtitle, heroImageUrl])
+
+  const previewBody = useMemo(() => ({
+    description: description ?? '',
+    features,
+    images: bodyImages,
+  }), [description, features, bodyImages])
+
+  const previewCta = useMemo(() => ({
+    button_text: ctaButtonText ?? '',
+    button_link: ctaButtonLink ?? '',
+  }), [ctaButtonText, ctaButtonLink])
+
+  const previewContact = useMemo(() => ({
+    line_id: contactLineId ?? '',
+    phone: contactPhone ?? '',
+    website_url: contactWebsiteUrl ?? '',
+  }), [contactLineId, contactPhone, contactWebsiteUrl])
 
   const addFeature = () => {
     if (features.length < 10) {
@@ -357,9 +406,9 @@ export function SalePageEditorPage() {
               </div>
               <div className="space-y-2">
                 <Label>รูปภาพ Hero</Label>
-                {watchedValues.hero_image_url && (
+                {heroImageUrl && (
                   <div className="relative w-full max-w-[200px]">
-                    <img src={watchedValues.hero_image_url} alt="" className="w-full h-auto rounded-lg border border-border" />
+                    <img src={heroImageUrl} alt="" className="w-full h-auto rounded-lg border border-border" />
                     <button
                       type="button"
                       className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
@@ -584,26 +633,11 @@ export function SalePageEditorPage() {
           <div className="sticky top-8">
             <p className="text-sm font-medium text-muted-foreground mb-3">ตัวอย่าง</p>
             <SalePagePreview
-              hero={{
-                title: watchedValues.hero_title ?? '',
-                subtitle: watchedValues.hero_subtitle ?? '',
-                image_url: watchedValues.hero_image_url ?? '',
-              }}
-              body={{
-                description: watchedValues.description ?? '',
-                features: features,
-                images: bodyImages,
-              }}
-              cta={{
-                button_text: watchedValues.cta_button_text ?? '',
-                button_link: watchedValues.cta_button_link ?? '',
-              }}
-              contact={{
-                line_id: watchedValues.contact_line_id ?? '',
-                phone: watchedValues.contact_phone ?? '',
-                website_url: watchedValues.contact_website_url ?? '',
-              }}
-              ctaEventName={watchedValues.cta_event_name || 'Lead'}
+              hero={previewHero}
+              body={previewBody}
+              cta={previewCta}
+              contact={previewContact}
+              ctaEventName={ctaEventName || 'Lead'}
               style={pageStyle}
             />
           </div>

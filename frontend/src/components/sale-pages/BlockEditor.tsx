@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useCallback } from 'react'
 import { ChevronUp, ChevronDown, Trash2, Image, Type, MessageCircle, Globe, Link, Upload, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,16 +18,16 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
   const uploadImages = useUploadImages()
   const imageFileRef = useRef<HTMLInputElement>(null)
 
-  const addBlock = (block: Block) => onChange([...blocks, block])
+  const addBlock = useCallback((block: Block) => onChange([...blocks, block]), [blocks, onChange])
 
-  const updateBlock = (index: number, updates: Partial<Block>) => {
+  const updateBlock = useCallback((index: number, updates: Partial<Block>) => {
     const updated = blocks.map((b, i) => i === index ? { ...b, ...updates } as Block : b)
     onChange(updated)
-  }
+  }, [blocks, onChange])
 
-  const removeBlock = (index: number) => onChange(blocks.filter((_, i) => i !== index))
+  const removeBlock = useCallback((index: number) => onChange(blocks.filter((_, i) => i !== index)), [blocks, onChange])
 
-  const moveBlock = (index: number, direction: -1 | 1) => {
+  const moveBlock = useCallback((index: number, direction: -1 | 1) => {
     const newIndex = index + direction
     if (newIndex < 0 || newIndex >= blocks.length) return
     const updated = blocks.map((b, i) => {
@@ -36,7 +36,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
       return b
     })
     onChange(updated)
-  }
+  }, [blocks, onChange])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
