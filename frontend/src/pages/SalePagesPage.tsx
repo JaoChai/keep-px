@@ -6,10 +6,11 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useSalePages, useDeleteSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
+import { QueryErrorAlert } from '@/components/shared/QueryErrorAlert'
 
 export function SalePagesPage() {
-  const { data: salePages, isLoading } = useSalePages()
-  const { data: pixels } = usePixels()
+  const { data: salePages, isLoading, isError: isSalePagesError, error: salePagesError, refetch: refetchSalePages } = useSalePages()
+  const { data: pixels, isError: isPixelsError, error: pixelsError, refetch: refetchPixels } = usePixels()
   const deleteSalePage = useDeleteSalePage()
   const navigate = useNavigate()
 
@@ -39,6 +40,9 @@ export function SalePagesPage() {
           สร้างหน้าขาย
         </Button>
       </div>
+
+      {isSalePagesError && <QueryErrorAlert error={salePagesError} onRetry={refetchSalePages} className="mb-6" />}
+      {isPixelsError && <QueryErrorAlert error={pixelsError} onRetry={refetchPixels} className="mb-6" />}
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>

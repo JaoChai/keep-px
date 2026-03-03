@@ -1,0 +1,10 @@
+.git
+.env*
+node_modules
+dist
+test-results
+playwright-report
+*.md
+.DS_Store
+.idea
+.vscode
