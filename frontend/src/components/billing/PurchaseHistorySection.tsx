@@ -1,6 +1,6 @@
 import { Collapsible } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
-import { formatBaht } from '@/lib/utils'
+import { formatBaht, PACK_TYPE_NAMES } from '@/lib/utils'
 import type { Purchase } from '@/types'
 
 interface PurchaseHistorySectionProps {
@@ -59,9 +59,9 @@ export function PurchaseHistorySection({ purchases, isLoading }: PurchaseHistory
                       <td className="px-4 py-3 text-foreground">
                         {new Date(purchase.created_at).toLocaleDateString('th-TH')}
                       </td>
-                      <td className="px-4 py-3 text-foreground capitalize">{purchase.pack_type}</td>
+                      <td className="px-4 py-3 text-foreground">{PACK_TYPE_NAMES[purchase.pack_type] ?? purchase.pack_type}</td>
                       <td className="px-4 py-3 text-foreground">
-                        {formatBaht(purchase.amount_satang)} {purchase.currency}
+                        ฿{formatBaht(purchase.amount_satang)}
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={purchase.status} />
@@ -77,14 +77,14 @@ export function PurchaseHistorySection({ purchases, isLoading }: PurchaseHistory
               {purchases.map((purchase) => (
                 <div key={purchase.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                   <div>
-                    <p className="text-sm font-medium text-foreground capitalize">{purchase.pack_type}</p>
+                    <p className="text-sm font-medium text-foreground">{PACK_TYPE_NAMES[purchase.pack_type] ?? purchase.pack_type}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(purchase.created_at).toLocaleDateString('th-TH')}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-foreground">
-                      {formatBaht(purchase.amount_satang)} {purchase.currency}
+                      ฿{formatBaht(purchase.amount_satang)}
                     </p>
                     <StatusBadge status={purchase.status} />
                   </div>

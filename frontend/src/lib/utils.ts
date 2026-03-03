@@ -30,3 +30,22 @@ export function daysUntil(date: string | Date): number {
   const diff = new Date(date).getTime() - Date.now()
   return Math.ceil(diff / (1000 * 60 * 60 * 24))
 }
+
+export const PLAN_LABELS: Record<string, string> = {
+  sandbox: 'Sandbox',
+  launch: 'Launch',
+  shield: 'Shield',
+  vault: 'Vault',
+}
+
+export const PACK_TYPE_NAMES: Record<string, string> = {
+  replay_1: 'Single (1 รีเพลย์)',
+  replay_3: 'Triple (3 รีเพลย์)',
+  replay_unlimited: 'Unlimited (ไม่จำกัด)',
+  plan_launch: PLAN_LABELS.launch!,
+  plan_shield: PLAN_LABELS.shield!,
+  plan_vault: PLAN_LABELS.vault!,
+  pixels_10: 'Pixels +10',
+  sale_pages_10: 'Sale Pages +10',
+  events_1m: 'Events +1M',
+}
