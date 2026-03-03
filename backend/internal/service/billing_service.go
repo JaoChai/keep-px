@@ -43,13 +43,14 @@ type PackConfig struct {
 }
 
 type BillingService struct {
-	purchaseRepo repository.PurchaseRepository
-	creditRepo   repository.ReplayCreditRepository
-	subRepo      repository.SubscriptionRepository
-	customerRepo repository.CustomerRepository
-	webhookRepo  repository.WebhookEventRepository
-	cfg          *config.Config
-	packConfigs  map[string]PackConfig
+	purchaseRepo  repository.PurchaseRepository
+	creditRepo    repository.ReplayCreditRepository
+	subRepo       repository.SubscriptionRepository
+	customerRepo  repository.CustomerRepository
+	webhookRepo   repository.WebhookEventRepository
+	cfg           *config.Config
+	packConfigs   map[string]PackConfig
+	addonPriceIDs map[string]string // addon type -> Stripe price ID
 }
 
 func NewBillingService(
@@ -96,6 +97,14 @@ func NewBillingService(
 			MaxEventsPerReplay: domain.FreeMaxEventsPerReplay,
 			ExpiryDays:         365,
 		},
+	}
+
+	s.addonPriceIDs = map[string]string{
+		domain.AddonRetention180: cfg.StripePriceRetention180,
+		domain.AddonRetention365: cfg.StripePriceRetention365,
+		domain.AddonEvents1M:     cfg.StripePriceEvents1M,
+		domain.AddonSalePages25:  cfg.StripePriceSalePages25,
+		domain.AddonPixels40:     cfg.StripePricePixels40,
 	}
 
 	return s
@@ -475,28 +484,19 @@ func (s *BillingService) GetBillingOverview(ctx context.Context, customerID stri
 
 // addonPriceID maps an addon type to its Stripe price ID.
 func (s *BillingService) addonPriceID(addonType string) (string, error) {
-	switch addonType {
-	case domain.AddonRetention180:
-		return s.cfg.StripePriceRetention180, nil
-	case domain.AddonRetention365:
-		return s.cfg.StripePriceRetention365, nil
-	case domain.AddonEvents1M:
-		return s.cfg.StripePriceEvents1M, nil
-	default:
+	priceID, ok := s.addonPriceIDs[addonType]
+	if !ok {
 		return "", fmt.Errorf("unknown addon type: %s", addonType)
 	}
+	return priceID, nil
 }
 
 // resolveAddonType maps a Stripe price ID back to an addon type.
 func (s *BillingService) resolveAddonType(priceID string) string {
-	switch priceID {
-	case s.cfg.StripePriceRetention180:
-		return domain.AddonRetention180
-	case s.cfg.StripePriceRetention365:
-		return domain.AddonRetention365
-	case s.cfg.StripePriceEvents1M:
-		return domain.AddonEvents1M
-	default:
-		return "unknown"
+	for addonType, id := range s.addonPriceIDs {
+		if id == priceID {
+			return addonType
+		}
 	}
+	return "unknown"
 }

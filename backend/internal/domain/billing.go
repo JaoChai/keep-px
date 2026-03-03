@@ -14,6 +14,8 @@ const (
 	AddonRetention180 = "retention_180"
 	AddonRetention365 = "retention_365"
 	AddonEvents1M     = "events_1m"
+	AddonSalePages25  = "sale_pages_25"
+	AddonPixels40     = "pixels_40"
 )
 
 // Purchase statuses

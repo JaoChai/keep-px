@@ -14,6 +14,8 @@ const (
 	Addon1MEventsPerMonth = 1_000_000
 	AddonRetention180Days = 180
 	AddonRetention365Days = 365
+	AddonSalePages25Extra = 25
+	AddonPixels40Extra    = 40
 )
 
 // CustomerQuota represents the resolved effective limits for a customer.

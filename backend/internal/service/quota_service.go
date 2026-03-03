@@ -68,6 +68,10 @@ func (s *QuotaService) GetCustomerQuota(ctx context.Context, customerID string) 
 			}
 		case domain.AddonEvents1M:
 			quota.MaxEventsPerMonth += int64(domain.Addon1MEventsPerMonth)
+		case domain.AddonSalePages25:
+			quota.MaxSalePages += domain.AddonSalePages25Extra
+		case domain.AddonPixels40:
+			quota.MaxPixels += domain.AddonPixels40Extra
 		}
 	}
 

@@ -37,6 +37,8 @@ func newTestBillingService() (
 		StripePriceRetention180:    "price_retention_180",
 		StripePriceRetention365:    "price_retention_365",
 		StripePriceEvents1M:        "price_events_1m",
+		StripePriceSalePages25:     "price_sale_pages_25",
+		StripePricePixels40:        "price_pixels_40",
 		FrontendURL:                "http://localhost:5173",
 	}
 
@@ -352,6 +354,58 @@ func TestBillingService_ProcessWebhookEvent(t *testing.T) {
 		assert.Error(t, err)
 		webhookRepo.AssertExpectations(t)
 	})
+}
+
+func TestBillingService_AddonPriceID(t *testing.T) {
+	svc, _, _, _, _, _ := newTestBillingService()
+
+	tests := []struct {
+		addonType string
+		wantPrice string
+		wantErr   bool
+	}{
+		{domain.AddonRetention180, "price_retention_180", false},
+		{domain.AddonRetention365, "price_retention_365", false},
+		{domain.AddonEvents1M, "price_events_1m", false},
+		{domain.AddonSalePages25, "price_sale_pages_25", false},
+		{domain.AddonPixels40, "price_pixels_40", false},
+		{"unknown", "", true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.addonType, func(t *testing.T) {
+			price, err := svc.addonPriceID(tc.addonType)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.wantPrice, price)
+			}
+		})
+	}
+}
+
+func TestBillingService_ResolveAddonType(t *testing.T) {
+	svc, _, _, _, _, _ := newTestBillingService()
+
+	tests := []struct {
+		priceID       string
+		wantAddonType string
+	}{
+		{"price_retention_180", domain.AddonRetention180},
+		{"price_retention_365", domain.AddonRetention365},
+		{"price_events_1m", domain.AddonEvents1M},
+		{"price_sale_pages_25", domain.AddonSalePages25},
+		{"price_pixels_40", domain.AddonPixels40},
+		{"price_unknown", "unknown"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.priceID, func(t *testing.T) {
+			addonType := svc.resolveAddonType(tc.priceID)
+			assert.Equal(t, tc.wantAddonType, addonType)
+		})
+	}
 }
 
 func TestBillingService_CreateReplayPackCheckout(t *testing.T) {
