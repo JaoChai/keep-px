@@ -86,17 +86,25 @@ func (r *SubscriptionRepo) GetActiveByCustomerID(ctx context.Context, customerID
 }
 
 func (r *SubscriptionRepo) GetMaxEventsPerMonth(ctx context.Context, customerID string) (int64, error) {
-	var extra int64
+	var plan string
+	var addonBonus int64
 	err := r.pool.QueryRow(ctx,
-		`SELECT COALESCE(SUM(CASE WHEN addon_type = 'events_1m' THEN 1000000 ELSE 0 END), 0)
-		 FROM subscriptions
-		 WHERE customer_id = $1 AND status = 'active'`,
+		`SELECT c.plan,
+		  COALESCE((SELECT SUM(1000000) FROM subscriptions s
+		     WHERE s.customer_id = $1 AND s.status = 'active' AND s.addon_type = 'events_1m'), 0)
+		FROM customers c WHERE c.id = $1`,
 		customerID,
-	).Scan(&extra)
+	).Scan(&plan, &addonBonus)
 	if err != nil {
 		return 0, err
 	}
-	return int64(domain.FreeMaxEventsPerMonth) + extra, nil
+
+	planLimits, ok := domain.PlanLimitsMap[plan]
+	if !ok {
+		planLimits = domain.PlanLimitsMap[domain.PlanSandbox]
+	}
+
+	return planLimits.MaxEventsPerMonth + addonBonus, nil
 }
 
 func (r *SubscriptionRepo) Update(ctx context.Context, s *domain.Subscription) error {

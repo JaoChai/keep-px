@@ -73,7 +73,8 @@ func (s *CleanupService) run(ctx context.Context) {
 }
 
 func (s *CleanupService) cleanup(ctx context.Context) {
-	before := time.Now().AddDate(0, 0, -domain.AddonRetention365Days)
+	maxRetention := domain.PlanLimitsMap[domain.PlanVault].RetentionDays
+	before := time.Now().AddDate(0, 0, -maxRetention)
 	var totalDeleted int64
 
 	s.logger.Info("event cleanup started", "before", before.Format(time.RFC3339))

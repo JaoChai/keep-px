@@ -43,6 +43,11 @@ type Config struct {
 	StripePriceEvents1M        string `env:"STRIPE_PRICE_EVENTS_1M"`
 	StripePriceSalePages25     string `env:"STRIPE_PRICE_SALE_PAGES_25"`
 	StripePricePixels40        string `env:"STRIPE_PRICE_PIXELS_40"`
+	StripePricePlanLaunch      string `env:"STRIPE_PRICE_PLAN_LAUNCH"`
+	StripePricePlanShield      string `env:"STRIPE_PRICE_PLAN_SHIELD"`
+	StripePricePlanVault       string `env:"STRIPE_PRICE_PLAN_VAULT"`
+	StripePriceSalePages10     string `env:"STRIPE_PRICE_SALE_PAGES_10"`
+	StripePricePixels10        string `env:"STRIPE_PRICE_PIXELS_10"`
 	FrontendURL                string `env:"FRONTEND_URL" envDefault:"http://localhost:5173"`
 
 	// Token encryption (32-byte hex-encoded key, optional)

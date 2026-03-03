@@ -238,6 +238,10 @@ func (m *MockCustomerRepo) UpdateStripeCustomerID(ctx context.Context, customerI
 	args := m.Called(ctx, customerID, stripeCustomerID)
 	return args.Error(0)
 }
+func (m *MockCustomerRepo) UpdatePlan(ctx context.Context, customerID string, plan string) error {
+	args := m.Called(ctx, customerID, plan)
+	return args.Error(0)
+}
 func (m *MockCustomerRepo) RegenerateAPIKey(ctx context.Context, customerID, newKey string) (*domain.Customer, error) {
 	args := m.Called(ctx, customerID, newKey)
 	if args.Get(0) == nil {

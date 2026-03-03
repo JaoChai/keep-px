@@ -69,7 +69,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	// Services
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
 	billingService := service.NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookEventRepo, cfg)
-	quotaService := service.NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo)
+	quotaService := service.NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger, quotaService)
 	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger, quotaService)
 	notifService := service.NewNotificationService(notifRepo)

@@ -177,7 +177,7 @@ func (s *AuthService) GoogleAuth(ctx context.Context, input GoogleAuthInput) (*A
 		GoogleID: &googleID,
 		Name:     name,
 		APIKey:   apiKey,
-		Plan:     "free",
+		Plan:     domain.PlanSandbox,
 	}
 
 	if err := s.customerRepo.Create(ctx, customer); err != nil {

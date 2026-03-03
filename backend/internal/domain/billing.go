@@ -7,15 +7,21 @@ const (
 	PackReplay1         = "replay_1"
 	PackReplay3         = "replay_3"
 	PackReplayUnlimited = "replay_unlimited"
+	PackPlanGrant       = "plan_grant"
+)
+
+// Plan subscription types
+const (
+	SubTypePlanLaunch = "plan_launch"
+	SubTypePlanShield = "plan_shield"
+	SubTypePlanVault  = "plan_vault"
 )
 
 // Add-on types
 const (
-	AddonRetention180 = "retention_180"
-	AddonRetention365 = "retention_365"
-	AddonEvents1M     = "events_1m"
-	AddonSalePages25  = "sale_pages_25"
-	AddonPixels40     = "pixels_40"
+	AddonEvents1M    = "events_1m"
+	AddonSalePages10 = "sale_pages_10"
+	AddonPixels10    = "pixels_10"
 )
 
 // Purchase statuses

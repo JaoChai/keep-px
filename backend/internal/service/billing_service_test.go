@@ -39,6 +39,11 @@ func newTestBillingService() (
 		StripePriceEvents1M:        "price_events_1m",
 		StripePriceSalePages25:     "price_sale_pages_25",
 		StripePricePixels40:        "price_pixels_40",
+		StripePricePlanLaunch:      "price_plan_launch",
+		StripePricePlanShield:      "price_plan_shield",
+		StripePricePlanVault:       "price_plan_vault",
+		StripePriceSalePages10:     "price_sale_pages_10",
+		StripePricePixels10:        "price_pixels_10",
 		FrontendURL:                "http://localhost:5173",
 	}
 
@@ -158,7 +163,7 @@ func TestBillingService_HandleCheckoutCompleted_CreatesCorrectCredit(t *testing.
 	assert.Equal(t, domain.PackReplay3, capturedCredit.PackType)
 	assert.Equal(t, 3, capturedCredit.TotalReplays)
 	assert.Equal(t, 0, capturedCredit.UsedReplays)
-	assert.Equal(t, domain.FreeMaxEventsPerReplay, capturedCredit.MaxEventsPerReplay)
+	assert.Equal(t, domain.DefaultMaxEventsPerReplay, capturedCredit.MaxEventsPerReplay)
 
 	purchaseRepo.AssertExpectations(t)
 	creditRepo.AssertExpectations(t)
@@ -169,11 +174,11 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 		name      string
 		eventType string
 		sub       *stripe.Subscription
-		setup     func(*MockSubscriptionRepo, *MockCustomerRepo)
+		setup     func(*MockSubscriptionRepo, *MockCustomerRepo, *MockReplayCreditRepo)
 		wantErr   bool
 	}{
 		{
-			name:      "created - new subscription",
+			name:      "created - new addon subscription",
 			eventType: "customer.subscription.created",
 			sub: &stripe.Subscription{
 				ID:       "sub_123",
@@ -182,19 +187,83 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 				Items: &stripe.SubscriptionItemList{
 					Data: []*stripe.SubscriptionItem{
 						{
-							Price:              &stripe.Price{ID: "price_retention_180"},
+							Price:              &stripe.Price{ID: "price_events_1m"},
 							CurrentPeriodStart: time.Now().Unix(),
 							CurrentPeriodEnd:   time.Now().Add(30 * 24 * time.Hour).Unix(),
 						},
 					},
 				},
 			},
-			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo) {
+			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
 				cr.On("GetByStripeCustomerID", mock.Anything, "stripe_cust_1").Return(&domain.Customer{
 					ID: "cust-1",
 				}, nil)
 				sr.On("GetByStripeSubscriptionID", mock.Anything, "sub_123").Return(nil, nil)
 				sr.On("Create", mock.Anything, mock.AnythingOfType("*domain.Subscription")).Return(nil)
+			},
+			wantErr: false,
+		},
+		{
+			name:      "created - new plan subscription updates customer plan and grants credits",
+			eventType: "customer.subscription.created",
+			sub: &stripe.Subscription{
+				ID:       "sub_plan_shield",
+				Customer: &stripe.Customer{ID: "stripe_cust_1"},
+				Status:   stripe.SubscriptionStatusActive,
+				Items: &stripe.SubscriptionItemList{
+					Data: []*stripe.SubscriptionItem{
+						{
+							Price:              &stripe.Price{ID: "price_plan_shield"},
+							CurrentPeriodStart: time.Now().Unix(),
+							CurrentPeriodEnd:   time.Now().Add(30 * 24 * time.Hour).Unix(),
+						},
+					},
+				},
+			},
+			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
+				cr.On("GetByStripeCustomerID", mock.Anything, "stripe_cust_1").Return(&domain.Customer{
+					ID:   "cust-1",
+					Plan: domain.PlanSandbox,
+				}, nil)
+				sr.On("GetByStripeSubscriptionID", mock.Anything, "sub_plan_shield").Return(nil, nil)
+				sr.On("Create", mock.Anything, mock.AnythingOfType("*domain.Subscription")).Return(nil)
+				cr.On("UpdatePlan", mock.Anything, "cust-1", domain.PlanShield).Return(nil)
+				credR.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
+				credR.On("Create", mock.Anything, mock.MatchedBy(func(c *domain.ReplayCredit) bool {
+					return c.PackType == domain.PackPlanGrant && c.TotalReplays == 3
+				})).Return(nil)
+			},
+			wantErr: false,
+		},
+		{
+			name:      "created - vault plan grants unlimited credits",
+			eventType: "customer.subscription.created",
+			sub: &stripe.Subscription{
+				ID:       "sub_plan_vault",
+				Customer: &stripe.Customer{ID: "stripe_cust_1"},
+				Status:   stripe.SubscriptionStatusActive,
+				Items: &stripe.SubscriptionItemList{
+					Data: []*stripe.SubscriptionItem{
+						{
+							Price:              &stripe.Price{ID: "price_plan_vault"},
+							CurrentPeriodStart: time.Now().Unix(),
+							CurrentPeriodEnd:   time.Now().Add(30 * 24 * time.Hour).Unix(),
+						},
+					},
+				},
+			},
+			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
+				cr.On("GetByStripeCustomerID", mock.Anything, "stripe_cust_1").Return(&domain.Customer{
+					ID:   "cust-1",
+					Plan: domain.PlanSandbox,
+				}, nil)
+				sr.On("GetByStripeSubscriptionID", mock.Anything, "sub_plan_vault").Return(nil, nil)
+				sr.On("Create", mock.Anything, mock.AnythingOfType("*domain.Subscription")).Return(nil)
+				cr.On("UpdatePlan", mock.Anything, "cust-1", domain.PlanVault).Return(nil)
+				credR.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
+				credR.On("Create", mock.Anything, mock.MatchedBy(func(c *domain.ReplayCredit) bool {
+					return c.PackType == domain.PackPlanGrant && c.TotalReplays == -1
+				})).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -208,14 +277,14 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 				Items: &stripe.SubscriptionItemList{
 					Data: []*stripe.SubscriptionItem{
 						{
-							Price:              &stripe.Price{ID: "price_retention_365"},
+							Price:              &stripe.Price{ID: "price_events_1m"},
 							CurrentPeriodStart: time.Now().Unix(),
 							CurrentPeriodEnd:   time.Now().Add(30 * 24 * time.Hour).Unix(),
 						},
 					},
 				},
 			},
-			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo) {
+			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
 				cr.On("GetByStripeCustomerID", mock.Anything, "stripe_cust_1").Return(&domain.Customer{
 					ID: "cust-1",
 				}, nil)
@@ -229,7 +298,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:      "deleted - cancels subscription",
+			name:      "deleted - cancels addon subscription",
 			eventType: "customer.subscription.deleted",
 			sub: &stripe.Subscription{
 				ID:       "sub_456",
@@ -237,16 +306,45 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 				Status:   stripe.SubscriptionStatusCanceled,
 				Items:    &stripe.SubscriptionItemList{},
 			},
-			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo) {
+			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
 				sr.On("GetByStripeSubscriptionID", mock.Anything, "sub_456").Return(&domain.Subscription{
 					ID:                   "local-sub-2",
 					CustomerID:           "cust-2",
 					StripeSubscriptionID: "sub_456",
+					AddonType:            domain.AddonEvents1M,
 					Status:               domain.SubStatusActive,
 				}, nil)
 				sr.On("Update", mock.Anything, mock.MatchedBy(func(s *domain.Subscription) bool {
 					return s.Status == domain.SubStatusCanceled
 				})).Return(nil)
+			},
+			wantErr: false,
+		},
+		{
+			name:      "deleted - plan subscription reverts to sandbox",
+			eventType: "customer.subscription.deleted",
+			sub: &stripe.Subscription{
+				ID:       "sub_plan_del",
+				Customer: &stripe.Customer{ID: "stripe_cust_3"},
+				Status:   stripe.SubscriptionStatusCanceled,
+				Items:    &stripe.SubscriptionItemList{},
+			},
+			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
+				sr.On("GetByStripeSubscriptionID", mock.Anything, "sub_plan_del").Return(&domain.Subscription{
+					ID:                   "local-sub-plan",
+					CustomerID:           "cust-3",
+					StripeSubscriptionID: "sub_plan_del",
+					AddonType:            domain.SubTypePlanShield,
+					Status:               domain.SubStatusActive,
+				}, nil)
+				sr.On("Update", mock.Anything, mock.MatchedBy(func(s *domain.Subscription) bool {
+					return s.Status == domain.SubStatusCanceled
+				})).Return(nil)
+				cr.On("GetByStripeCustomerID", mock.Anything, "stripe_cust_3").Return(&domain.Customer{
+					ID:   "cust-3",
+					Plan: domain.PlanShield,
+				}, nil)
+				cr.On("UpdatePlan", mock.Anything, "cust-3", domain.PlanSandbox).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -258,7 +356,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 				Customer: &stripe.Customer{ID: "stripe_cust_x"},
 				Items:    &stripe.SubscriptionItemList{},
 			},
-			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo) {
+			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
 				sr.On("GetByStripeSubscriptionID", mock.Anything, "sub_ghost").Return(nil, nil)
 			},
 			wantErr: false,
@@ -271,15 +369,15 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 				Customer: &stripe.Customer{ID: "stripe_cust_y"},
 				Items:    &stripe.SubscriptionItemList{},
 			},
-			setup:   func(sr *MockSubscriptionRepo, cr *MockCustomerRepo) {},
+			setup:   func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {},
 			wantErr: false,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			svc, _, _, subRepo, customerRepo, _ := newTestBillingService()
-			tc.setup(subRepo, customerRepo)
+			svc, _, creditRepo, subRepo, customerRepo, _ := newTestBillingService()
+			tc.setup(subRepo, customerRepo, creditRepo)
 
 			err := svc.HandleSubscriptionEvent(context.Background(), tc.sub, tc.eventType)
 
@@ -290,6 +388,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 			}
 			subRepo.AssertExpectations(t)
 			customerRepo.AssertExpectations(t)
+			creditRepo.AssertExpectations(t)
 		})
 	}
 }
@@ -364,11 +463,9 @@ func TestBillingService_AddonPriceID(t *testing.T) {
 		wantPrice string
 		wantErr   bool
 	}{
-		{domain.AddonRetention180, "price_retention_180", false},
-		{domain.AddonRetention365, "price_retention_365", false},
 		{domain.AddonEvents1M, "price_events_1m", false},
-		{domain.AddonSalePages25, "price_sale_pages_25", false},
-		{domain.AddonPixels40, "price_pixels_40", false},
+		{domain.AddonSalePages10, "price_sale_pages_10", false},
+		{domain.AddonPixels10, "price_pixels_10", false},
 		{"unknown", "", true},
 	}
 
@@ -392,11 +489,12 @@ func TestBillingService_ResolveAddonType(t *testing.T) {
 		priceID       string
 		wantAddonType string
 	}{
-		{"price_retention_180", domain.AddonRetention180},
-		{"price_retention_365", domain.AddonRetention365},
 		{"price_events_1m", domain.AddonEvents1M},
-		{"price_sale_pages_25", domain.AddonSalePages25},
-		{"price_pixels_40", domain.AddonPixels40},
+		{"price_sale_pages_10", domain.AddonSalePages10},
+		{"price_pixels_10", domain.AddonPixels10},
+		{"price_plan_launch", domain.SubTypePlanLaunch},
+		{"price_plan_shield", domain.SubTypePlanShield},
+		{"price_plan_vault", domain.SubTypePlanVault},
 		{"price_unknown", "unknown"},
 	}
 
@@ -437,7 +535,6 @@ func TestBillingService_CreateReplayPackCheckout(t *testing.T) {
 			Name:  "Test",
 		}, nil)
 
-		// StripeSecretKey is "" in test config, so EnsureStripeCustomer returns ErrStripeNotConfigured
 		_, err := svc.CreateReplayPackCheckout(context.Background(), "cust-1", domain.PackReplay1)
 
 		assert.ErrorIs(t, err, ErrStripeNotConfigured)
@@ -445,10 +542,52 @@ func TestBillingService_CreateReplayPackCheckout(t *testing.T) {
 	})
 }
 
+func TestBillingService_CreatePlanSubscriptionCheckout(t *testing.T) {
+	t.Run("invalid plan type", func(t *testing.T) {
+		svc, _, _, _, _, _ := newTestBillingService()
+
+		_, err := svc.CreatePlanSubscriptionCheckout(context.Background(), "cust-1", "invalid_plan")
+
+		assert.ErrorIs(t, err, ErrInvalidPlanType)
+	})
+
+	t.Run("already on a plan returns error", func(t *testing.T) {
+		svc, _, _, subRepo, customerRepo, _ := newTestBillingService()
+
+		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
+			ID:    "cust-1",
+			Email: "test@example.com",
+			Name:  "Test",
+			Plan:  domain.PlanLaunch,
+		}, nil)
+		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{
+			{AddonType: domain.SubTypePlanLaunch, Status: domain.SubStatusActive},
+		}, nil)
+
+		_, err := svc.CreatePlanSubscriptionCheckout(context.Background(), "cust-1", domain.SubTypePlanShield)
+
+		assert.ErrorIs(t, err, ErrAlreadyOnPlan)
+	})
+
+	t.Run("customer not found", func(t *testing.T) {
+		svc, _, _, _, customerRepo, _ := newTestBillingService()
+
+		customerRepo.On("GetByID", mock.Anything, "cust-missing").Return(nil, nil)
+
+		_, err := svc.CreatePlanSubscriptionCheckout(context.Background(), "cust-missing", domain.SubTypePlanLaunch)
+
+		assert.ErrorIs(t, err, ErrCustomerNotFound)
+	})
+}
+
 func TestBillingService_GetBillingOverview(t *testing.T) {
 	t.Run("success with data", func(t *testing.T) {
-		svc, purchaseRepo, creditRepo, subRepo, _, _ := newTestBillingService()
+		svc, purchaseRepo, creditRepo, subRepo, customerRepo, _ := newTestBillingService()
 
+		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
+			ID:   "cust-1",
+			Plan: domain.PlanLaunch,
+		}, nil)
 		purchases := []*domain.Purchase{
 			{ID: "p1", CustomerID: "cust-1", PackType: domain.PackReplay1, Status: domain.PurchaseStatusCompleted},
 		}
@@ -456,7 +595,7 @@ func TestBillingService_GetBillingOverview(t *testing.T) {
 			{ID: "c1", CustomerID: "cust-1", PackType: domain.PackReplay1, TotalReplays: 1},
 		}
 		subscriptions := []*domain.Subscription{
-			{ID: "s1", CustomerID: "cust-1", AddonType: domain.AddonRetention180, Status: domain.SubStatusActive},
+			{ID: "s1", CustomerID: "cust-1", AddonType: domain.AddonEvents1M, Status: domain.SubStatusActive},
 		}
 
 		purchaseRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return(purchases, nil)
@@ -466,6 +605,7 @@ func TestBillingService_GetBillingOverview(t *testing.T) {
 		overview, err := svc.GetBillingOverview(context.Background(), "cust-1")
 
 		require.NoError(t, err)
+		assert.Equal(t, domain.PlanLaunch, overview.Plan)
 		assert.Len(t, overview.Purchases, 1)
 		assert.Len(t, overview.Credits, 1)
 		assert.Len(t, overview.Subscriptions, 1)
@@ -473,11 +613,16 @@ func TestBillingService_GetBillingOverview(t *testing.T) {
 		purchaseRepo.AssertExpectations(t)
 		creditRepo.AssertExpectations(t)
 		subRepo.AssertExpectations(t)
+		customerRepo.AssertExpectations(t)
 	})
 
 	t.Run("empty data returns empty arrays", func(t *testing.T) {
-		svc, purchaseRepo, creditRepo, subRepo, _, _ := newTestBillingService()
+		svc, purchaseRepo, creditRepo, subRepo, customerRepo, _ := newTestBillingService()
 
+		customerRepo.On("GetByID", mock.Anything, "cust-new").Return(&domain.Customer{
+			ID:   "cust-new",
+			Plan: domain.PlanSandbox,
+		}, nil)
 		purchaseRepo.On("ListByCustomerID", mock.Anything, "cust-new").Return(nil, nil)
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-new").Return(nil, nil)
 		subRepo.On("ListByCustomerID", mock.Anything, "cust-new").Return(nil, nil)
@@ -485,23 +630,23 @@ func TestBillingService_GetBillingOverview(t *testing.T) {
 		overview, err := svc.GetBillingOverview(context.Background(), "cust-new")
 
 		require.NoError(t, err)
+		assert.Equal(t, domain.PlanSandbox, overview.Plan)
 		assert.NotNil(t, overview.Purchases)
 		assert.NotNil(t, overview.Credits)
 		assert.NotNil(t, overview.Subscriptions)
 		assert.Empty(t, overview.Purchases)
 		assert.Empty(t, overview.Credits)
 		assert.Empty(t, overview.Subscriptions)
-
-		purchaseRepo.AssertExpectations(t)
-		creditRepo.AssertExpectations(t)
-		subRepo.AssertExpectations(t)
 	})
 
 	t.Run("purchase repo error", func(t *testing.T) {
-		svc, purchaseRepo, creditRepo, subRepo, _, _ := newTestBillingService()
+		svc, purchaseRepo, creditRepo, subRepo, customerRepo, _ := newTestBillingService()
 
+		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
+			ID:   "cust-1",
+			Plan: domain.PlanSandbox,
+		}, nil).Maybe()
 		purchaseRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return(nil, errors.New("db error"))
-		// These may or may not be called due to errgroup cancellation
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return(nil, nil).Maybe()
 		subRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return(nil, nil).Maybe()
 
@@ -510,4 +655,19 @@ func TestBillingService_GetBillingOverview(t *testing.T) {
 		assert.Error(t, err)
 		purchaseRepo.AssertExpectations(t)
 	})
+}
+
+func TestBillingService_IsPlanType(t *testing.T) {
+	assert.True(t, isPlanType("plan_launch"))
+	assert.True(t, isPlanType("plan_shield"))
+	assert.True(t, isPlanType("plan_vault"))
+	assert.False(t, isPlanType("events_1m"))
+	assert.False(t, isPlanType("sale_pages_10"))
+	assert.False(t, isPlanType(""))
+}
+
+func TestBillingService_PlanNameFromType(t *testing.T) {
+	assert.Equal(t, "launch", planNameFromType("plan_launch"))
+	assert.Equal(t, "shield", planNameFromType("plan_shield"))
+	assert.Equal(t, "vault", planNameFromType("plan_vault"))
 }

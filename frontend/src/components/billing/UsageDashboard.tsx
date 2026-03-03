@@ -6,8 +6,16 @@ import {
   Radio,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { isUnlimited } from '@/lib/utils'
 import type { CustomerQuota } from '@/types'
+
+const PLAN_LABELS: Record<string, string> = {
+  sandbox: 'Sandbox',
+  launch: 'Launch',
+  shield: 'Shield',
+  vault: 'Vault',
+}
 
 interface UsageDashboardProps {
   quota: CustomerQuota
@@ -59,7 +67,14 @@ export function UsageDashboard({ quota }: UsageDashboardProps) {
 
   return (
     <section>
-      <h2 className="text-sm font-medium text-muted-foreground mb-3">บัญชีของคุณ</h2>
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="text-sm font-medium text-muted-foreground">บัญชีของคุณ</h2>
+        {quota.plan && (
+          <Badge variant="outline" className="text-xs capitalize">
+            {PLAN_LABELS[quota.plan] ?? quota.plan}
+          </Badge>
+        )}
+      </div>
       <Card>
         <CardContent className="p-5">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">

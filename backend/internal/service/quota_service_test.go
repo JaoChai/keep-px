@@ -21,19 +21,25 @@ func newTestQuotaService() (
 	*MockEventUsageRepo,
 	*MockPixelRepo,
 	*MockSalePageRepo,
+	*MockCustomerRepo,
 ) {
 	creditRepo := new(MockReplayCreditRepo)
 	subRepo := new(MockSubscriptionRepo)
 	usageRepo := new(MockEventUsageRepo)
 	pixelRepo := new(MockPixelRepo)
 	salePageRepo := new(MockSalePageRepo)
+	customerRepo := new(MockCustomerRepo)
 
-	svc := NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo)
-	return svc, creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo
+	svc := NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
+	return svc, creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo
 }
 
-// setupFreePlanMocks sets up mocks for a free plan customer with no credits, no subscriptions, and optional usage.
-func setupFreePlanMocks(subRepo *MockSubscriptionRepo, creditRepo *MockReplayCreditRepo, usageRepo *MockEventUsageRepo, usage *domain.EventUsage) {
+// setupPlanMocks sets up mocks for a customer with a specific plan, no add-on subscriptions, no credits, and optional usage.
+func setupPlanMocks(customerRepo *MockCustomerRepo, subRepo *MockSubscriptionRepo, creditRepo *MockReplayCreditRepo, usageRepo *MockEventUsageRepo, plan string, usage *domain.EventUsage) {
+	customerRepo.On("GetByID", mock.Anything, mock.Anything).Return(&domain.Customer{
+		ID:   "cust-1",
+		Plan: plan,
+	}, nil)
 	subRepo.On("GetActiveByCustomerID", mock.Anything, mock.Anything).Return([]*domain.Subscription{}, nil)
 	creditRepo.On("GetActiveByCustomerID", mock.Anything, mock.Anything).Return([]*domain.ReplayCredit{}, nil)
 	if usage != nil {
@@ -44,30 +50,108 @@ func setupFreePlanMocks(subRepo *MockSubscriptionRepo, creditRepo *MockReplayCre
 }
 
 func TestQuotaService_GetCustomerQuota(t *testing.T) {
-	t.Run("free plan defaults", func(t *testing.T) {
-		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
-		setupFreePlanMocks(subRepo, creditRepo, usageRepo, nil)
+	t.Run("sandbox plan defaults", func(t *testing.T) {
+		svc, creditRepo, subRepo, usageRepo, _, _, customerRepo := newTestQuotaService()
+		setupPlanMocks(customerRepo, subRepo, creditRepo, usageRepo, domain.PlanSandbox, nil)
 
 		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
 
 		require.NoError(t, err)
-		assert.Equal(t, domain.FreeMaxPixels, quota.MaxPixels)
-		assert.Equal(t, int64(domain.FreeMaxEventsPerMonth), quota.MaxEventsPerMonth)
-		assert.Equal(t, domain.FreeRetentionDays, quota.RetentionDays)
-		assert.Equal(t, domain.FreeMaxSalePages, quota.MaxSalePages)
-		assert.Equal(t, domain.FreeMaxEventsPerReplay, quota.MaxEventsPerReplay)
+		assert.Equal(t, domain.PlanSandbox, quota.Plan)
+		assert.Equal(t, 2, quota.MaxPixels)
+		assert.Equal(t, int64(5_000), quota.MaxEventsPerMonth)
+		assert.Equal(t, 7, quota.RetentionDays)
+		assert.Equal(t, 1, quota.MaxSalePages)
+		assert.Equal(t, domain.DefaultMaxEventsPerReplay, quota.MaxEventsPerReplay)
 		assert.False(t, quota.CanReplay)
 		assert.Equal(t, 0, quota.RemainingReplays)
 		assert.Equal(t, int64(0), quota.EventsUsedThisMonth)
+	})
 
-		subRepo.AssertExpectations(t)
-		creditRepo.AssertExpectations(t)
-		usageRepo.AssertExpectations(t)
+	t.Run("launch plan limits", func(t *testing.T) {
+		svc, creditRepo, subRepo, usageRepo, _, _, customerRepo := newTestQuotaService()
+		setupPlanMocks(customerRepo, subRepo, creditRepo, usageRepo, domain.PlanLaunch, nil)
+
+		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.PlanLaunch, quota.Plan)
+		assert.Equal(t, 10, quota.MaxPixels)
+		assert.Equal(t, int64(200_000), quota.MaxEventsPerMonth)
+		assert.Equal(t, 60, quota.RetentionDays)
+		assert.Equal(t, 5, quota.MaxSalePages)
+	})
+
+	t.Run("shield plan limits", func(t *testing.T) {
+		svc, creditRepo, subRepo, usageRepo, _, _, customerRepo := newTestQuotaService()
+		setupPlanMocks(customerRepo, subRepo, creditRepo, usageRepo, domain.PlanShield, nil)
+
+		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.PlanShield, quota.Plan)
+		assert.Equal(t, 25, quota.MaxPixels)
+		assert.Equal(t, int64(1_000_000), quota.MaxEventsPerMonth)
+		assert.Equal(t, 180, quota.RetentionDays)
+		assert.Equal(t, 15, quota.MaxSalePages)
+	})
+
+	t.Run("vault plan limits", func(t *testing.T) {
+		svc, creditRepo, subRepo, usageRepo, _, _, customerRepo := newTestQuotaService()
+		setupPlanMocks(customerRepo, subRepo, creditRepo, usageRepo, domain.PlanVault, nil)
+
+		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, domain.PlanVault, quota.Plan)
+		assert.Equal(t, 50, quota.MaxPixels)
+		assert.Equal(t, int64(5_000_000), quota.MaxEventsPerMonth)
+		assert.Equal(t, 365, quota.RetentionDays)
+		assert.Equal(t, 30, quota.MaxSalePages)
+	})
+
+	t.Run("unknown plan falls back to sandbox", func(t *testing.T) {
+		svc, creditRepo, subRepo, usageRepo, _, _, customerRepo := newTestQuotaService()
+		setupPlanMocks(customerRepo, subRepo, creditRepo, usageRepo, "unknown_plan", nil)
+
+		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, 2, quota.MaxPixels)
+		assert.Equal(t, int64(5_000), quota.MaxEventsPerMonth)
+	})
+
+	t.Run("launch plan with addon stacking", func(t *testing.T) {
+		svc, creditRepo, subRepo, usageRepo, _, _, customerRepo := newTestQuotaService()
+		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
+			ID:   "cust-1",
+			Plan: domain.PlanLaunch,
+		}, nil)
+		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{
+			{AddonType: domain.AddonEvents1M, Status: domain.SubStatusActive},
+			{AddonType: domain.AddonPixels10, Status: domain.SubStatusActive},
+			{AddonType: domain.AddonSalePages10, Status: domain.SubStatusActive},
+			{AddonType: domain.SubTypePlanLaunch, Status: domain.SubStatusActive}, // plan sub should be skipped
+		}, nil)
+		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
+		usageRepo.On("GetCurrentMonth", mock.Anything, "cust-1").Return(nil, nil)
+
+		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
+
+		require.NoError(t, err)
+		assert.Equal(t, 10+10, quota.MaxPixels)                                    // launch base + pixels_10
+		assert.Equal(t, int64(200_000+1_000_000), quota.MaxEventsPerMonth)         // launch base + events_1m
+		assert.Equal(t, 5+10, quota.MaxSalePages)                                  // launch base + sale_pages_10
+		assert.Equal(t, 60, quota.RetentionDays)                                   // launch base (no retention addon)
 	})
 
 	t.Run("with active credits", func(t *testing.T) {
-		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
+		svc, creditRepo, subRepo, usageRepo, _, _, customerRepo := newTestQuotaService()
 
+		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
+			ID:   "cust-1",
+			Plan: domain.PlanSandbox,
+		}, nil)
 		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{}, nil)
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{
 			{
@@ -84,15 +168,15 @@ func TestQuotaService_GetCustomerQuota(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, quota.CanReplay)
 		assert.Equal(t, 2, quota.RemainingReplays)
-
-		subRepo.AssertExpectations(t)
-		creditRepo.AssertExpectations(t)
-		usageRepo.AssertExpectations(t)
 	})
 
 	t.Run("with unlimited credits", func(t *testing.T) {
-		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
+		svc, creditRepo, subRepo, usageRepo, _, _, customerRepo := newTestQuotaService()
 
+		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
+			ID:   "cust-1",
+			Plan: domain.PlanSandbox,
+		}, nil)
 		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{}, nil)
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{
 			{
@@ -111,71 +195,10 @@ func TestQuotaService_GetCustomerQuota(t *testing.T) {
 		assert.Equal(t, -1, quota.RemainingReplays)
 	})
 
-	t.Run("with subscriptions increase limits", func(t *testing.T) {
-		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
-
-		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{
-			{AddonType: domain.AddonRetention365, Status: domain.SubStatusActive},
-			{AddonType: domain.AddonEvents1M, Status: domain.SubStatusActive},
-		}, nil)
-		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
-		usageRepo.On("GetCurrentMonth", mock.Anything, "cust-1").Return(nil, nil)
-
-		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
-
-		require.NoError(t, err)
-		assert.Equal(t, domain.AddonRetention365Days, quota.RetentionDays)
-		assert.Equal(t, int64(domain.FreeMaxEventsPerMonth+domain.Addon1MEventsPerMonth), quota.MaxEventsPerMonth)
-
-		subRepo.AssertExpectations(t)
-		creditRepo.AssertExpectations(t)
-		usageRepo.AssertExpectations(t)
-	})
-
-	t.Run("with sale pages addon increases limit", func(t *testing.T) {
-		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
-
-		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{
-			{AddonType: domain.AddonSalePages25, Status: domain.SubStatusActive},
-		}, nil)
-		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
-		usageRepo.On("GetCurrentMonth", mock.Anything, "cust-1").Return(nil, nil)
-
-		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
-
-		require.NoError(t, err)
-		assert.Equal(t, domain.FreeMaxSalePages+domain.AddonSalePages25Extra, quota.MaxSalePages)
-		assert.Equal(t, domain.FreeMaxPixels, quota.MaxPixels) // pixels unchanged
-
-		subRepo.AssertExpectations(t)
-		creditRepo.AssertExpectations(t)
-		usageRepo.AssertExpectations(t)
-	})
-
-	t.Run("with pixels addon increases limit", func(t *testing.T) {
-		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
-
-		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{
-			{AddonType: domain.AddonPixels40, Status: domain.SubStatusActive},
-		}, nil)
-		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
-		usageRepo.On("GetCurrentMonth", mock.Anything, "cust-1").Return(nil, nil)
-
-		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
-
-		require.NoError(t, err)
-		assert.Equal(t, domain.FreeMaxPixels+domain.AddonPixels40Extra, quota.MaxPixels)
-		assert.Equal(t, domain.FreeMaxSalePages, quota.MaxSalePages) // sale pages unchanged
-
-		subRepo.AssertExpectations(t)
-		creditRepo.AssertExpectations(t)
-		usageRepo.AssertExpectations(t)
-	})
-
 	t.Run("with usage this month", func(t *testing.T) {
-		svc, creditRepo, subRepo, usageRepo, _, _ := newTestQuotaService()
+		svc, creditRepo, subRepo, usageRepo, _, _, customerRepo := newTestQuotaService()
 		usage := &domain.EventUsage{EventCount: 50000}
-		setupFreePlanMocks(subRepo, creditRepo, usageRepo, usage)
+		setupPlanMocks(customerRepo, subRepo, creditRepo, usageRepo, domain.PlanSandbox, usage)
 
 		quota, err := svc.GetCustomerQuota(context.Background(), "cust-1")
 
@@ -183,23 +206,36 @@ func TestQuotaService_GetCustomerQuota(t *testing.T) {
 		assert.Equal(t, int64(50000), quota.EventsUsedThisMonth)
 	})
 
-	t.Run("subscription repo error", func(t *testing.T) {
-		svc, _, subRepo, _, _, _ := newTestQuotaService()
+	t.Run("customer repo error", func(t *testing.T) {
+		svc, _, _, _, _, _, customerRepo := newTestQuotaService()
 
+		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(nil, errors.New("db error"))
+
+		_, err := svc.GetCustomerQuota(context.Background(), "cust-1")
+
+		assert.Error(t, err)
+	})
+
+	t.Run("subscription repo error", func(t *testing.T) {
+		svc, _, subRepo, _, _, _, customerRepo := newTestQuotaService()
+
+		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
+			ID:   "cust-1",
+			Plan: domain.PlanSandbox,
+		}, nil)
 		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return(nil, errors.New("db error"))
 
 		_, err := svc.GetCustomerQuota(context.Background(), "cust-1")
 
 		assert.Error(t, err)
-		subRepo.AssertExpectations(t)
 	})
 }
 
 func TestQuotaService_CheckAndIncrementEventQuota(t *testing.T) {
 	t.Run("under limit passes", func(t *testing.T) {
-		svc, _, subRepo, usageRepo, _, _ := newTestQuotaService()
-		subRepo.On("GetMaxEventsPerMonth", mock.Anything, "cust-1").Return(int64(domain.FreeMaxEventsPerMonth), nil)
-		usageRepo.On("CheckAndIncrement", mock.Anything, "cust-1", int64(10), int64(domain.FreeMaxEventsPerMonth)).Return(nil)
+		svc, _, subRepo, usageRepo, _, _, _ := newTestQuotaService()
+		subRepo.On("GetMaxEventsPerMonth", mock.Anything, "cust-1").Return(int64(5000), nil)
+		usageRepo.On("CheckAndIncrement", mock.Anything, "cust-1", int64(10), int64(5000)).Return(nil)
 
 		err := svc.CheckAndIncrementEventQuota(context.Background(), "cust-1", 10)
 
@@ -207,9 +243,9 @@ func TestQuotaService_CheckAndIncrementEventQuota(t *testing.T) {
 	})
 
 	t.Run("quota exceeded returns error", func(t *testing.T) {
-		svc, _, subRepo, usageRepo, _, _ := newTestQuotaService()
-		subRepo.On("GetMaxEventsPerMonth", mock.Anything, "cust-1").Return(int64(domain.FreeMaxEventsPerMonth), nil)
-		usageRepo.On("CheckAndIncrement", mock.Anything, "cust-1", int64(1), int64(domain.FreeMaxEventsPerMonth)).Return(repository.ErrQuotaExceeded)
+		svc, _, subRepo, usageRepo, _, _, _ := newTestQuotaService()
+		subRepo.On("GetMaxEventsPerMonth", mock.Anything, "cust-1").Return(int64(5000), nil)
+		usageRepo.On("CheckAndIncrement", mock.Anything, "cust-1", int64(1), int64(5000)).Return(repository.ErrQuotaExceeded)
 
 		err := svc.CheckAndIncrementEventQuota(context.Background(), "cust-1", 1)
 
@@ -219,10 +255,10 @@ func TestQuotaService_CheckAndIncrementEventQuota(t *testing.T) {
 
 func TestQuotaService_CheckPixelCreationQuota(t *testing.T) {
 	t.Run("under limit passes", func(t *testing.T) {
-		svc, creditRepo, subRepo, usageRepo, pixelRepo, _ := newTestQuotaService()
-		setupFreePlanMocks(subRepo, creditRepo, usageRepo, nil)
+		svc, creditRepo, subRepo, usageRepo, pixelRepo, _, customerRepo := newTestQuotaService()
+		setupPlanMocks(customerRepo, subRepo, creditRepo, usageRepo, domain.PlanSandbox, nil)
 
-		pixelRepo.On("CountByCustomerID", mock.Anything, "cust-1").Return(2, nil)
+		pixelRepo.On("CountByCustomerID", mock.Anything, "cust-1").Return(1, nil)
 
 		err := svc.CheckPixelCreationQuota(context.Background(), "cust-1")
 
@@ -231,10 +267,10 @@ func TestQuotaService_CheckPixelCreationQuota(t *testing.T) {
 	})
 
 	t.Run("at limit returns error", func(t *testing.T) {
-		svc, creditRepo, subRepo, usageRepo, pixelRepo, _ := newTestQuotaService()
-		setupFreePlanMocks(subRepo, creditRepo, usageRepo, nil)
+		svc, creditRepo, subRepo, usageRepo, pixelRepo, _, customerRepo := newTestQuotaService()
+		setupPlanMocks(customerRepo, subRepo, creditRepo, usageRepo, domain.PlanSandbox, nil)
 
-		pixelRepo.On("CountByCustomerID", mock.Anything, "cust-1").Return(domain.FreeMaxPixels, nil)
+		pixelRepo.On("CountByCustomerID", mock.Anything, "cust-1").Return(2, nil) // sandbox limit = 2
 
 		err := svc.CheckPixelCreationQuota(context.Background(), "cust-1")
 
@@ -245,13 +281,13 @@ func TestQuotaService_CheckPixelCreationQuota(t *testing.T) {
 
 func TestQuotaService_ConsumeReplayCredit(t *testing.T) {
 	t.Run("success - has credit", func(t *testing.T) {
-		svc, creditRepo, _, _, _, _ := newTestQuotaService()
+		svc, creditRepo, _, _, _, _, _ := newTestQuotaService()
 
 		activeCredit := &domain.ReplayCredit{
 			ID:                 "credit-1",
 			TotalReplays:       3,
 			UsedReplays:        1,
-			MaxEventsPerReplay: domain.FreeMaxEventsPerReplay,
+			MaxEventsPerReplay: domain.DefaultMaxEventsPerReplay,
 		}
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{activeCredit}, nil)
 		creditRepo.On("ConsumeOneCredit", mock.Anything, "cust-1").Return(activeCredit, nil)
@@ -260,12 +296,12 @@ func TestQuotaService_ConsumeReplayCredit(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, "credit-1", credit.ID)
-		assert.Equal(t, domain.FreeMaxEventsPerReplay, credit.MaxEventsPerReplay)
+		assert.Equal(t, domain.DefaultMaxEventsPerReplay, credit.MaxEventsPerReplay)
 		creditRepo.AssertExpectations(t)
 	})
 
 	t.Run("no credits available", func(t *testing.T) {
-		svc, creditRepo, _, _, _, _ := newTestQuotaService()
+		svc, creditRepo, _, _, _, _, _ := newTestQuotaService()
 
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
 
@@ -276,7 +312,7 @@ func TestQuotaService_ConsumeReplayCredit(t *testing.T) {
 	})
 
 	t.Run("exceeds max events per replay", func(t *testing.T) {
-		svc, creditRepo, _, _, _, _ := newTestQuotaService()
+		svc, creditRepo, _, _, _, _, _ := newTestQuotaService()
 
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{{
 			ID:                 "credit-1",
@@ -292,7 +328,7 @@ func TestQuotaService_ConsumeReplayCredit(t *testing.T) {
 	})
 
 	t.Run("unlimited events per replay (0 limit)", func(t *testing.T) {
-		svc, creditRepo, _, _, _, _ := newTestQuotaService()
+		svc, creditRepo, _, _, _, _, _ := newTestQuotaService()
 
 		activeCredit := &domain.ReplayCredit{
 			ID:                 "credit-1",
@@ -311,7 +347,7 @@ func TestQuotaService_ConsumeReplayCredit(t *testing.T) {
 	})
 
 	t.Run("consume credit repo error", func(t *testing.T) {
-		svc, creditRepo, _, _, _, _ := newTestQuotaService()
+		svc, creditRepo, _, _, _, _, _ := newTestQuotaService()
 
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{{
 			ID:                 "credit-1",

@@ -93,6 +93,14 @@ func (r *CustomerRepo) GetByStripeCustomerID(ctx context.Context, stripeCustomer
 	))
 }
 
+func (r *CustomerRepo) UpdatePlan(ctx context.Context, customerID string, plan string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE customers SET plan = $2, updated_at = NOW() WHERE id = $1`,
+		customerID, plan,
+	)
+	return err
+}
+
 func (r *CustomerRepo) UpdateStripeCustomerID(ctx context.Context, customerID string, stripeCustomerID string) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE customers SET stripe_customer_id = $2, updated_at = NOW() WHERE id = $1`,
