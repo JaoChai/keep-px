@@ -47,7 +47,7 @@ func newTestBillingService() (
 		FrontendURL:                "http://localhost:5173",
 	}
 
-	svc := NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo, cfg)
+	svc := NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo, nil, cfg)
 	return svc, purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo
 }
 

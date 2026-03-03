@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -31,8 +32,9 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.CORS(cfg.CORSAllowedOrigins))
 	r.Use(chimiddleware.Compress(5))
+	r.Use(middleware.MaxBodySize(1 << 20)) // 1 MB request body limit
 
-	// Token encryption (optional)
+	// Token encryption (optional in dev, required in production)
 	var encryptor *crypto.TokenEncryptor
 	if cfg.TokenEncryptionKey != "" {
 		keyBytes, err := hex.DecodeString(cfg.TokenEncryptionKey)
@@ -47,6 +49,10 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 				logger.Info("token encryption enabled")
 			}
 		}
+	}
+	if encryptor == nil && cfg.Env == "production" {
+		logger.Error("TOKEN_ENCRYPTION_KEY is required in production")
+		os.Exit(1)
 	}
 
 	// Repositories
@@ -68,7 +74,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 	// Services
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
-	billingService := service.NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookEventRepo, cfg)
+	billingService := service.NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookEventRepo, pool, cfg)
 	quotaService := service.NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger, quotaService)
 	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger, quotaService)

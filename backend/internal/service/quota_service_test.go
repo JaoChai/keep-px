@@ -290,7 +290,7 @@ func TestQuotaService_ConsumeReplayCredit(t *testing.T) {
 			MaxEventsPerReplay: domain.DefaultMaxEventsPerReplay,
 		}
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{activeCredit}, nil)
-		creditRepo.On("ConsumeOneCredit", mock.Anything, "cust-1").Return(activeCredit, nil)
+		creditRepo.On("ConsumeOneCredit", mock.Anything, "cust-1", mock.AnythingOfType("int")).Return(activeCredit, nil)
 
 		credit, err := svc.ConsumeReplayCredit(context.Background(), "cust-1", 500)
 
@@ -337,7 +337,7 @@ func TestQuotaService_ConsumeReplayCredit(t *testing.T) {
 			MaxEventsPerReplay: 0,
 		}
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{activeCredit}, nil)
-		creditRepo.On("ConsumeOneCredit", mock.Anything, "cust-1").Return(activeCredit, nil)
+		creditRepo.On("ConsumeOneCredit", mock.Anything, "cust-1", mock.AnythingOfType("int")).Return(activeCredit, nil)
 
 		credit, err := svc.ConsumeReplayCredit(context.Background(), "cust-1", 999999)
 
@@ -355,7 +355,7 @@ func TestQuotaService_ConsumeReplayCredit(t *testing.T) {
 			UsedReplays:        0,
 			MaxEventsPerReplay: 0,
 		}}, nil)
-		creditRepo.On("ConsumeOneCredit", mock.Anything, "cust-1").Return(nil, errors.New("db error"))
+		creditRepo.On("ConsumeOneCredit", mock.Anything, "cust-1", mock.AnythingOfType("int")).Return(nil, errors.New("db error"))
 
 		_, err := svc.ConsumeReplayCredit(context.Background(), "cust-1", 500)
 

@@ -22,6 +22,7 @@ type EventService struct {
 	capiClient   *facebook.CAPIClient
 	logger       *slog.Logger
 	quotaService *QuotaService
+	capiSem      chan struct{} // limits concurrent CAPI goroutines
 }
 
 func NewEventService(
@@ -37,6 +38,7 @@ func NewEventService(
 		capiClient:   capiClient,
 		logger:       logger,
 		quotaService: quotaService,
+		capiSem:      make(chan struct{}, 50),
 	}
 }
 
@@ -144,15 +146,31 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 			continue
 		}
 
-		// Forward to Facebook CAPI asynchronously
-		go s.forwardToCAPI(context.Background(), event, pixel, client)
+		// Forward to Facebook CAPI asynchronously (semaphore-limited)
+		go func(evt *domain.PixelEvent, px *domain.Pixel, cl ClientContext) {
+			s.capiSem <- struct{}{}
+			defer func() { <-s.capiSem }()
+			s.forwardToCAPI(context.Background(), evt, px, cl)
+		}(event, pixel, client)
 
-		// Fan-out to backup pixel (best-effort, 1 level only)
+		// Fan-out to backup pixel (best-effort, 1 level only, semaphore-limited)
 		if pixel.BackupPixelID != nil {
-			go s.forwardToBackupPixel(context.Background(), event, *pixel.BackupPixelID, client)
+			go func(evt *domain.PixelEvent, backupID string, cl ClientContext) {
+				s.capiSem <- struct{}{}
+				defer func() { <-s.capiSem }()
+				s.forwardToBackupPixel(context.Background(), evt, backupID, cl)
+			}(event, *pixel.BackupPixelID, client)
 		}
 
 		created++
+	}
+
+	// Refund quota for skipped events (duplicates, invalid pixels, etc.)
+	skipped := len(input.Events) - created
+	if skipped > 0 && s.quotaService != nil {
+		if err := s.quotaService.DecrementEventQuota(ctx, customerID, int64(skipped)); err != nil {
+			s.logger.Error("failed to refund skipped event quota", "error", err, "skipped", skipped)
+		}
 	}
 
 	return created, nil
@@ -303,11 +321,24 @@ func (s *EventService) ListRecent(ctx context.Context, customerID string, since 
 	return events, nil
 }
 
-func (s *EventService) GetByID(ctx context.Context, id string) (*domain.PixelEvent, error) {
+func (s *EventService) GetByID(ctx context.Context, customerID, id string) (*domain.PixelEvent, error) {
 	event, err := s.eventRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get event: %w", err)
 	}
+	if event == nil {
+		return nil, nil
+	}
+
+	// Ownership check: verify the event's pixel belongs to the customer
+	pixel, err := s.pixelRepo.GetByID(ctx, event.PixelID)
+	if err != nil {
+		return nil, fmt.Errorf("get pixel for ownership check: %w", err)
+	}
+	if pixel == nil || pixel.CustomerID != customerID {
+		return nil, nil
+	}
+
 	return event, nil
 }
 

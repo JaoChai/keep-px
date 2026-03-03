@@ -39,7 +39,7 @@ func (h *EventHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.validate.Struct(input); err != nil {
-		ErrorJSON(w, http.StatusBadRequest, err.Error())
+		ErrorJSON(w, http.StatusBadRequest, FormatValidationErrors(err))
 		return
 	}
 
@@ -157,9 +157,10 @@ func (h *EventHandler) ListRecent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *EventHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
 	eventID := chi.URLParam(r, "id")
 
-	event, err := h.eventService.GetByID(r.Context(), eventID)
+	event, err := h.eventService.GetByID(r.Context(), customerID, eventID)
 	if err != nil {
 		ErrorJSON(w, http.StatusInternalServerError, "failed to get event")
 		return

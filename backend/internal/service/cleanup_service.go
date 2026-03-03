@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
 
@@ -73,11 +72,9 @@ func (s *CleanupService) run(ctx context.Context) {
 }
 
 func (s *CleanupService) cleanup(ctx context.Context) {
-	maxRetention := domain.PlanLimitsMap[domain.PlanVault].RetentionDays
-	before := time.Now().AddDate(0, 0, -maxRetention)
 	var totalDeleted int64
 
-	s.logger.Info("event cleanup started", "before", before.Format(time.RFC3339))
+	s.logger.Info("per-plan event cleanup started")
 
 	for {
 		if ctx.Err() != nil {
@@ -85,7 +82,7 @@ func (s *CleanupService) cleanup(ctx context.Context) {
 			return
 		}
 
-		deleted, err := s.eventRepo.DeleteOlderThan(ctx, before, cleanupBatchSize)
+		deleted, err := s.eventRepo.DeleteExpiredByPlan(ctx, cleanupBatchSize)
 		if err != nil {
 			s.logger.Error("event cleanup batch failed", "error", err, "deleted_so_far", totalDeleted)
 			return
@@ -109,5 +106,5 @@ func (s *CleanupService) cleanup(ctx context.Context) {
 		}
 	}
 
-	s.logger.Info("event cleanup completed", "total_deleted", totalDeleted)
+	s.logger.Info("per-plan event cleanup completed", "total_deleted", totalDeleted)
 }

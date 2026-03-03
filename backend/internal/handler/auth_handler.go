@@ -33,7 +33,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.validate.Struct(input); err != nil {
-		ErrorJSON(w, http.StatusBadRequest, err.Error())
+		ErrorJSON(w, http.StatusBadRequest, FormatValidationErrors(err))
 		return
 	}
 
@@ -59,7 +59,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.validate.Struct(input); err != nil {
-		ErrorJSON(w, http.StatusBadRequest, err.Error())
+		ErrorJSON(w, http.StatusBadRequest, FormatValidationErrors(err))
 		return
 	}
 
@@ -84,7 +84,7 @@ func (h *AuthHandler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.validate.Struct(input); err != nil {
-		ErrorJSON(w, http.StatusBadRequest, err.Error())
+		ErrorJSON(w, http.StatusBadRequest, FormatValidationErrors(err))
 		return
 	}
 

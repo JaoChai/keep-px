@@ -61,6 +61,7 @@ func TestReplayService_Create(t *testing.T) {
 					FBPixelID:     "fb-2",
 					FBAccessToken: "token-2",
 				}, nil)
+				er.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).Return(1, nil)
 				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 					Return([]*domain.PixelEvent{
 						{ID: "evt-1", EventName: "PageView", EventTime: time.Now().Add(-1 * time.Hour)},
@@ -95,6 +96,7 @@ func TestReplayService_Create(t *testing.T) {
 					FBPixelID:     "fb-2",
 					FBAccessToken: "token-2",
 				}, nil)
+				er.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).Return(1, nil)
 				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 					Return([]*domain.PixelEvent{
 						{ID: "evt-1", EventName: "PageView", EventTime: time.Now().Add(-1 * time.Hour)},
@@ -129,6 +131,7 @@ func TestReplayService_Create(t *testing.T) {
 					FBPixelID:     "fb-2",
 					FBAccessToken: "token-2",
 				}, nil)
+				er.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).Return(1, nil)
 				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 					Return([]*domain.PixelEvent{
 						{ID: "evt-1", EventName: "PageView", EventTime: time.Now().Add(-1 * time.Hour)},
@@ -162,6 +165,7 @@ func TestReplayService_Create(t *testing.T) {
 					FBPixelID:     "fb-2",
 					FBAccessToken: "token-2",
 				}, nil)
+				er.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).Return(2, nil)
 				er.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 					Return([]*domain.PixelEvent{
 						{ID: "evt-1", EventName: "PageView", EventTime: time.Now().Add(-10 * 24 * time.Hour)},
@@ -954,6 +958,7 @@ func TestReplayService_Create_SemaphoreBlock(t *testing.T) {
 	pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
 		ID: "pixel-2", CustomerID: "cust-1", FBPixelID: "fb-2", FBAccessToken: "token-2",
 	}, nil)
+	eventRepo.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).Return(1, nil)
 	eventRepo.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 		Return([]*domain.PixelEvent{
 			{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
@@ -998,6 +1003,7 @@ func TestReplayService_Create_ShutdownDuringSemWait(t *testing.T) {
 	pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
 		ID: "pixel-2", CustomerID: "cust-1", FBPixelID: "fb-2", FBAccessToken: "token-2",
 	}, nil)
+	eventRepo.On("CountEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).Return(1, nil)
 	eventRepo.On("GetEventsForReplay", mock.Anything, "pixel-1", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 		Return([]*domain.PixelEvent{
 			{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
