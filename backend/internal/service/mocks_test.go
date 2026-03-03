@@ -67,8 +67,8 @@ func (m *MockReplayCreditRepo) IncrementUsed(ctx context.Context, id string) err
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
-func (m *MockReplayCreditRepo) ConsumeOneCredit(ctx context.Context, customerID string) (*domain.ReplayCredit, error) {
-	args := m.Called(ctx, customerID)
+func (m *MockReplayCreditRepo) ConsumeOneCredit(ctx context.Context, customerID string, maxEventCount int) (*domain.ReplayCredit, error) {
+	args := m.Called(ctx, customerID, maxEventCount)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -116,6 +116,10 @@ func (m *MockSubscriptionRepo) ListByCustomerID(ctx context.Context, customerID 
 type MockEventUsageRepo struct{ mock.Mock }
 
 func (m *MockEventUsageRepo) IncrementCount(ctx context.Context, customerID string, count int64) error {
+	args := m.Called(ctx, customerID, count)
+	return args.Error(0)
+}
+func (m *MockEventUsageRepo) DecrementCount(ctx context.Context, customerID string, count int64) error {
 	args := m.Called(ctx, customerID, count)
 	return args.Error(0)
 }
@@ -385,6 +389,10 @@ func (m *MockEventRepo) ListRecentByCustomerID(ctx context.Context, customerID s
 }
 func (m *MockEventRepo) DeleteOlderThan(ctx context.Context, before time.Time, batchSize int) (int64, error) {
 	args := m.Called(ctx, before, batchSize)
+	return args.Get(0).(int64), args.Error(1)
+}
+func (m *MockEventRepo) DeleteExpiredByPlan(ctx context.Context, batchSize int) (int64, error) {
+	args := m.Called(ctx, batchSize)
 	return args.Get(0).(int64), args.Error(1)
 }
 

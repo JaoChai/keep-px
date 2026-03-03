@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,6 +23,9 @@ func NewPixelRepo(pool *pgxpool.Pool, encryptor *crypto.TokenEncryptor) *PixelRe
 
 func (r *PixelRepo) encryptToken(token string) (string, error) {
 	if r.encryptor == nil || token == "" {
+		if r.encryptor == nil && token != "" {
+			slog.Warn("storing FB access token without encryption — set TOKEN_ENCRYPTION_KEY")
+		}
 		return token, nil
 	}
 	return r.encryptor.Encrypt(token)

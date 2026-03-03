@@ -46,6 +46,9 @@ func RateLimitWithContext(ctx context.Context, rps int) func(http.Handler) http.
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// r.RemoteAddr is already rewritten to the real client IP by
+			// chi's RealIP middleware (registered before this in router.go),
+			// which reads X-Real-IP / X-Forwarded-For headers.
 			ip, _, err := net.SplitHostPort(r.RemoteAddr)
 			if err != nil {
 				ip = r.RemoteAddr

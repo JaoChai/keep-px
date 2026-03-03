@@ -52,6 +52,7 @@ type EventRepository interface {
 	ListLatestByCustomerID(ctx context.Context, customerID string, pixelID string, limit int) ([]*domain.RealtimeEvent, error)
 	ListRecentByCustomerID(ctx context.Context, customerID string, since time.Time, pixelID string, limit int) ([]*domain.RealtimeEvent, error)
 	DeleteOlderThan(ctx context.Context, before time.Time, batchSize int) (int64, error)
+	DeleteExpiredByPlan(ctx context.Context, batchSize int) (int64, error)
 }
 
 type ReplaySessionRepository interface {
@@ -107,7 +108,7 @@ type ReplayCreditRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.ReplayCredit, error)
 	GetActiveByCustomerID(ctx context.Context, customerID string) ([]*domain.ReplayCredit, error)
 	IncrementUsed(ctx context.Context, id string) error
-	ConsumeOneCredit(ctx context.Context, customerID string) (*domain.ReplayCredit, error)
+	ConsumeOneCredit(ctx context.Context, customerID string, maxEventCount int) (*domain.ReplayCredit, error)
 }
 
 type SubscriptionRepository interface {
@@ -121,6 +122,7 @@ type SubscriptionRepository interface {
 
 type EventUsageRepository interface {
 	IncrementCount(ctx context.Context, customerID string, count int64) error
+	DecrementCount(ctx context.Context, customerID string, count int64) error
 	GetCurrentMonth(ctx context.Context, customerID string) (*domain.EventUsage, error)
 	CheckAndIncrement(ctx context.Context, customerID string, count int64, maxAllowed int64) error
 }

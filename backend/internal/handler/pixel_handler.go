@@ -46,7 +46,7 @@ func (h *PixelHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.validate.Struct(input); err != nil {
-		ErrorJSON(w, http.StatusBadRequest, err.Error())
+		ErrorJSON(w, http.StatusBadRequest, FormatValidationErrors(err))
 		return
 	}
 

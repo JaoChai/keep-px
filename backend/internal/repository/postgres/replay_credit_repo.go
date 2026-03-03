@@ -102,7 +102,7 @@ func (r *ReplayCreditRepo) IncrementUsed(ctx context.Context, id string) error {
 // SKIP LOCKED to prevent race conditions when multiple concurrent requests try
 // to consume credits simultaneously.
 // Returns nil, nil if no credits are available.
-func (r *ReplayCreditRepo) ConsumeOneCredit(ctx context.Context, customerID string) (*domain.ReplayCredit, error) {
+func (r *ReplayCreditRepo) ConsumeOneCredit(ctx context.Context, customerID string, maxEventCount int) (*domain.ReplayCredit, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -115,10 +115,11 @@ func (r *ReplayCreditRepo) ConsumeOneCredit(ctx context.Context, customerID stri
 		FROM replay_credits
 		WHERE customer_id = $1
 		  AND (total_replays = -1 OR used_replays < total_replays)
+		  AND (max_events_per_replay = 0 OR max_events_per_replay >= $2)
 		  AND expires_at > NOW()
 		ORDER BY expires_at ASC
 		LIMIT 1
-		FOR UPDATE SKIP LOCKED`, customerID).Scan(
+		FOR UPDATE SKIP LOCKED`, customerID, maxEventCount).Scan(
 		&credit.ID, &credit.CustomerID, &credit.PurchaseID, &credit.PackType,
 		&credit.TotalReplays, &credit.UsedReplays, &credit.MaxEventsPerReplay,
 		&credit.ExpiresAt, &credit.CreatedAt,

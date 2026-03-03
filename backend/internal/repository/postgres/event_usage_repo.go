@@ -29,6 +29,15 @@ func (r *EventUsageRepo) IncrementCount(ctx context.Context, customerID string, 
 	return err
 }
 
+func (r *EventUsageRepo) DecrementCount(ctx context.Context, customerID string, count int64) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE event_usage SET event_count = GREATEST(0, event_count - $2), updated_at = NOW()
+		 WHERE customer_id = $1 AND month = date_trunc('month', CURRENT_DATE)`,
+		customerID, count,
+	)
+	return err
+}
+
 func (r *EventUsageRepo) CheckAndIncrement(ctx context.Context, customerID string, count int64, maxAllowed int64) error {
 	tag, err := r.pool.Exec(ctx,
 		`INSERT INTO event_usage (customer_id, month, event_count)

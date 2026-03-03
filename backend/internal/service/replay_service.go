@@ -179,7 +179,20 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 		return nil, err
 	}
 
-	// Count events to replay
+	// Pre-check event count before loading all events into memory
+	eventCount, err := s.eventRepo.CountEventsForReplay(ctx, input.SourcePixelID, input.EventTypes, dateFrom, dateTo)
+	if err != nil {
+		return nil, fmt.Errorf("count events for replay: %w", err)
+	}
+
+	// Early rejection if quota service is available and event count exceeds credit limits
+	if s.quotaService != nil && eventCount > 0 {
+		if err := s.quotaService.CheckReplayEventCount(ctx, customerID, eventCount); err != nil {
+			return nil, err
+		}
+	}
+
+	// Load events for replay
 	events, err := s.eventRepo.GetEventsForReplay(ctx, input.SourcePixelID, input.EventTypes, dateFrom, dateTo, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get events for replay: %w", err)

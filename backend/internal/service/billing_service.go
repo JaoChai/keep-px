@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/stripe/stripe-go/v82"
 	portalsession "github.com/stripe/stripe-go/v82/billingportal/session"
 	checkoutsession "github.com/stripe/stripe-go/v82/checkout/session"
@@ -53,10 +54,16 @@ type BillingService struct {
 	subRepo       repository.SubscriptionRepository
 	customerRepo  repository.CustomerRepository
 	webhookRepo   repository.WebhookEventRepository
+	pool          Pool
 	cfg           *config.Config
 	packConfigs   map[string]PackConfig
 	addonPriceIDs map[string]string // addon type -> Stripe price ID
 	planPriceIDs  map[string]string // plan sub type -> Stripe price ID
+}
+
+// Pool is the subset of pgxpool.Pool used by BillingService for transactions.
+type Pool interface {
+	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
 func NewBillingService(
@@ -65,6 +72,7 @@ func NewBillingService(
 	subRepo repository.SubscriptionRepository,
 	customerRepo repository.CustomerRepository,
 	webhookRepo repository.WebhookEventRepository,
+	pool Pool,
 	cfg *config.Config,
 ) *BillingService {
 	s := &BillingService{
@@ -73,6 +81,7 @@ func NewBillingService(
 		subRepo:      subRepo,
 		customerRepo: customerRepo,
 		webhookRepo:  webhookRepo,
+		pool:         pool,
 		cfg:          cfg,
 	}
 
@@ -382,6 +391,8 @@ func (s *BillingService) ProcessWebhookEvent(ctx context.Context, stripeEventID,
 }
 
 // HandleCheckoutCompleted processes a completed Stripe Checkout session.
+// It wraps purchase status update + credit creation in a database transaction
+// when a pool is available, ensuring atomicity.
 func (s *BillingService) HandleCheckoutCompleted(ctx context.Context, sess *stripe.CheckoutSession) error {
 	purchaseID, ok := sess.Metadata["purchase_id"]
 	if !ok || purchaseID == "" {
@@ -397,16 +408,59 @@ func (s *BillingService) HandleCheckoutCompleted(ctx context.Context, sess *stri
 		return fmt.Errorf("purchase not found: %s", purchaseID)
 	}
 
-	// Update purchase status
-	now := time.Now()
-	if err := s.purchaseRepo.UpdateStatus(ctx, purchase.ID, domain.PurchaseStatusCompleted, &now); err != nil {
-		return fmt.Errorf("update purchase status: %w", err)
-	}
-
-	// Create replay credit
 	packCfg, ok := s.packConfigs[purchase.PackType]
 	if !ok {
 		return fmt.Errorf("unknown pack type: %s", purchase.PackType)
+	}
+
+	now := time.Now()
+
+	// Use a transaction if pool is available to ensure atomicity
+	if s.pool != nil {
+		tx, err := s.pool.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("begin transaction: %w", err)
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+
+		// Update purchase status within transaction
+		_, err = tx.Exec(ctx,
+			`UPDATE purchases SET status = $1, completed_at = $2 WHERE id = $3`,
+			domain.PurchaseStatusCompleted, &now, purchase.ID,
+		)
+		if err != nil {
+			return fmt.Errorf("update purchase status: %w", err)
+		}
+
+		// Create replay credit within transaction
+		credit := &domain.ReplayCredit{
+			CustomerID:         purchase.CustomerID,
+			PurchaseID:         &purchase.ID,
+			PackType:           purchase.PackType,
+			TotalReplays:       packCfg.TotalReplays,
+			UsedReplays:        0,
+			MaxEventsPerReplay: packCfg.MaxEventsPerReplay,
+			ExpiresAt:          now.AddDate(0, 0, packCfg.ExpiryDays),
+		}
+
+		err = tx.QueryRow(ctx,
+			`INSERT INTO replay_credits (customer_id, purchase_id, pack_type,
+				total_replays, used_replays, max_events_per_replay, expires_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7)
+			 RETURNING id, created_at`,
+			credit.CustomerID, credit.PurchaseID, credit.PackType,
+			credit.TotalReplays, credit.UsedReplays, credit.MaxEventsPerReplay, credit.ExpiresAt,
+		).Scan(&credit.ID, &credit.CreatedAt)
+		if err != nil {
+			return fmt.Errorf("create replay credit: %w", err)
+		}
+
+		return tx.Commit(ctx)
+	}
+
+	// Fallback: no pool — execute without transaction
+	if err := s.purchaseRepo.UpdateStatus(ctx, purchase.ID, domain.PurchaseStatusCompleted, &now); err != nil {
+		return fmt.Errorf("update purchase status: %w", err)
 	}
 
 	credit := &domain.ReplayCredit{
