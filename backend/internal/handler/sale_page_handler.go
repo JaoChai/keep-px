@@ -247,8 +247,25 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, r *http.Request,
 		BaseURL: h.baseURL,
 	}
 
-	// Single-pass unmarshal based on template name
+	// Content-aware template detection
 	templateName := page.TemplateName
+	var peek struct {
+		Version int `json:"version"`
+	}
+	if err := json.Unmarshal(page.Content, &peek); err != nil {
+		h.logger.Error("failed to peek content version", "error", err, "page_id", page.ID)
+		http.Error(w, "invalid page content", http.StatusInternalServerError)
+		return
+	}
+	if peek.Version == 2 {
+		templateName = "blocks"
+	} else if templateName == "blocks" {
+		// template_name says blocks but content has no version:2
+		templateName = "simple"
+		h.logger.Warn("template_name/content version mismatch",
+			"page_id", page.ID, "template_name", page.TemplateName)
+	}
+
 	if templateName == "blocks" {
 		var blocks domain.BlocksContent
 		if err := json.Unmarshal(page.Content, &blocks); err != nil {
