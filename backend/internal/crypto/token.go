@@ -47,16 +47,16 @@ func (e *TokenEncryptor) Decrypt(encoded string) (string, error) {
 	}
 	data, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
-		return encoded, nil // not encrypted, return as-is
+		return encoded, nil // not valid base64: plaintext token
 	}
-	nonceSize := e.gcm.NonceSize()
-	if len(data) < nonceSize {
-		return encoded, nil // not encrypted, return as-is
+	// AES-GCM: nonce (12) + ciphertext (>0) + tag (16) = min 29 bytes
+	if len(data) < e.gcm.NonceSize()+16 {
+		return encoded, nil // too short to be ciphertext: plaintext token
 	}
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	nonce, ciphertext := data[:e.gcm.NonceSize()], data[e.gcm.NonceSize():]
 	plaintext, err := e.gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		return encoded, nil // decrypt failed, return as-is (graceful fallback)
+		return "", fmt.Errorf("decrypt token: %w", err)
 	}
 	return string(plaintext), nil
 }

@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -18,30 +20,25 @@ func NewPixelRepo(pool *pgxpool.Pool, encryptor *crypto.TokenEncryptor) *PixelRe
 	return &PixelRepo{pool: pool, encryptor: encryptor}
 }
 
-func (r *PixelRepo) encryptToken(token string) string {
+func (r *PixelRepo) encryptToken(token string) (string, error) {
 	if r.encryptor == nil || token == "" {
-		return token
+		return token, nil
 	}
-	encrypted, err := r.encryptor.Encrypt(token)
-	if err != nil {
-		return token // fallback to plaintext on error
-	}
-	return encrypted
+	return r.encryptor.Encrypt(token)
 }
 
-func (r *PixelRepo) decryptToken(token string) string {
+func (r *PixelRepo) decryptToken(token string) (string, error) {
 	if r.encryptor == nil || token == "" {
-		return token
+		return token, nil
 	}
-	decrypted, err := r.encryptor.Decrypt(token)
-	if err != nil {
-		return token // fallback to as-is on error
-	}
-	return decrypted
+	return r.encryptor.Decrypt(token)
 }
 
 func (r *PixelRepo) Create(ctx context.Context, p *domain.Pixel) error {
-	encToken := r.encryptToken(p.FBAccessToken)
+	encToken, err := r.encryptToken(p.FBAccessToken)
+	if err != nil {
+		return fmt.Errorf("encrypt token: %w", err)
+	}
 	return r.pool.QueryRow(ctx,
 		`INSERT INTO pixels (customer_id, fb_pixel_id, fb_access_token, name, backup_pixel_id, test_event_code)
 		 VALUES ($1, $2, $3, $4, $5, $6)
@@ -56,13 +53,17 @@ func (r *PixelRepo) GetByID(ctx context.Context, id string) (*domain.Pixel, erro
 		`SELECT id, customer_id, fb_pixel_id, fb_access_token, name, is_active, status, backup_pixel_id, test_event_code, created_at, updated_at
 		 FROM pixels WHERE id = $1`, id,
 	).Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.FBAccessToken, &p.Name, &p.IsActive, &p.Status, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	p.FBAccessToken = r.decryptToken(p.FBAccessToken)
+	dec, err := r.decryptToken(p.FBAccessToken)
+	if err != nil {
+		return nil, fmt.Errorf("decrypt token for pixel %s: %w", p.ID, err)
+	}
+	p.FBAccessToken = dec
 	return p, nil
 }
 
@@ -85,7 +86,11 @@ func (r *PixelRepo) GetByIDs(ctx context.Context, ids []string) ([]*domain.Pixel
 		if err := rows.Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.FBAccessToken, &p.Name, &p.IsActive, &p.Status, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
-		p.FBAccessToken = r.decryptToken(p.FBAccessToken)
+		dec, err := r.decryptToken(p.FBAccessToken)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt token for pixel %s: %w", p.ID, err)
+		}
+		p.FBAccessToken = dec
 		pixels = append(pixels, p)
 	}
 	return pixels, rows.Err()
@@ -115,15 +120,22 @@ func (r *PixelRepo) ListByCustomerID(ctx context.Context, customerID string) ([]
 		if err := rows.Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.FBAccessToken, &p.Name, &p.IsActive, &p.Status, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
 		}
-		p.FBAccessToken = r.decryptToken(p.FBAccessToken)
+		dec, err := r.decryptToken(p.FBAccessToken)
+		if err != nil {
+			return nil, fmt.Errorf("decrypt token for pixel %s: %w", p.ID, err)
+		}
+		p.FBAccessToken = dec
 		pixels = append(pixels, p)
 	}
 	return pixels, rows.Err()
 }
 
 func (r *PixelRepo) Update(ctx context.Context, p *domain.Pixel) error {
-	encToken := r.encryptToken(p.FBAccessToken)
-	_, err := r.pool.Exec(ctx,
+	encToken, err := r.encryptToken(p.FBAccessToken)
+	if err != nil {
+		return fmt.Errorf("encrypt token: %w", err)
+	}
+	_, err = r.pool.Exec(ctx,
 		`UPDATE pixels SET fb_pixel_id = $2, fb_access_token = $3, name = $4, is_active = $5, status = $6, backup_pixel_id = $7, test_event_code = $8, updated_at = NOW()
 		 WHERE id = $1`,
 		p.ID, p.FBPixelID, encToken, p.Name, p.IsActive, p.Status, p.BackupPixelID, p.TestEventCode,
