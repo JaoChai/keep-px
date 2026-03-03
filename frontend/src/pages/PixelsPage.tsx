@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { usePixels, useCreatePixel, useUpdatePixel, useDeletePixel, useTestPixel } from '@/hooks/use-pixels'
+import { QueryErrorAlert } from '@/components/shared/QueryErrorAlert'
 import type { Pixel } from '@/types'
 
 const pixelSchema = z.object({
@@ -22,7 +23,7 @@ const pixelSchema = z.object({
 type PixelForm = z.infer<typeof pixelSchema>
 
 export function PixelsPage() {
-  const { data: pixels, isLoading } = usePixels()
+  const { data: pixels, isLoading, isError, error, refetch } = usePixels()
   const createPixel = useCreatePixel()
   const updatePixel = useUpdatePixel()
   const deletePixel = useDeletePixel()
@@ -104,6 +105,8 @@ export function PixelsPage() {
           เพิ่มพิกเซล
         </Button>
       </div>
+
+      {isError && <QueryErrorAlert error={error} onRetry={refetch} className="mb-6" />}
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>

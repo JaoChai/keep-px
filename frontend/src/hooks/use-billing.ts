@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import api from '@/lib/api'
 import type { BillingOverview, CustomerQuota } from '@/types'
 
@@ -31,6 +32,9 @@ export function useCreateCheckout() {
     onSuccess: (data) => {
       window.location.href = data.url
     },
+    onError: () => {
+      toast.error('สร้างลิงก์ชำระเงินไม่สำเร็จ')
+    },
   })
 }
 
@@ -42,6 +46,9 @@ export function useCreatePortalSession() {
     },
     onSuccess: (data) => {
       window.location.href = data.url
+    },
+    onError: () => {
+      toast.error('เปิดหน้าจัดการบิลไม่สำเร็จ')
     },
   })
 }
