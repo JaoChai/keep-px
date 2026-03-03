@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -12,7 +13,7 @@ import (
 
 type visitor struct {
 	limiter  *rate.Limiter
-	lastSeen time.Time
+	lastSeen atomic.Int64 // UnixNano timestamp
 }
 
 // RateLimitWithContext returns a per-IP rate limiting middleware that stops
@@ -34,7 +35,7 @@ func RateLimitWithContext(ctx context.Context, rps int) func(http.Handler) http.
 			case <-ticker.C:
 				mu.Lock()
 				for ip, v := range visitors {
-					if time.Since(v.lastSeen) > 10*time.Minute {
+					if time.Since(time.Unix(0, v.lastSeen.Load())) > 10*time.Minute {
 						delete(visitors, ip)
 					}
 				}
@@ -65,9 +66,7 @@ func RateLimitWithContext(ctx context.Context, rps int) func(http.Handler) http.
 				mu.Unlock()
 			}
 
-			mu.RLock()
-			v.lastSeen = time.Now()
-			mu.RUnlock()
+			v.lastSeen.Store(time.Now().UnixNano())
 
 			if !v.limiter.Allow() {
 				w.Header().Set("Content-Type", "application/json")

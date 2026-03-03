@@ -75,7 +75,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	notifService := service.NewNotificationService(notifRepo)
 	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService, quotaService)
 	analyticsService := service.NewAnalyticsService(pool)
-	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo, quotaService)
+	salePageService := service.NewSalePageService(shutdownCtx, salePageRepo, customerRepo, pixelRepo, quotaService)
 
 	// Storage
 	storageService := service.NewStorageService(cfg)
@@ -120,7 +120,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 		// Event ingestion (API key auth)
 		r.Route("/events", func(r chi.Router) {
-			r.Use(middleware.APIKeyAuth(customerRepo))
+			r.Use(middleware.APIKeyAuthWithContext(shutdownCtx, customerRepo))
 			r.Post("/ingest", eventHandler.Ingest)
 		})
 

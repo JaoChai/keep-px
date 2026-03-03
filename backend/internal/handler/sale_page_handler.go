@@ -293,13 +293,13 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, r *http.Request,
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=30, s-maxage=60")
 	w.Header().Set("ETag", etag)
-	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 
 	if match := r.Header.Get("If-None-Match"); match == etag {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
 
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	if _, err := w.Write(body); err != nil {
 		h.logger.Error("failed to write response", "error", err, "page_id", page.ID)
 	}

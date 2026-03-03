@@ -15,8 +15,32 @@ type apiKeyCacheEntry struct {
 }
 
 func APIKeyAuth(customerRepo repository.CustomerRepository) func(http.Handler) http.Handler {
+	return APIKeyAuthWithContext(context.Background(), customerRepo)
+}
+
+func APIKeyAuthWithContext(ctx context.Context, customerRepo repository.CustomerRepository) func(http.Handler) http.Handler {
 	var cache sync.Map
 	const cacheTTL = 5 * time.Minute
+
+	// Cleanup expired entries every 5 minutes; stops when ctx is done.
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				cache.Range(func(key, val any) bool {
+					entry := val.(apiKeyCacheEntry)
+					if time.Now().After(entry.expiry) {
+						cache.Delete(key)
+					}
+					return true
+				})
+			}
+		}
+	}()
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -46,13 +46,13 @@ type SalePageService struct {
 	cache        *salePageCache
 }
 
-func NewSalePageService(salePageRepo repository.SalePageRepository, customerRepo repository.CustomerRepository, pixelRepo repository.PixelRepository, quotaService *QuotaService) *SalePageService {
+func NewSalePageService(ctx context.Context, salePageRepo repository.SalePageRepository, customerRepo repository.CustomerRepository, pixelRepo repository.PixelRepository, quotaService *QuotaService) *SalePageService {
 	return &SalePageService{
 		salePageRepo: salePageRepo,
 		customerRepo: customerRepo,
 		pixelRepo:    pixelRepo,
 		quotaService: quotaService,
-		cache:        newSalePageCache(60 * time.Second),
+		cache:        newSalePageCache(ctx, 60*time.Second),
 	}
 }
 
