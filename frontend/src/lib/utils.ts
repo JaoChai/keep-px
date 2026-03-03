@@ -25,3 +25,8 @@ export function isUnlimited(value: number): boolean {
 export function timeAgo(date: string | Date): string {
   return formatDistanceToNow(new Date(date), { addSuffix: true, locale: th })
 }
+
+export function daysUntil(date: string | Date): number {
+  const diff = new Date(date).getTime() - Date.now()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
