@@ -47,7 +47,7 @@ func main() {
 		logger.Error("failed to parse database URL", "error", err)
 		os.Exit(1)
 	}
-	poolConfig.MaxConns = 25
+	poolConfig.MaxConns = 50
 	poolConfig.MinConns = 5
 	poolConfig.MaxConnLifetime = 1 * time.Hour
 	poolConfig.MaxConnIdleTime = 15 * time.Minute
