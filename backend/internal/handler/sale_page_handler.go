@@ -22,6 +22,11 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/templates"
 )
 
+const (
+	tmplSimple = "simple"
+	tmplBlocks = "blocks"
+)
+
 var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
 type SalePageHandler struct {
@@ -54,10 +59,10 @@ func NewSalePageHandler(salePageService *service.SalePageService, baseURL string
 	}
 
 	tmplMap := make(map[string]*template.Template)
-	tmplMap["simple"] = template.Must(
+	tmplMap[tmplSimple] = template.Must(
 		template.New("simple.html").Funcs(funcMap).ParseFS(templates.SalePageTemplates, "sale_pages/simple.html", "sale_pages/tracking.html"),
 	)
-	tmplMap["blocks"] = template.Must(
+	tmplMap[tmplBlocks] = template.Must(
 		template.New("blocks.html").Funcs(funcMap).ParseFS(templates.SalePageTemplates, "sale_pages/blocks.html", "sale_pages/tracking.html"),
 	)
 
@@ -247,9 +252,26 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, r *http.Request,
 		BaseURL: h.baseURL,
 	}
 
-	// Single-pass unmarshal based on template name
+	// Content-aware template detection
 	templateName := page.TemplateName
-	if templateName == "blocks" {
+	var peek struct {
+		Version int `json:"version"`
+	}
+	if err := json.Unmarshal(page.Content, &peek); err != nil {
+		h.logger.Error("failed to peek content version", "error", err, "page_id", page.ID)
+		http.Error(w, "invalid page content", http.StatusInternalServerError)
+		return
+	}
+	if peek.Version == 2 {
+		templateName = tmplBlocks
+	} else if templateName == tmplBlocks {
+		// template_name says blocks but content has no version:2
+		templateName = tmplSimple
+		h.logger.Warn("template_name/content version mismatch",
+			"page_id", page.ID, "template_name", page.TemplateName)
+	}
+
+	if templateName == tmplBlocks {
 		var blocks domain.BlocksContent
 		if err := json.Unmarshal(page.Content, &blocks); err != nil {
 			h.logger.Error("failed to unmarshal blocks content", "error", err, "page_id", page.ID)
@@ -274,7 +296,7 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, r *http.Request,
 	tmpl, ok := h.templates[templateName]
 	if !ok {
 		h.logger.Warn("unknown template, falling back to simple", "template_name", templateName, "page_id", page.ID)
-		tmpl = h.templates["simple"]
+		tmpl = h.templates[tmplSimple]
 	}
 
 	buf := bufPool.Get().(*bytes.Buffer)
