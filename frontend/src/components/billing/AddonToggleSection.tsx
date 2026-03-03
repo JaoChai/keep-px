@@ -5,7 +5,6 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import type { Subscription } from '@/types'
 
@@ -49,11 +48,10 @@ export function AddonToggleSection({
   onManageBilling,
 }: AddonToggleSectionProps) {
   return (
-    <section>
-      <div className="flex items-center gap-2 mb-4">
-        <h2 className="text-lg font-semibold text-foreground">ส่วนเสริม</h2>
-        <Badge variant="secondary">รายเดือน · ยกเลิกได้ทุกเมื่อ</Badge>
-      </div>
+    <div>
+      <p className="text-xs text-muted-foreground mb-3">
+        เพิ่มความสามารถแบบรายเดือน · ยกเลิกได้ทุกเมื่อ
+      </p>
 
       <Card>
         <CardContent className="p-0 divide-y divide-border">
@@ -110,6 +108,6 @@ export function AddonToggleSection({
           })}
         </CardContent>
       </Card>
-    </section>
+    </div>
   )
 }

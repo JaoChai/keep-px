@@ -101,12 +101,7 @@ export function PlanSection({
   onManageBilling,
 }: PlanSectionProps) {
   return (
-    <section>
-      <div className="flex items-center gap-2 mb-4">
-        <h2 className="text-lg font-semibold text-foreground">แผนการใช้งาน</h2>
-        <Badge variant="secondary">รายเดือน</Badge>
-      </div>
-
+    <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {PLANS.map((plan) => {
           const isCurrent = currentPlan === plan.key
@@ -208,6 +203,6 @@ export function PlanSection({
           )
         })}
       </div>
-    </section>
+    </div>
   )
 }
