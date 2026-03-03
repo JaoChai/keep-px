@@ -11,7 +11,8 @@
     <meta property="og:url" content="{{.BaseURL}}/p/{{.Page.Slug}}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap"></noscript>
     <style>
         :root {
             --bg-color: {{if .Style.BgColor}}{{.Style.BgColor}}{{else}}#f8f9fa{{end}};
@@ -29,7 +30,7 @@
             background-image: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url({{.Style.BgImageURL}});
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
+            background-attachment: scroll;
             {{end}}
         }
         .page-wrapper {
@@ -109,14 +110,15 @@
 </head>
 <body>
     <div class="page-wrapper">
+        {{$firstImage := true}}
         {{range .BlocksContent.Blocks}}
             {{if eq .Type "image"}}
                 {{if .LinkURL}}
                 <a href="{{.LinkURL}}" target="_blank" rel="noopener" data-track-cta>
-                    <img src="{{.ImageURL}}" alt="" class="block-image">
+                    {{if $firstImage}}<img src="{{.ImageURL}}" alt="" class="block-image" fetchpriority="high">{{$firstImage = false}}{{else}}<img src="{{.ImageURL}}" alt="" class="block-image" loading="lazy" decoding="async">{{end}}
                 </a>
                 {{else}}
-                <img src="{{.ImageURL}}" alt="" class="block-image">
+                {{if $firstImage}}<img src="{{.ImageURL}}" alt="" class="block-image" fetchpriority="high">{{$firstImage = false}}{{else}}<img src="{{.ImageURL}}" alt="" class="block-image" loading="lazy" decoding="async">{{end}}
                 {{end}}
             {{end}}
 
@@ -153,118 +155,6 @@
         </div>
     </div>
 
-    <script>
-    (function() {
-        var ctaEventName = '{{.BlocksContent.Tracking.CTAEventName}}' || 'Lead';
-        var contentName = '{{.BlocksContent.Tracking.ContentName}}' || document.title;
-        var contentValue = {{.BlocksContent.Tracking.ContentValue}};
-        var currency = '{{.BlocksContent.Tracking.Currency}}' || 'THB';
-
-        function genId() {
-            if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
-        function getCookie(name) {
-            var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
-            return match ? decodeURIComponent(match[1]) : '';
-        }
-
-        function getParam(name) {
-            var search = window.location.search.substring(1);
-            var pairs = search.split('&');
-            for (var i = 0; i < pairs.length; i++) {
-                var pair = pairs[i].split('=');
-                if (decodeURIComponent(pair[0]) === name) {
-                    return decodeURIComponent(pair[1] || '');
-                }
-            }
-            return '';
-        }
-
-        function getUserData() {
-            var ud = {};
-            var fbpVal = getCookie('_fbp');
-            var fbcVal = getCookie('_fbc');
-            if (fbpVal) ud.fbp = fbpVal;
-            if (fbcVal) {
-                ud.fbc = fbcVal;
-            } else {
-                var fbclid = getParam('fbclid');
-                if (fbclid) {
-                    ud.fbc = 'fb.1.' + Date.now() + '.' + fbclid;
-                }
-            }
-            var em = getParam('em');
-            var ph = getParam('ph');
-            if (em) ud.em = em;
-            if (ph) ud.ph = ph;
-            if (fbpVal) {
-                ud.external_id = fbpVal;
-            } else {
-                var eid = '';
-                try { eid = localStorage.getItem('_px_eid') || ''; } catch(e) {}
-                if (!eid) { eid = genId(); try { localStorage.setItem('_px_eid', eid); } catch(e) {} }
-                ud.external_id = eid;
-            }
-            return ud;
-        }
-
-        function dualTrack(eventName, params) {
-            var eid = genId();
-            {{if and .APIKey (hasPixels .Pixels)}}
-            var pixelIDs = [{{range $i, $p := .Pixels}}{{if $i}},{{end}}'{{$p.PixelID}}'{{end}}];
-            var events = pixelIDs.map(function(pid) {
-                return {
-                    pixel_id: pid,
-                    event_name: eventName,
-                    event_data: params || {},
-                    user_data: getUserData(),
-                    source_url: window.location.href,
-                    event_time: new Date().toISOString(),
-                    event_id: eid
-                };
-            });
-            try {
-                fetch('{{.BaseURL}}/api/v1/events/ingest', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-Key': '{{.APIKey}}'
-                    },
-                    body: JSON.stringify({ events: events }),
-                    keepalive: true
-                });
-            } catch (e) {}
-            {{end}}
-        }
-
-        function buildParams(extra) {
-            var params = { content_name: contentName, content_category: 'sale_page' };
-            if (contentValue > 0) {
-                params.value = contentValue;
-                params.currency = currency;
-            }
-            if (extra) {
-                for (var k in extra) { params[k] = extra[k]; }
-            }
-            return params;
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            dualTrack('ViewContent', buildParams());
-
-            var ctaButtons = document.querySelectorAll('[data-track-cta]');
-            ctaButtons.forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    dualTrack(ctaEventName, buildParams());
-                });
-            });
-        });
-    })();
-    </script>
+    {{template "tracking" .}}
 </body>
 </html>

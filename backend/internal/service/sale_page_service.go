@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
@@ -42,6 +43,7 @@ type SalePageService struct {
 	customerRepo repository.CustomerRepository
 	pixelRepo    repository.PixelRepository
 	quotaService *QuotaService
+	cache        *salePageCache
 }
 
 func NewSalePageService(salePageRepo repository.SalePageRepository, customerRepo repository.CustomerRepository, pixelRepo repository.PixelRepository, quotaService *QuotaService) *SalePageService {
@@ -50,6 +52,7 @@ func NewSalePageService(salePageRepo repository.SalePageRepository, customerRepo
 		customerRepo: customerRepo,
 		pixelRepo:    pixelRepo,
 		quotaService: quotaService,
+		cache:        newSalePageCache(60 * time.Second),
 	}
 }
 
@@ -107,12 +110,20 @@ func validateSlug(slug string) error {
 }
 
 func (s *SalePageService) validatePixelOwnership(ctx context.Context, customerID string, pixelIDs []string) error {
+	if len(pixelIDs) == 0 {
+		return nil
+	}
+	pixels, err := s.pixelRepo.GetByIDs(ctx, pixelIDs)
+	if err != nil {
+		return fmt.Errorf("get pixels: %w", err)
+	}
+	found := make(map[string]*domain.Pixel, len(pixels))
+	for _, p := range pixels {
+		found[p.ID] = p
+	}
 	for _, pid := range pixelIDs {
-		pixel, err := s.pixelRepo.GetByID(ctx, pid)
-		if err != nil {
-			return fmt.Errorf("get pixel: %w", err)
-		}
-		if pixel == nil {
+		pixel, ok := found[pid]
+		if !ok {
 			return ErrPixelNotFound
 		}
 		if pixel.CustomerID != customerID {
@@ -232,6 +243,8 @@ func (s *SalePageService) Update(ctx context.Context, customerID, pageID string,
 		return nil, ErrSalePageNotOwned
 	}
 
+	oldSlug := page.Slug
+
 	if input.Name != nil {
 		page.Name = *input.Name
 	}
@@ -276,6 +289,12 @@ func (s *SalePageService) Update(ctx context.Context, customerID, pageID string,
 		}
 		return nil, fmt.Errorf("update sale page: %w", err)
 	}
+
+	s.cache.Invalidate(oldSlug)
+	if page.Slug != oldSlug {
+		s.cache.Invalidate(page.Slug)
+	}
+
 	return page, nil
 }
 
@@ -293,6 +312,7 @@ func (s *SalePageService) Delete(ctx context.Context, customerID, pageID string)
 	if err := s.salePageRepo.Delete(ctx, pageID); err != nil {
 		return fmt.Errorf("delete sale page: %w", err)
 	}
+	s.cache.Invalidate(page.Slug)
 	return nil
 }
 
@@ -311,6 +331,10 @@ func (s *SalePageService) GetBySlug(ctx context.Context, slug string) (*domain.S
 }
 
 func (s *SalePageService) GetPublishData(ctx context.Context, slug string) (*SalePagePublishData, error) {
+	if cached, ok := s.cache.Get(slug); ok {
+		return cached, nil
+	}
+
 	page, err := s.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
@@ -325,21 +349,26 @@ func (s *SalePageService) GetPublishData(ctx context.Context, slug string) (*Sal
 	}
 
 	var pixels []PixelPublishInfo
-	for _, pid := range page.PixelIDs {
-		pixel, err := s.pixelRepo.GetByID(ctx, pid)
-		if err == nil && pixel != nil {
+	if len(page.PixelIDs) > 0 {
+		fetched, err := s.pixelRepo.GetByIDs(ctx, page.PixelIDs)
+		if err != nil {
+			return nil, fmt.Errorf("get pixels: %w", err)
+		}
+		for _, p := range fetched {
 			pixels = append(pixels, PixelPublishInfo{
-				PixelID:   pixel.ID,
-				FBPixelID: pixel.FBPixelID,
+				PixelID:   p.ID,
+				FBPixelID: p.FBPixelID,
 			})
 		}
 	}
 
-	return &SalePagePublishData{
+	data := &SalePagePublishData{
 		Page:   page,
 		APIKey: customer.APIKey,
 		Pixels: pixels,
-	}, nil
+	}
+	s.cache.Set(slug, data)
+	return data, nil
 }
 
 func validateSafeURL(raw string) error {
