@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -11,27 +13,34 @@ import (
 
 type visitor struct {
 	limiter  *rate.Limiter
-	lastSeen time.Time
+	lastSeen atomic.Int64 // UnixNano timestamp
 }
 
-// RateLimit returns a per-IP rate limiting middleware.
-func RateLimit(rps int) func(http.Handler) http.Handler {
+// RateLimitWithContext returns a per-IP rate limiting middleware that stops
+// its cleanup goroutine when ctx is cancelled.
+func RateLimitWithContext(ctx context.Context, rps int) func(http.Handler) http.Handler {
 	var (
-		mu       sync.Mutex
+		mu       sync.RWMutex
 		visitors = make(map[string]*visitor)
 	)
 
-	// Cleanup stale entries every 5 minutes
+	// Cleanup stale entries every 5 minutes; stops when ctx is done.
 	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
 		for {
-			time.Sleep(5 * time.Minute)
-			mu.Lock()
-			for ip, v := range visitors {
-				if time.Since(v.lastSeen) > 10*time.Minute {
-					delete(visitors, ip)
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				mu.Lock()
+				for ip, v := range visitors {
+					if time.Since(time.Unix(0, v.lastSeen.Load())) > 10*time.Minute {
+						delete(visitors, ip)
+					}
 				}
+				mu.Unlock()
 			}
-			mu.Unlock()
 		}
 	}()
 
@@ -42,14 +51,22 @@ func RateLimit(rps int) func(http.Handler) http.Handler {
 				ip = r.RemoteAddr
 			}
 
-			mu.Lock()
+			mu.RLock()
 			v, exists := visitors[ip]
+			mu.RUnlock()
+
 			if !exists {
-				v = &visitor{limiter: rate.NewLimiter(rate.Limit(rps), rps*2)}
-				visitors[ip] = v
+				mu.Lock()
+				// Double-check after acquiring write lock
+				v, exists = visitors[ip]
+				if !exists {
+					v = &visitor{limiter: rate.NewLimiter(rate.Limit(rps), rps*2)}
+					visitors[ip] = v
+				}
+				mu.Unlock()
 			}
-			v.lastSeen = time.Now()
-			mu.Unlock()
+
+			v.lastSeen.Store(time.Now().UnixNano())
 
 			if !v.limiter.Allow() {
 				w.Header().Set("Content-Type", "application/json")
@@ -62,4 +79,10 @@ func RateLimit(rps int) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// RateLimit returns a per-IP rate limiting middleware.
+// Deprecated: prefer RateLimitWithContext to avoid goroutine leaks.
+func RateLimit(rps int) func(http.Handler) http.Handler {
+	return RateLimitWithContext(context.Background(), rps)
 }

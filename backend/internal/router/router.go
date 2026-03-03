@@ -30,6 +30,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.CORS(cfg.CORSAllowedOrigins))
+	r.Use(chimiddleware.Compress(5))
 
 	// Token encryption (optional)
 	var encryptor *crypto.TokenEncryptor
@@ -74,7 +75,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	notifService := service.NewNotificationService(notifRepo)
 	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService, quotaService)
 	analyticsService := service.NewAnalyticsService(pool)
-	salePageService := service.NewSalePageService(salePageRepo, customerRepo, pixelRepo, quotaService)
+	salePageService := service.NewSalePageService(shutdownCtx, salePageRepo, customerRepo, pixelRepo, quotaService)
 
 	// Storage
 	storageService := service.NewStorageService(cfg)
@@ -94,15 +95,18 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	// Health check
 	r.Get("/health", healthHandler.Health)
 
+	// Rate limiter with context for proper goroutine cleanup
+	rateLimiter := middleware.RateLimitWithContext(shutdownCtx, cfg.RateLimitRPS)
+
 	// Public sale page route (rate limited)
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.RateLimit(cfg.RateLimitRPS))
+		r.Use(rateLimiter)
 		r.Get("/p/{slug}", salePageHandler.Serve)
 	})
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Use(middleware.RateLimit(cfg.RateLimitRPS))
+		r.Use(rateLimiter)
 		// Auth routes (public)
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", authHandler.Register)
@@ -116,7 +120,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 		// Event ingestion (API key auth)
 		r.Route("/events", func(r chi.Router) {
-			r.Use(middleware.APIKeyAuth(customerRepo))
+			r.Use(middleware.APIKeyAuthWithContext(shutdownCtx, customerRepo))
 			r.Post("/ingest", eventHandler.Ingest)
 		})
 

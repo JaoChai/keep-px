@@ -49,6 +49,9 @@ func main() {
 	}
 	poolConfig.MaxConns = 25
 	poolConfig.MinConns = 5
+	poolConfig.MaxConnLifetime = 1 * time.Hour
+	poolConfig.MaxConnIdleTime = 15 * time.Minute
+	poolConfig.HealthCheckPeriod = 30 * time.Second
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
 	if err != nil {

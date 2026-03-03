@@ -2,12 +2,16 @@ package handler
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -17,6 +21,8 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/service"
 	"github.com/jaochai/pixlinks/backend/internal/templates"
 )
+
+var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
 type SalePageHandler struct {
 	salePageService *service.SalePageService
@@ -49,10 +55,10 @@ func NewSalePageHandler(salePageService *service.SalePageService, baseURL string
 
 	tmplMap := make(map[string]*template.Template)
 	tmplMap["simple"] = template.Must(
-		template.New("simple.html").Funcs(funcMap).ParseFS(templates.SalePageTemplates, "sale_pages/simple.html"),
+		template.New("simple.html").Funcs(funcMap).ParseFS(templates.SalePageTemplates, "sale_pages/simple.html", "sale_pages/tracking.html"),
 	)
 	tmplMap["blocks"] = template.Must(
-		template.New("blocks.html").Funcs(funcMap).ParseFS(templates.SalePageTemplates, "sale_pages/blocks.html"),
+		template.New("blocks.html").Funcs(funcMap).ParseFS(templates.SalePageTemplates, "sale_pages/blocks.html", "sale_pages/tracking.html"),
 	)
 
 	return &SalePageHandler{
@@ -69,6 +75,7 @@ type salePageTemplateData struct {
 	Content       *domain.SimpleContent
 	BlocksContent *domain.BlocksContent
 	Style         domain.PageStyle
+	Tracking      domain.TrackingConfig
 	APIKey        string
 	Pixels        []service.PixelPublishInfo
 	BaseURL       string
@@ -208,7 +215,7 @@ func (h *SalePageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.renderTemplate(w, data.Page, data.APIKey, data.Pixels)
+	h.renderTemplate(w, r, data.Page, data.APIKey, data.Pixels)
 }
 
 func (h *SalePageHandler) Preview(w http.ResponseWriter, r *http.Request) {
@@ -229,10 +236,10 @@ func (h *SalePageHandler) Preview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.renderTemplate(w, page, "", nil)
+	h.renderTemplate(w, r, page, "", nil)
 }
 
-func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.SalePage, apiKey string, pixels []service.PixelPublishInfo) {
+func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, r *http.Request, page *domain.SalePage, apiKey string, pixels []service.PixelPublishInfo) {
 	td := salePageTemplateData{
 		Page:    page,
 		APIKey:  apiKey,
@@ -240,56 +247,60 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, page *domain.Sal
 		BaseURL: h.baseURL,
 	}
 
-	// Detect content version
-	var peek struct {
-		Version int `json:"version"`
-	}
-	if err := json.Unmarshal(page.Content, &peek); err != nil {
-		h.logger.Error("failed to peek content version", "error", err, "page_id", page.ID)
-		http.Error(w, "invalid page content", http.StatusInternalServerError)
-		return
-	}
-
+	// Single-pass unmarshal based on template name
 	templateName := page.TemplateName
-	if peek.Version == 2 {
+	if templateName == "blocks" {
 		var blocks domain.BlocksContent
 		if err := json.Unmarshal(page.Content, &blocks); err != nil {
+			h.logger.Error("failed to unmarshal blocks content", "error", err, "page_id", page.ID)
 			http.Error(w, "invalid page content", http.StatusInternalServerError)
 			return
 		}
 		td.BlocksContent = &blocks
 		td.Style = blocks.Style
-		templateName = "blocks"
+		td.Tracking = blocks.Tracking
 	} else {
 		var content domain.SimpleContent
 		if err := json.Unmarshal(page.Content, &content); err != nil {
+			h.logger.Error("failed to unmarshal simple content", "error", err, "page_id", page.ID)
 			http.Error(w, "invalid page content", http.StatusInternalServerError)
 			return
 		}
 		td.Content = &content
 		td.Style = content.Style
+		td.Tracking = content.Tracking
 	}
 
 	tmpl, ok := h.templates[templateName]
 	if !ok {
-		if peek.Version == 2 {
-			h.logger.Error("blocks template not found", "page_id", page.ID)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
-		}
 		h.logger.Warn("unknown template, falling back to simple", "template_name", templateName, "page_id", page.ID)
 		tmpl = h.templates["simple"]
 	}
 
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, td); err != nil {
+	buf := bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufPool.Put(buf)
+
+	if err := tmpl.Execute(buf, td); err != nil {
 		h.logger.Error("template render failed", "error", err, "page_id", page.ID)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
+	body := buf.Bytes()
+	etag := fmt.Sprintf(`"%x"`, md5.Sum(body))
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if _, err := w.Write(buf.Bytes()); err != nil {
+	w.Header().Set("Cache-Control", "public, max-age=30, s-maxage=60")
+	w.Header().Set("ETag", etag)
+
+	if match := r.Header.Get("If-None-Match"); match == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	if _, err := w.Write(body); err != nil {
 		h.logger.Error("failed to write response", "error", err, "page_id", page.ID)
 	}
 }

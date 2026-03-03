@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { MessageCircle, Globe, Link } from 'lucide-react'
 import type { Block, PageStyle } from '@/types'
 
@@ -7,7 +8,7 @@ interface BlockPreviewProps {
   style?: PageStyle
 }
 
-export function BlockPreview({ blocks, ctaEventName, style }: BlockPreviewProps) {
+export const BlockPreview = memo(function BlockPreview({ blocks, ctaEventName, style }: BlockPreviewProps) {
   const accentColor = style?.accent_color
   const bgColor = style?.bg_color
   const textColor = style?.text_color
@@ -91,4 +92,4 @@ export function BlockPreview({ blocks, ctaEventName, style }: BlockPreviewProps)
       </div>
     </div>
   )
-}
+})
