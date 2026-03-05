@@ -15,6 +15,8 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
 
+const baseWhereTrue = "WHERE 1=1"
+
 type AdminRepo struct {
 	pool *pgxpool.Pool
 }
@@ -24,7 +26,7 @@ func NewAdminRepo(pool *pgxpool.Pool) *AdminRepo {
 }
 
 func (r *AdminRepo) ListCustomers(ctx context.Context, search, plan, status string, limit, offset int) ([]*domain.Customer, int, error) {
-	baseWhere := "WHERE 1=1"
+	baseWhere := baseWhereTrue
 	args := []interface{}{}
 	argIdx := 1
 
@@ -567,7 +569,7 @@ func (r *AdminRepo) ListCreditGrants(ctx context.Context, limit, offset int) ([]
 // F1: Sale Pages
 
 func (r *AdminRepo) ListAllSalePages(ctx context.Context, search, customerID string, published *bool, limit, offset int) ([]*domain.AdminSalePage, int, error) {
-	baseWhere := "WHERE 1=1"
+	baseWhere := baseWhereTrue
 	args := []interface{}{}
 	argIdx := 1
 
@@ -723,7 +725,7 @@ func (r *AdminRepo) DeleteSalePageByAdmin(ctx context.Context, id string) error 
 // F2: Pixels
 
 func (r *AdminRepo) ListAllPixels(ctx context.Context, search, customerID string, active *bool, limit, offset int) ([]*domain.AdminPixel, int, error) {
-	baseWhere := "WHERE 1=1"
+	baseWhere := baseWhereTrue
 	args := []interface{}{}
 	argIdx := 1
 
@@ -863,7 +865,7 @@ func (r *AdminRepo) SetPixelActive(ctx context.Context, id string, active bool) 
 // F3: Replays
 
 func (r *AdminRepo) ListAllReplaySessions(ctx context.Context, status, customerID string, limit, offset int) ([]*domain.AdminReplaySession, int, error) {
-	baseWhere := "WHERE 1=1"
+	baseWhere := baseWhereTrue
 	args := []interface{}{}
 	argIdx := 1
 
@@ -1188,7 +1190,7 @@ func (r *AdminRepo) CreateAuditLog(ctx context.Context, entry *domain.AuditLogEn
 }
 
 func (r *AdminRepo) ListAuditLogs(ctx context.Context, adminID, action, targetCustomerID string, from, to *time.Time, limit, offset int) ([]*domain.AuditLogEntry, int, error) {
-	baseWhere := "WHERE 1=1"
+	baseWhere := baseWhereTrue
 	args := []interface{}{}
 	argIdx := 1
 
