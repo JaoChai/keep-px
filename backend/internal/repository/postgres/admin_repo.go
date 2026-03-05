@@ -35,9 +35,10 @@ func (r *AdminRepo) ListCustomers(ctx context.Context, search, plan, status stri
 		args = append(args, plan)
 		argIdx++
 	}
-	if status == "suspended" {
+	switch status {
+	case "suspended":
 		baseWhere += " AND suspended_at IS NOT NULL"
-	} else if status == "active" {
+	case "active":
 		baseWhere += " AND suspended_at IS NULL"
 	}
 

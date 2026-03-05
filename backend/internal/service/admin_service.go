@@ -131,7 +131,7 @@ func (s *AdminService) GrantCredits(ctx context.Context, adminID, customerID str
 	if err != nil {
 		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a no-op
 
 	// Create the replay credit
 	credit := &domain.ReplayCredit{
