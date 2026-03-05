@@ -14,6 +14,7 @@ export function AdminCustomersPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [plan, setPlan] = useState('')
+  const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const perPage = 20
@@ -27,7 +28,7 @@ export function AdminCustomersPage() {
     return () => clearTimeout(timer)
   }, [search])
 
-  const { data, isLoading } = useAdminCustomers(debouncedSearch, plan, page, perPage)
+  const { data, isLoading } = useAdminCustomers(debouncedSearch, plan, status, page, perPage)
 
   const planBadgeVariant = (p: string): 'default' | 'secondary' | 'success' | 'warning' => {
     switch (p) {
@@ -70,6 +71,15 @@ export function AdminCustomersPage() {
           {PLANS.filter(Boolean).map((p) => (
             <option key={p} value={p}>{PLAN_LABELS[p] ?? p}</option>
           ))}
+        </select>
+        <select
+          value={status}
+          onChange={(e) => { setStatus(e.target.value); setPage(1) }}
+          className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+        >
+          <option value="">ทุกสถานะ</option>
+          <option value="active">ใช้งาน</option>
+          <option value="suspended">ระงับ</option>
         </select>
       </div>
 

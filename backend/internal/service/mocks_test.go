@@ -479,3 +479,71 @@ func (m *MockNotificationRepo) MarkAllRead(ctx context.Context, customerID strin
 	args := m.Called(ctx, customerID)
 	return args.Error(0)
 }
+
+// MockAdminRepo
+type MockAdminRepo struct{ mock.Mock }
+
+func (m *MockAdminRepo) ListCustomers(ctx context.Context, search, plan, status string, limit, offset int) ([]*domain.Customer, int, error) {
+	args := m.Called(ctx, search, plan, status, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*domain.Customer), args.Int(1), args.Error(2)
+}
+func (m *MockAdminRepo) GetCustomerDetail(ctx context.Context, id string) (*domain.AdminCustomerDetail, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.AdminCustomerDetail), args.Error(1)
+}
+func (m *MockAdminRepo) SuspendCustomer(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+func (m *MockAdminRepo) ActivateCustomer(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+func (m *MockAdminRepo) GetPlatformStats(ctx context.Context) (*domain.PlatformStats, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.PlatformStats), args.Error(1)
+}
+func (m *MockAdminRepo) GetRevenueChart(ctx context.Context, days int) ([]*domain.RevenueChartPoint, error) {
+	args := m.Called(ctx, days)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.RevenueChartPoint), args.Error(1)
+}
+func (m *MockAdminRepo) GetGrowthChart(ctx context.Context, days int) ([]*domain.GrowthChartPoint, error) {
+	args := m.Called(ctx, days)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.GrowthChartPoint), args.Error(1)
+}
+func (m *MockAdminRepo) ListAllPurchases(ctx context.Context, status string, limit, offset int) ([]*domain.AdminPurchase, int, error) {
+	args := m.Called(ctx, status, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*domain.AdminPurchase), args.Int(1), args.Error(2)
+}
+func (m *MockAdminRepo) ListAllSubscriptions(ctx context.Context, status string, limit, offset int) ([]*domain.AdminSubscription, int, error) {
+	args := m.Called(ctx, status, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*domain.AdminSubscription), args.Int(1), args.Error(2)
+}
+func (m *MockAdminRepo) ListCreditGrants(ctx context.Context, limit, offset int) ([]*domain.AdminCreditGrantWithCustomer, int, error) {
+	args := m.Called(ctx, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Int(1), args.Error(2)
+	}
+	return args.Get(0).([]*domain.AdminCreditGrantWithCustomer), args.Int(1), args.Error(2)
+}

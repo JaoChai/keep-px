@@ -15,13 +15,14 @@ import type {
 
 // --- Queries ---
 
-export function useAdminCustomers(search: string, plan: string, page: number, perPage: number) {
+export function useAdminCustomers(search: string, plan: string, status: string, page: number, perPage: number) {
   return useQuery({
-    queryKey: ['admin', 'customers', { search, plan, page, perPage }],
+    queryKey: ['admin', 'customers', { search, plan, status, page, perPage }],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (plan) params.set('plan', plan)
+      if (status) params.set('status', status)
       params.set('page', String(page))
       params.set('per_page', String(perPage))
       const { data } = await api.get<PaginatedResponse<AdminCustomer>>(`/admin/customers?${params}`)
