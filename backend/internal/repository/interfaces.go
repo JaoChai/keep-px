@@ -143,4 +143,27 @@ type AdminRepository interface {
 	ListAllPurchases(ctx context.Context, status string, limit, offset int) ([]*domain.AdminPurchase, int, error)
 	ListAllSubscriptions(ctx context.Context, status string, limit, offset int) ([]*domain.AdminSubscription, int, error)
 	ListCreditGrants(ctx context.Context, limit, offset int) ([]*domain.AdminCreditGrantWithCustomer, int, error)
+
+	// F1: Sale Pages
+	ListAllSalePages(ctx context.Context, search, customerID string, published *bool, limit, offset int) ([]*domain.AdminSalePage, int, error)
+	GetSalePageAdminDetail(ctx context.Context, id string) (*domain.AdminSalePageDetail, error)
+	SetSalePagePublished(ctx context.Context, id string, published bool) error
+	DeleteSalePageByAdmin(ctx context.Context, id string) error
+
+	// F2: Pixels
+	ListAllPixels(ctx context.Context, search, customerID string, active *bool, limit, offset int) ([]*domain.AdminPixel, int, error)
+	GetPixelAdminDetail(ctx context.Context, id string) (*domain.AdminPixelDetail, error)
+	SetPixelActive(ctx context.Context, id string, active bool) error
+
+	// F3: Replays
+	ListAllReplaySessions(ctx context.Context, status, customerID string, limit, offset int) ([]*domain.AdminReplaySession, int, error)
+	GetReplaySessionAdminDetail(ctx context.Context, id string) (*domain.AdminReplaySessionDetail, error)
+
+	// F4: Events
+	ListAllEvents(ctx context.Context, customerID, pixelID, eventName string, limit, offset int) ([]*domain.AdminEvent, int, error)
+	GetEventStats(ctx context.Context, hours int) (*domain.AdminEventStats, error)
+
+	// F5: Audit Log
+	CreateAuditLog(ctx context.Context, entry *domain.AuditLogEntry) error
+	ListAuditLogs(ctx context.Context, adminID, action, targetCustomerID string, from, to *time.Time, limit, offset int) ([]*domain.AuditLogEntry, int, error)
 }

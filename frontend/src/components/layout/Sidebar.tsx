@@ -14,6 +14,9 @@ import {
   Users,
   BarChart3,
   Receipt,
+  Crosshair,
+  RefreshCw,
+  ScrollText,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
@@ -36,8 +39,13 @@ interface SidebarProps {
 
 const adminNavItems = [
   { to: '/admin/customers', icon: Users, label: 'ลูกค้า' },
+  { to: '/admin/pixels', icon: Crosshair, label: 'พิกเซล' },
+  { to: '/admin/sale-pages', icon: FileText, label: 'เซลเพจ' },
+  { to: '/admin/events', icon: Activity, label: 'อีเวนต์' },
+  { to: '/admin/replays', icon: RefreshCw, label: 'รีเพลย์' },
   { to: '/admin/analytics', icon: BarChart3, label: 'สถิติแพลตฟอร์ม' },
   { to: '/admin/billing', icon: Receipt, label: 'การเงินทั้งหมด' },
+  { to: '/admin/audit-log', icon: ScrollText, label: 'บันทึกกิจกรรม' },
 ]
 
 export function Sidebar({ open, onClose }: SidebarProps) {
