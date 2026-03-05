@@ -23,6 +23,7 @@ var (
 	ErrEmailAlreadyExists  = errors.New("email already exists")
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
 	ErrInvalidGoogleToken  = errors.New("invalid google token")
+	ErrAccountSuspended    = errors.New("account suspended")
 )
 
 type AuthService struct {
@@ -126,6 +127,10 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*AuthTokens,
 		return nil, ErrInvalidCredentials
 	}
 
+	if customer.SuspendedAt != nil {
+		return nil, ErrAccountSuspended
+	}
+
 	return s.generateTokens(ctx, customer)
 }
 
@@ -150,6 +155,9 @@ func (s *AuthService) GoogleAuth(ctx context.Context, input GoogleAuthInput) (*A
 		return nil, fmt.Errorf("get by google id: %w", err)
 	}
 	if customer != nil {
+		if customer.SuspendedAt != nil {
+			return nil, ErrAccountSuspended
+		}
 		return s.generateTokens(ctx, customer)
 	}
 
@@ -159,6 +167,9 @@ func (s *AuthService) GoogleAuth(ctx context.Context, input GoogleAuthInput) (*A
 		return nil, fmt.Errorf("get by email: %w", err)
 	}
 	if customer != nil {
+		if customer.SuspendedAt != nil {
+			return nil, ErrAccountSuspended
+		}
 		customer.GoogleID = &googleID
 		if err := s.customerRepo.Update(ctx, customer); err != nil {
 			return nil, fmt.Errorf("link google id: %w", err)
@@ -224,6 +235,10 @@ func (s *AuthService) RefreshTokens(ctx context.Context, refreshToken string) (*
 		return nil, ErrInvalidRefreshToken
 	}
 
+	if customer.SuspendedAt != nil {
+		return nil, ErrAccountSuspended
+	}
+
 	return s.generateTokens(ctx, customer)
 }
 
@@ -231,10 +246,11 @@ func (s *AuthService) generateTokens(ctx context.Context, customer *domain.Custo
 	now := time.Now()
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":   customer.ID,
-		"email": customer.Email,
-		"iat":   now.Unix(),
-		"exp":   now.Add(s.cfg.JWTAccessTTL).Unix(),
+		"sub":      customer.ID,
+		"email":    customer.Email,
+		"is_admin": customer.IsAdmin,
+		"iat":      now.Unix(),
+		"exp":      now.Add(s.cfg.JWTAccessTTL).Unix(),
 	})
 
 	accessTokenStr, err := accessToken.SignedString([]byte(s.cfg.JWTSecret))

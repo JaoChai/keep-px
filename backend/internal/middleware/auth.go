@@ -52,7 +52,10 @@ func JWTAuth(secret string) func(http.Handler) http.Handler {
 				return
 			}
 
+			isAdmin, _ := claims["is_admin"].(bool)
+
 			ctx := context.WithValue(r.Context(), CustomerIDKey, customerID)
+			ctx = context.WithValue(ctx, IsAdminKey, isAdmin)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

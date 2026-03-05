@@ -69,6 +69,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusUnauthorized, "invalid email or password")
 			return
 		}
+		if errors.Is(err, service.ErrAccountSuspended) {
+			ErrorJSON(w, http.StatusForbidden, "account suspended")
+			return
+		}
 		ErrorJSON(w, http.StatusInternalServerError, "login failed")
 		return
 	}
@@ -92,6 +96,10 @@ func (h *AuthHandler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidGoogleToken) {
 			ErrorJSON(w, http.StatusUnauthorized, "invalid google token")
+			return
+		}
+		if errors.Is(err, service.ErrAccountSuspended) {
+			ErrorJSON(w, http.StatusForbidden, "account suspended")
 			return
 		}
 		h.logger.Error("google auth failed", "error", err)
@@ -141,6 +149,10 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidRefreshToken) {
 			ErrorJSON(w, http.StatusUnauthorized, "invalid refresh token")
+			return
+		}
+		if errors.Is(err, service.ErrAccountSuspended) {
+			ErrorJSON(w, http.StatusForbidden, "account suspended")
 			return
 		}
 		ErrorJSON(w, http.StatusInternalServerError, "token refresh failed")

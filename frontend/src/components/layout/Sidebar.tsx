@@ -10,6 +10,10 @@ import {
   Settings,
   LogOut,
   X,
+  Shield,
+  Users,
+  BarChart3,
+  Receipt,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
@@ -30,8 +34,15 @@ interface SidebarProps {
   onClose: () => void
 }
 
+const adminNavItems = [
+  { to: '/admin/customers', icon: Users, label: 'ลูกค้า' },
+  { to: '/admin/analytics', icon: BarChart3, label: 'สถิติแพลตฟอร์ม' },
+  { to: '/admin/billing', icon: Receipt, label: 'การเงินทั้งหมด' },
+]
+
 export function Sidebar({ open, onClose }: SidebarProps) {
   const logout = useAuthStore((s) => s.logout)
+  const customer = useAuthStore((s) => s.customer)
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -91,6 +102,36 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </li>
           ))}
         </ul>
+
+        {customer?.is_admin && (
+          <>
+            <div className="my-4 border-t border-border" />
+            <div className="flex items-center gap-2 px-3 mb-2">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">แอดมิน</span>
+            </div>
+            <ul className="space-y-1">
+              {adminNavItems.map((item) => (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-accent text-accent-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      }`
+                    }
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </nav>
 
       <div className="border-t border-border p-3">
