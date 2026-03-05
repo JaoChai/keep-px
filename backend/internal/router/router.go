@@ -85,7 +85,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService, quotaService)
 	analyticsService := service.NewAnalyticsService(pool)
 	salePageService := service.NewSalePageService(shutdownCtx, salePageRepo, customerRepo, pixelRepo, quotaService)
-	adminService := service.NewAdminService(adminRepo, customerRepo, creditRepo, replaySessionRepo, pool)
+	adminService := service.NewAdminService(adminRepo, customerRepo, creditRepo, replaySessionRepo, pool, logger)
 
 	// Storage
 	storageService := service.NewStorageService(cfg)

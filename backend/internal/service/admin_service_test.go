@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +20,7 @@ func newTestAdminService() (*AdminService, *MockAdminRepo, *MockCustomerRepo, *M
 	customerRepo := new(MockCustomerRepo)
 	creditRepo := new(MockReplayCreditRepo)
 	replaySessionRepo := new(MockReplaySessionRepo)
-	svc := NewAdminService(adminRepo, customerRepo, creditRepo, replaySessionRepo, nil)
+	svc := NewAdminService(adminRepo, customerRepo, creditRepo, replaySessionRepo, nil, slog.Default())
 	return svc, adminRepo, customerRepo, creditRepo, replaySessionRepo
 }
 

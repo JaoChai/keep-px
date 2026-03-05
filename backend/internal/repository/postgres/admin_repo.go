@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -109,32 +110,40 @@ func (r *AdminRepo) GetCustomerDetail(ctx context.Context, id string) (*domain.A
 		return nil, nil
 	}
 
-	detail := &domain.AdminCustomerDetail{Customer: customer}
+	var (
+		pixelCount    int
+		eventCount    int64
+		salePageCount int
+		replayCount   int
+		purchases     []*domain.Purchase
+		credits       []*domain.ReplayCredit
+		subscriptions []*domain.Subscription
+	)
 
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
 			`SELECT COUNT(*) FROM pixels WHERE customer_id = $1`, id,
-		).Scan(&detail.PixelCount)
+		).Scan(&pixelCount)
 	})
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
 			`SELECT COUNT(*) FROM pixel_events pe JOIN pixels p ON p.id = pe.pixel_id WHERE p.customer_id = $1`, id,
-		).Scan(&detail.EventCount)
+		).Scan(&eventCount)
 	})
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
 			`SELECT COUNT(*) FROM sale_pages WHERE customer_id = $1`, id,
-		).Scan(&detail.SalePageCount)
+		).Scan(&salePageCount)
 	})
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
 			`SELECT COUNT(*) FROM replay_sessions WHERE customer_id = $1`, id,
-		).Scan(&detail.ReplayCount)
+		).Scan(&replayCount)
 	})
 
 	g.Go(func() error {
@@ -152,7 +161,7 @@ func (r *AdminRepo) GetCustomerDetail(ctx context.Context, id string) (*domain.A
 			if err := rows.Scan(&p.ID, &p.CustomerID, &p.StripeCheckoutSessionID, &p.StripePaymentIntentID, &p.PackType, &p.AmountSatang, &p.Currency, &p.Status, &p.CreatedAt, &p.CompletedAt); err != nil {
 				return err
 			}
-			detail.Purchases = append(detail.Purchases, p)
+			purchases = append(purchases, p)
 		}
 		return rows.Err()
 	})
@@ -172,7 +181,7 @@ func (r *AdminRepo) GetCustomerDetail(ctx context.Context, id string) (*domain.A
 			if err := rows.Scan(&c.ID, &c.CustomerID, &c.PurchaseID, &c.PackType, &c.TotalReplays, &c.UsedReplays, &c.MaxEventsPerReplay, &c.ExpiresAt, &c.CreatedAt); err != nil {
 				return err
 			}
-			detail.Credits = append(detail.Credits, c)
+			credits = append(credits, c)
 		}
 		return rows.Err()
 	})
@@ -192,7 +201,7 @@ func (r *AdminRepo) GetCustomerDetail(ctx context.Context, id string) (*domain.A
 			if err := rows.Scan(&s.ID, &s.CustomerID, &s.StripeSubscriptionID, &s.StripePriceID, &s.AddonType, &s.Status, &s.CurrentPeriodStart, &s.CurrentPeriodEnd, &s.CancelAtPeriodEnd, &s.CreatedAt, &s.UpdatedAt); err != nil {
 				return err
 			}
-			detail.Subscriptions = append(detail.Subscriptions, s)
+			subscriptions = append(subscriptions, s)
 		}
 		return rows.Err()
 	})
@@ -201,17 +210,26 @@ func (r *AdminRepo) GetCustomerDetail(ctx context.Context, id string) (*domain.A
 		return nil, fmt.Errorf("get customer detail: %w", err)
 	}
 
-	if detail.Purchases == nil {
-		detail.Purchases = []*domain.Purchase{}
+	if purchases == nil {
+		purchases = []*domain.Purchase{}
 	}
-	if detail.Credits == nil {
-		detail.Credits = []*domain.ReplayCredit{}
+	if credits == nil {
+		credits = []*domain.ReplayCredit{}
 	}
-	if detail.Subscriptions == nil {
-		detail.Subscriptions = []*domain.Subscription{}
+	if subscriptions == nil {
+		subscriptions = []*domain.Subscription{}
 	}
 
-	return detail, nil
+	return &domain.AdminCustomerDetail{
+		Customer:      customer,
+		PixelCount:    pixelCount,
+		EventCount:    eventCount,
+		SalePageCount: salePageCount,
+		ReplayCount:   replayCount,
+		Purchases:     purchases,
+		Credits:       credits,
+		Subscriptions: subscriptions,
+	}, nil
 }
 
 func (r *AdminRepo) SuspendCustomer(ctx context.Context, id string) error {
@@ -241,53 +259,62 @@ func (r *AdminRepo) ActivateCustomer(ctx context.Context, id string) error {
 }
 
 func (r *AdminRepo) GetPlatformStats(ctx context.Context) (*domain.PlatformStats, error) {
-	stats := &domain.PlatformStats{
-		CustomersByPlan: make(map[string]int),
-	}
+	var (
+		totalCustomers     int
+		activeCustomers    int
+		suspendedCustomers int
+		totalPixels        int
+		eventsToday        int64
+		eventsThisMonth    int64
+		totalReplays       int
+		successfulReplays  int
+		failedReplays      int
+		totalRevenueSatang int64
+		monthRevenueSatang int64
+		customersByPlan    = make(map[string]int)
+	)
 
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM customers`).Scan(&stats.TotalCustomers)
+		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM customers`).Scan(&totalCustomers)
 	})
 
 	g.Go(func() error {
-		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM customers WHERE suspended_at IS NULL`).Scan(&stats.ActiveCustomers)
+		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM customers WHERE suspended_at IS NULL`).Scan(&activeCustomers)
 	})
 
 	g.Go(func() error {
-		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM customers WHERE suspended_at IS NOT NULL`).Scan(&stats.SuspendedCustomers)
+		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM customers WHERE suspended_at IS NOT NULL`).Scan(&suspendedCustomers)
 	})
 
 	g.Go(func() error {
-		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM pixels`).Scan(&stats.TotalPixels)
+		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM pixels`).Scan(&totalPixels)
 	})
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
 			`SELECT COUNT(*) FROM pixel_events WHERE created_at >= CURRENT_DATE`,
-		).Scan(&stats.EventsToday)
+		).Scan(&eventsToday)
 	})
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
 			`SELECT COUNT(*) FROM pixel_events WHERE created_at >= date_trunc('month', CURRENT_DATE)`,
-		).Scan(&stats.EventsThisMonth)
+		).Scan(&eventsThisMonth)
 	})
 
 	g.Go(func() error {
-		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM replay_sessions`).Scan(&stats.TotalReplays)
+		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM replay_sessions`).Scan(&totalReplays)
 	})
 
 	g.Go(func() error {
-		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM replay_sessions WHERE status = 'completed'`).Scan(&stats.SuccessfulReplays)
+		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM replay_sessions WHERE status = 'completed'`).Scan(&successfulReplays)
 	})
 
 	g.Go(func() error {
-		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM replay_sessions WHERE status = 'failed'`).Scan(&stats.FailedReplays)
+		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM replay_sessions WHERE status = 'failed'`).Scan(&failedReplays)
 	})
-
-	var totalRevenueSatang, monthRevenueSatang int64
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
@@ -314,7 +341,7 @@ func (r *AdminRepo) GetPlatformStats(ctx context.Context) (*domain.PlatformStats
 			if err := rows.Scan(&plan, &count); err != nil {
 				return err
 			}
-			stats.CustomersByPlan[plan] = count
+			customersByPlan[plan] = count
 		}
 		return rows.Err()
 	})
@@ -323,11 +350,20 @@ func (r *AdminRepo) GetPlatformStats(ctx context.Context) (*domain.PlatformStats
 		return nil, fmt.Errorf("get platform stats: %w", err)
 	}
 
-	// Convert satang to THB
-	stats.TotalRevenueTHB = float64(totalRevenueSatang) / 100
-	stats.RevenueThisMonthTHB = float64(monthRevenueSatang) / 100
-
-	return stats, nil
+	return &domain.PlatformStats{
+		TotalCustomers:     totalCustomers,
+		ActiveCustomers:    activeCustomers,
+		SuspendedCustomers: suspendedCustomers,
+		TotalPixels:        totalPixels,
+		EventsToday:        eventsToday,
+		EventsThisMonth:    eventsThisMonth,
+		TotalReplays:       totalReplays,
+		SuccessfulReplays:  successfulReplays,
+		FailedReplays:      failedReplays,
+		TotalRevenueTHB:    float64(totalRevenueSatang) / 100,
+		RevenueThisMonthTHB: float64(monthRevenueSatang) / 100,
+		CustomersByPlan:    customersByPlan,
+	}, nil
 }
 
 func (r *AdminRepo) GetRevenueChart(ctx context.Context, days int) ([]*domain.RevenueChartPoint, error) {
@@ -604,18 +640,20 @@ func (r *AdminRepo) GetSalePageAdminDetail(ctx context.Context, id string) (*dom
 		&detail.SalePage.TemplateName, &detail.SalePage.Content, &detail.SalePage.IsPublished, &detail.SalePage.CreatedAt, &detail.SalePage.UpdatedAt,
 		&detail.CustomerEmail, &detail.CustomerName,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get sale page detail: %w", err)
 	}
 
+	var linkedPixels []*domain.Pixel
+	var eventCount int64
+
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		if len(detail.SalePage.PixelIDs) == 0 {
-			detail.LinkedPixels = []*domain.Pixel{}
 			return nil
 		}
 		rows, err := r.pool.Query(gCtx,
@@ -631,7 +669,7 @@ func (r *AdminRepo) GetSalePageAdminDetail(ctx context.Context, id string) (*dom
 			if err := rows.Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.Name, &p.IsActive, &p.Status, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt); err != nil {
 				return err
 			}
-			detail.LinkedPixels = append(detail.LinkedPixels, p)
+			linkedPixels = append(linkedPixels, p)
 		}
 		return rows.Err()
 	})
@@ -642,16 +680,18 @@ func (r *AdminRepo) GetSalePageAdminDetail(ctx context.Context, id string) (*dom
 		}
 		return r.pool.QueryRow(gCtx,
 			`SELECT COUNT(*) FROM pixel_events WHERE pixel_id = ANY($1)`, detail.SalePage.PixelIDs,
-		).Scan(&detail.EventCount)
+		).Scan(&eventCount)
 	})
 
 	if err := g.Wait(); err != nil {
 		return nil, fmt.Errorf("get sale page detail sub-queries: %w", err)
 	}
 
-	if detail.LinkedPixels == nil {
-		detail.LinkedPixels = []*domain.Pixel{}
+	detail.EventCount = eventCount
+	if linkedPixels == nil {
+		linkedPixels = []*domain.Pixel{}
 	}
+	detail.LinkedPixels = linkedPixels
 
 	return detail, nil
 }
@@ -757,19 +797,22 @@ func (r *AdminRepo) GetPixelAdminDetail(ctx context.Context, id string) (*domain
 		&detail.Pixel.CreatedAt, &detail.Pixel.UpdatedAt,
 		&detail.CustomerEmail, &detail.CustomerName,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get pixel detail: %w", err)
 	}
 
+	var eventCount int64
+	var linkedSalePages []*domain.SalePage
+
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
 			`SELECT COUNT(*) FROM pixel_events WHERE pixel_id = $1`, id,
-		).Scan(&detail.EventCount)
+		).Scan(&eventCount)
 	})
 
 	g.Go(func() error {
@@ -786,7 +829,7 @@ func (r *AdminRepo) GetPixelAdminDetail(ctx context.Context, id string) (*domain
 			if err := rows.Scan(&sp.ID, &sp.CustomerID, &sp.PixelIDs, &sp.Name, &sp.Slug, &sp.TemplateName, &sp.Content, &sp.IsPublished, &sp.CreatedAt, &sp.UpdatedAt); err != nil {
 				return err
 			}
-			detail.LinkedSalePages = append(detail.LinkedSalePages, sp)
+			linkedSalePages = append(linkedSalePages, sp)
 		}
 		return rows.Err()
 	})
@@ -795,9 +838,11 @@ func (r *AdminRepo) GetPixelAdminDetail(ctx context.Context, id string) (*domain
 		return nil, fmt.Errorf("get pixel detail sub-queries: %w", err)
 	}
 
-	if detail.LinkedSalePages == nil {
-		detail.LinkedSalePages = []*domain.SalePage{}
+	detail.EventCount = eventCount
+	if linkedSalePages == nil {
+		linkedSalePages = []*domain.SalePage{}
 	}
+	detail.LinkedSalePages = linkedSalePages
 
 	return detail, nil
 }
@@ -901,7 +946,7 @@ func (r *AdminRepo) GetReplaySessionAdminDetail(ctx context.Context, id string) 
 		&detail.Session.ErrorMessage, &detail.Session.StartedAt, &detail.Session.CompletedAt, &detail.Session.CancelledAt, &detail.Session.FailedBatchRanges, &detail.Session.CreatedAt,
 		&detail.CustomerEmail, &detail.CustomerName,
 	)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -911,6 +956,8 @@ func (r *AdminRepo) GetReplaySessionAdminDetail(ctx context.Context, id string) 
 	sourcePixelID = detail.Session.SourcePixelID
 	targetPixelID = detail.Session.TargetPixelID
 
+	var sourcePixel, targetPixel *domain.Pixel
+
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -919,13 +966,13 @@ func (r *AdminRepo) GetReplaySessionAdminDetail(ctx context.Context, id string) 
 			`SELECT id, customer_id, fb_pixel_id, name, is_active, status, backup_pixel_id, test_event_code, created_at, updated_at
 			 FROM pixels WHERE id = $1`, sourcePixelID,
 		).Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.Name, &p.IsActive, &p.Status, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt)
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		detail.SourcePixel = p
+		sourcePixel = p
 		return nil
 	})
 
@@ -935,19 +982,22 @@ func (r *AdminRepo) GetReplaySessionAdminDetail(ctx context.Context, id string) 
 			`SELECT id, customer_id, fb_pixel_id, name, is_active, status, backup_pixel_id, test_event_code, created_at, updated_at
 			 FROM pixels WHERE id = $1`, targetPixelID,
 		).Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.Name, &p.IsActive, &p.Status, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt)
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		detail.TargetPixel = p
+		targetPixel = p
 		return nil
 	})
 
 	if err := g.Wait(); err != nil {
 		return nil, fmt.Errorf("get replay detail sub-queries: %w", err)
 	}
+
+	detail.SourcePixel = sourcePixel
+	detail.TargetPixel = targetPixel
 
 	return detail, nil
 }
@@ -1022,20 +1072,27 @@ func (r *AdminRepo) ListAllEvents(ctx context.Context, customerID, pixelID, even
 }
 
 func (r *AdminRepo) GetEventStats(ctx context.Context, hours int) (*domain.AdminEventStats, error) {
-	stats := &domain.AdminEventStats{}
+	var (
+		totalToday       int64
+		totalThisHour    int64
+		capiSuccessRate  float64
+		capiFailureCount int64
+		topEventTypes    []domain.EventTypeCount
+		timeseries       []domain.EventTimeseriesPoint
+	)
 
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
 			`SELECT COUNT(*) FROM pixel_events WHERE created_at >= CURRENT_DATE`,
-		).Scan(&stats.TotalToday)
+		).Scan(&totalToday)
 	})
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
 			`SELECT COUNT(*) FROM pixel_events WHERE created_at >= date_trunc('hour', NOW())`,
-		).Scan(&stats.TotalThisHour)
+		).Scan(&totalThisHour)
 	})
 
 	g.Go(func() error {
@@ -1048,9 +1105,9 @@ func (r *AdminRepo) GetEventStats(ctx context.Context, hours int) (*domain.Admin
 			return err
 		}
 		if total > 0 {
-			stats.CAPISuccessRate = float64(success) / float64(total) * 100
+			capiSuccessRate = float64(success) / float64(total) * 100
 		}
-		stats.CAPIFailureCount = total - success
+		capiFailureCount = total - success
 		return nil
 	})
 
@@ -1069,7 +1126,7 @@ func (r *AdminRepo) GetEventStats(ctx context.Context, hours int) (*domain.Admin
 			if err := rows.Scan(&tc.EventName, &tc.Count); err != nil {
 				return err
 			}
-			stats.TopEventTypes = append(stats.TopEventTypes, tc)
+			topEventTypes = append(topEventTypes, tc)
 		}
 		return rows.Err()
 	})
@@ -1093,7 +1150,7 @@ func (r *AdminRepo) GetEventStats(ctx context.Context, hours int) (*domain.Admin
 			if err := rows.Scan(&tp.Timestamp, &tp.EventCount, &tp.CAPISuccess, &tp.CAPIFailure); err != nil {
 				return err
 			}
-			stats.Timeseries = append(stats.Timeseries, tp)
+			timeseries = append(timeseries, tp)
 		}
 		return rows.Err()
 	})
@@ -1102,14 +1159,21 @@ func (r *AdminRepo) GetEventStats(ctx context.Context, hours int) (*domain.Admin
 		return nil, fmt.Errorf("get event stats: %w", err)
 	}
 
-	if stats.TopEventTypes == nil {
-		stats.TopEventTypes = []domain.EventTypeCount{}
+	if topEventTypes == nil {
+		topEventTypes = []domain.EventTypeCount{}
 	}
-	if stats.Timeseries == nil {
-		stats.Timeseries = []domain.EventTimeseriesPoint{}
+	if timeseries == nil {
+		timeseries = []domain.EventTimeseriesPoint{}
 	}
 
-	return stats, nil
+	return &domain.AdminEventStats{
+		TotalToday:       totalToday,
+		TotalThisHour:    totalThisHour,
+		CAPISuccessRate:  capiSuccessRate,
+		CAPIFailureCount: capiFailureCount,
+		TopEventTypes:    topEventTypes,
+		Timeseries:       timeseries,
+	}, nil
 }
 
 // F5: Audit Log

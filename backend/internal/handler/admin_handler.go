@@ -47,9 +47,10 @@ func (h *AdminHandler) ListCustomers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Strip sensitive data — admin list should not expose API keys
+	// Strip sensitive data — admin list should not expose API keys or password hashes
 	for _, c := range customers {
 		c.APIKey = ""
+		c.PasswordHash = ""
 	}
 
 	totalPages := total / perPage
@@ -79,6 +80,9 @@ func (h *AdminHandler) GetCustomerDetail(w http.ResponseWriter, r *http.Request)
 		ErrorJSON(w, http.StatusInternalServerError, "failed to get customer detail")
 		return
 	}
+
+	// Strip sensitive data
+	detail.Customer.PasswordHash = ""
 
 	JSON(w, http.StatusOK, APIResponse{Data: detail})
 }

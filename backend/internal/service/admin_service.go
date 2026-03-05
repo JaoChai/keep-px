@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,6 +24,7 @@ type AdminService struct {
 	creditRepo        repository.ReplayCreditRepository
 	replaySessionRepo repository.ReplaySessionRepository
 	pool              *pgxpool.Pool
+	logger            *slog.Logger
 }
 
 func NewAdminService(
@@ -31,6 +33,7 @@ func NewAdminService(
 	creditRepo repository.ReplayCreditRepository,
 	replaySessionRepo repository.ReplaySessionRepository,
 	pool *pgxpool.Pool,
+	logger *slog.Logger,
 ) *AdminService {
 	return &AdminService{
 		adminRepo:         adminRepo,
@@ -38,6 +41,7 @@ func NewAdminService(
 		creditRepo:        creditRepo,
 		replaySessionRepo: replaySessionRepo,
 		pool:              pool,
+		logger:            logger,
 	}
 }
 
@@ -254,32 +258,38 @@ func (s *AdminService) ListCreditGrants(ctx context.Context, page, perPage int) 
 }
 
 func (s *AdminService) logAudit(ctx context.Context, adminID, action, targetType, targetID string, targetCustomerID *string, details any) {
-	detailsJSON, _ := json.Marshal(details)
-	_ = s.adminRepo.CreateAuditLog(ctx, &domain.AuditLogEntry{
+	detailsJSON, err := json.Marshal(details)
+	if err != nil {
+		s.logger.Error("failed to marshal audit details", "action", action, "error", err)
+	}
+	// Use context.WithoutCancel to prevent client disconnect from aborting audit write
+	auditCtx := context.WithoutCancel(ctx)
+	if err := s.adminRepo.CreateAuditLog(auditCtx, &domain.AuditLogEntry{
 		AdminID:          adminID,
 		Action:           action,
 		TargetType:       targetType,
 		TargetID:         targetID,
 		TargetCustomerID: targetCustomerID,
 		Details:          detailsJSON,
-	})
+	}); err != nil {
+		s.logger.Error("failed to write audit log", "action", action, "target_type", targetType, "target_id", targetID, "error", err)
+	}
 }
 
-func (s *AdminService) normalizePagination(page, perPage int) (int, int, int) {
+func (s *AdminService) normalizePagination(page, perPage int) (int, int) {
 	if page < 1 {
 		page = 1
 	}
 	if perPage < 1 || perPage > 100 {
 		perPage = 20
 	}
-	return page, perPage, (page - 1) * perPage
+	return perPage, (page - 1) * perPage
 }
 
 // F1: Sale Pages
 
 func (s *AdminService) ListAllSalePages(ctx context.Context, search, customerID string, published *bool, page, perPage int) ([]*domain.AdminSalePage, int, error) {
-	page, perPage, offset := s.normalizePagination(page, perPage)
-	_ = page
+	perPage, offset := s.normalizePagination(page, perPage)
 	return s.adminRepo.ListAllSalePages(ctx, search, customerID, published, perPage, offset)
 }
 
@@ -339,8 +349,7 @@ func (s *AdminService) DeleteSalePage(ctx context.Context, adminID, id string) e
 // F2: Pixels
 
 func (s *AdminService) ListAllPixels(ctx context.Context, search, customerID string, active *bool, page, perPage int) ([]*domain.AdminPixel, int, error) {
-	page, perPage, offset := s.normalizePagination(page, perPage)
-	_ = page
+	perPage, offset := s.normalizePagination(page, perPage)
 	return s.adminRepo.ListAllPixels(ctx, search, customerID, active, perPage, offset)
 }
 
@@ -382,8 +391,7 @@ func (s *AdminService) EnablePixel(ctx context.Context, adminID, id string) erro
 // F3: Replays
 
 func (s *AdminService) ListAllReplaySessions(ctx context.Context, status, customerID string, page, perPage int) ([]*domain.AdminReplaySession, int, error) {
-	page, perPage, offset := s.normalizePagination(page, perPage)
-	_ = page
+	perPage, offset := s.normalizePagination(page, perPage)
 	return s.adminRepo.ListAllReplaySessions(ctx, status, customerID, perPage, offset)
 }
 
@@ -414,8 +422,7 @@ func (s *AdminService) CancelReplay(ctx context.Context, adminID, id string) err
 // F4: Events
 
 func (s *AdminService) ListAllEvents(ctx context.Context, customerID, pixelID, eventName string, page, perPage int) ([]*domain.AdminEvent, int, error) {
-	page, perPage, offset := s.normalizePagination(page, perPage)
-	_ = page
+	perPage, offset := s.normalizePagination(page, perPage)
 	return s.adminRepo.ListAllEvents(ctx, customerID, pixelID, eventName, perPage, offset)
 }
 
@@ -428,8 +435,23 @@ func (s *AdminService) GetEventStats(ctx context.Context, hours int) (*domain.Ad
 
 // F5: Audit Log
 
+var validAuditActions = map[string]bool{
+	"suspend_customer":  true,
+	"activate_customer": true,
+	"change_plan":       true,
+	"grant_credits":     true,
+	"disable_sale_page": true,
+	"enable_sale_page":  true,
+	"delete_sale_page":  true,
+	"disable_pixel":     true,
+	"enable_pixel":      true,
+	"cancel_replay":     true,
+}
+
 func (s *AdminService) ListAuditLogs(ctx context.Context, adminID, action, targetCustomerID string, from, to *time.Time, page, perPage int) ([]*domain.AuditLogEntry, int, error) {
-	page, perPage, offset := s.normalizePagination(page, perPage)
-	_ = page
+	if action != "" && !validAuditActions[action] {
+		action = ""
+	}
+	perPage, offset := s.normalizePagination(page, perPage)
 	return s.adminRepo.ListAuditLogs(ctx, adminID, action, targetCustomerID, from, to, perPage, offset)
 }
