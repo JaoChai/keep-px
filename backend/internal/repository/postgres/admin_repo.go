@@ -596,9 +596,11 @@ func (r *AdminRepo) ListAllSalePages(ctx context.Context, search, customerID str
 	}
 
 	selectQuery := fmt.Sprintf(
-		`SELECT sp.id, sp.customer_id, sp.pixel_ids, sp.name, sp.slug, sp.template_name, sp.content, sp.is_published, sp.created_at, sp.updated_at,
+		`SELECT sp.id, sp.customer_id, sp.name, sp.slug, sp.template_name, sp.content, sp.is_published, sp.created_at, sp.updated_at,
 		        c.email, c.name,
-		        (SELECT COUNT(*) FROM pixel_events pe JOIN pixels p ON p.id = pe.pixel_id WHERE p.id = ANY(sp.pixel_ids)) AS event_count
+		        (SELECT COUNT(*) FROM pixel_events pe
+		         JOIN sale_page_pixels spp ON spp.pixel_id = pe.pixel_id
+		         WHERE spp.sale_page_id = sp.id) AS event_count
 		 FROM sale_pages sp JOIN customers c ON c.id = sp.customer_id
 		 %s ORDER BY sp.created_at DESC LIMIT $%d OFFSET $%d`,
 		baseWhere, argIdx, argIdx+1,
@@ -615,7 +617,7 @@ func (r *AdminRepo) ListAllSalePages(ctx context.Context, search, customerID str
 	for rows.Next() {
 		sp := &domain.AdminSalePage{}
 		if err := rows.Scan(
-			&sp.ID, &sp.CustomerID, &sp.PixelIDs, &sp.Name, &sp.Slug, &sp.TemplateName, &sp.Content, &sp.IsPublished, &sp.CreatedAt, &sp.UpdatedAt,
+			&sp.ID, &sp.CustomerID, &sp.Name, &sp.Slug, &sp.TemplateName, &sp.Content, &sp.IsPublished, &sp.CreatedAt, &sp.UpdatedAt,
 			&sp.CustomerEmail, &sp.CustomerName,
 			&sp.EventCount,
 		); err != nil {
@@ -633,12 +635,12 @@ func (r *AdminRepo) GetSalePageAdminDetail(ctx context.Context, id string) (*dom
 	detail := &domain.AdminSalePageDetail{SalePage: &domain.SalePage{}}
 
 	err := r.pool.QueryRow(ctx,
-		`SELECT sp.id, sp.customer_id, sp.pixel_ids, sp.name, sp.slug, sp.template_name, sp.content, sp.is_published, sp.created_at, sp.updated_at,
+		`SELECT sp.id, sp.customer_id, sp.name, sp.slug, sp.template_name, sp.content, sp.is_published, sp.created_at, sp.updated_at,
 		        c.email, c.name
 		 FROM sale_pages sp JOIN customers c ON c.id = sp.customer_id
 		 WHERE sp.id = $1`, id,
 	).Scan(
-		&detail.SalePage.ID, &detail.SalePage.CustomerID, &detail.SalePage.PixelIDs, &detail.SalePage.Name, &detail.SalePage.Slug,
+		&detail.SalePage.ID, &detail.SalePage.CustomerID, &detail.SalePage.Name, &detail.SalePage.Slug,
 		&detail.SalePage.TemplateName, &detail.SalePage.Content, &detail.SalePage.IsPublished, &detail.SalePage.CreatedAt, &detail.SalePage.UpdatedAt,
 		&detail.CustomerEmail, &detail.CustomerName,
 	)
@@ -655,12 +657,10 @@ func (r *AdminRepo) GetSalePageAdminDetail(ctx context.Context, id string) (*dom
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		if len(detail.SalePage.PixelIDs) == 0 {
-			return nil
-		}
 		rows, err := r.pool.Query(gCtx,
-			`SELECT id, customer_id, fb_pixel_id, name, is_active, status, backup_pixel_id, test_event_code, created_at, updated_at
-			 FROM pixels WHERE id = ANY($1)`, detail.SalePage.PixelIDs,
+			`SELECT p.id, p.customer_id, p.fb_pixel_id, p.name, p.is_active, p.status, p.backup_pixel_id, p.test_event_code, p.created_at, p.updated_at
+			 FROM pixels p JOIN sale_page_pixels spp ON spp.pixel_id = p.id
+			 WHERE spp.sale_page_id = $1 ORDER BY spp.position`, id,
 		)
 		if err != nil {
 			return err
@@ -677,11 +677,10 @@ func (r *AdminRepo) GetSalePageAdminDetail(ctx context.Context, id string) (*dom
 	})
 
 	g.Go(func() error {
-		if len(detail.SalePage.PixelIDs) == 0 {
-			return nil
-		}
 		return r.pool.QueryRow(gCtx,
-			`SELECT COUNT(*) FROM pixel_events WHERE pixel_id = ANY($1)`, detail.SalePage.PixelIDs,
+			`SELECT COUNT(*) FROM pixel_events pe
+			 JOIN sale_page_pixels spp ON spp.pixel_id = pe.pixel_id
+			 WHERE spp.sale_page_id = $1`, id,
 		).Scan(&eventCount)
 	})
 
@@ -754,7 +753,7 @@ func (r *AdminRepo) ListAllPixels(ctx context.Context, search, customerID string
 		`SELECT p.id, p.customer_id, p.fb_pixel_id, p.name, p.is_active, p.status, p.backup_pixel_id, p.test_event_code, p.created_at, p.updated_at,
 		        c.email, c.name,
 		        (SELECT COUNT(*) FROM pixel_events pe WHERE pe.pixel_id = p.id) AS event_count,
-		        (SELECT COUNT(*) FROM sale_pages sp WHERE p.id = ANY(sp.pixel_ids)) AS sale_page_count
+		        (SELECT COUNT(*) FROM sale_page_pixels spp WHERE spp.pixel_id = p.id) AS sale_page_count
 		 FROM pixels p JOIN customers c ON c.id = p.customer_id
 		 %s ORDER BY p.created_at DESC LIMIT $%d OFFSET $%d`,
 		baseWhere, argIdx, argIdx+1,
@@ -819,8 +818,9 @@ func (r *AdminRepo) GetPixelAdminDetail(ctx context.Context, id string) (*domain
 
 	g.Go(func() error {
 		rows, err := r.pool.Query(gCtx,
-			`SELECT id, customer_id, pixel_ids, name, slug, template_name, content, is_published, created_at, updated_at
-			 FROM sale_pages WHERE $1 = ANY(pixel_ids)`, id,
+			`SELECT sp.id, sp.customer_id, sp.name, sp.slug, sp.template_name, sp.content, sp.is_published, sp.created_at, sp.updated_at
+			 FROM sale_pages sp JOIN sale_page_pixels spp ON spp.sale_page_id = sp.id
+			 WHERE spp.pixel_id = $1`, id,
 		)
 		if err != nil {
 			return err
@@ -828,7 +828,7 @@ func (r *AdminRepo) GetPixelAdminDetail(ctx context.Context, id string) (*domain
 		defer rows.Close()
 		for rows.Next() {
 			sp := &domain.SalePage{}
-			if err := rows.Scan(&sp.ID, &sp.CustomerID, &sp.PixelIDs, &sp.Name, &sp.Slug, &sp.TemplateName, &sp.Content, &sp.IsPublished, &sp.CreatedAt, &sp.UpdatedAt); err != nil {
+			if err := rows.Scan(&sp.ID, &sp.CustomerID, &sp.Name, &sp.Slug, &sp.TemplateName, &sp.Content, &sp.IsPublished, &sp.CreatedAt, &sp.UpdatedAt); err != nil {
 				return err
 			}
 			linkedSalePages = append(linkedSalePages, sp)
