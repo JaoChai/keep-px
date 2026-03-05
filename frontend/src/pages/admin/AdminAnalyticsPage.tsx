@@ -6,7 +6,7 @@ import {
   DollarSign,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useAdminAnalytics, useAdminGrowthChart } from '@/hooks/use-admin'
+import { useAdminAnalytics, useAdminGrowthChart, useAdminRevenueChart } from '@/hooks/use-admin'
 import { formatBaht, PLAN_LABELS } from '@/lib/utils'
 import {
   AreaChart,
@@ -55,8 +55,10 @@ function StatCard({ title, value, subtitle, icon }: StatCardProps) {
 
 export function AdminAnalyticsPage() {
   const [days, setDays] = useState(30)
+  const [revenueDays, setRevenueDays] = useState(30)
   const { data: analytics } = useAdminAnalytics()
   const { data: growthData } = useAdminGrowthChart(days)
+  const { data: revenueData } = useAdminRevenueChart(revenueDays)
 
   const planDistribution = analytics
     ? Object.entries(analytics.customers_by_plan).map(([plan, count]) => ({
@@ -164,6 +166,85 @@ export function AdminAnalyticsPage() {
                   fillOpacity={1}
                   fill="url(#colorGrowth)"
                   name="ผู้ใช้ทั้งหมด"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              ยังไม่มีข้อมูล
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Revenue Chart */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">รายได้</CardTitle>
+            <div className="flex rounded-lg border border-border p-0.5 bg-secondary">
+              {TIME_RANGES.map((range) => (
+                <button
+                  key={range.days}
+                  onClick={() => setRevenueDays(range.days)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    revenueDays === range.days
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {range.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {revenueData && revenueData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={revenueData}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#16a34a" stopOpacity={0.1} />
+                    <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 12, fill: '#737373' }}
+                  tickFormatter={(val: string) => {
+                    const d = new Date(val)
+                    return `${d.getMonth() + 1}/${d.getDate()}`
+                  }}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: '#737373' }}
+                  tickFormatter={(val) => formatBaht(val)}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: '8px',
+                    border: '1px solid #e5e5e5',
+                    fontSize: '12px',
+                  }}
+                  labelFormatter={(val) => {
+                    const d = new Date(String(val))
+                    return d.toLocaleDateString('th-TH', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  }}
+                  formatter={(value) => [formatBaht(value as number), 'รายได้ (THB)']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="amount_satang"
+                  stroke="#16a34a"
+                  fillOpacity={1}
+                  fill="url(#colorRevenue)"
+                  name="รายได้ (THB)"
                 />
               </AreaChart>
             </ResponsiveContainer>

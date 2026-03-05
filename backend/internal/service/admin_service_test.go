@@ -1,0 +1,350 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	"github.com/jaochai/pixlinks/backend/internal/domain"
+	"github.com/jaochai/pixlinks/backend/internal/repository"
+)
+
+var errDBDown = errors.New("db down")
+
+func newTestAdminService() (*AdminService, *MockAdminRepo, *MockCustomerRepo, *MockReplayCreditRepo) {
+	adminRepo := new(MockAdminRepo)
+	customerRepo := new(MockCustomerRepo)
+	creditRepo := new(MockReplayCreditRepo)
+	svc := NewAdminService(adminRepo, customerRepo, creditRepo, nil)
+	return svc, adminRepo, customerRepo, creditRepo
+}
+
+func TestAdminService_ListCustomers(t *testing.T) {
+	tests := []struct {
+		name      string
+		search    string
+		plan      string
+		status    string
+		page      int
+		perPage   int
+		setup     func(*MockAdminRepo)
+		wantLen   int
+		wantTotal int
+		wantErr   error
+	}{
+		{
+			name:    "success with defaults",
+			search:  "",
+			plan:    "",
+			status:  "",
+			page:    0,
+			perPage: 0,
+			setup: func(ar *MockAdminRepo) {
+				ar.On("ListCustomers", mock.Anything, "", "", "", 20, 0).Return([]*domain.Customer{
+					{ID: "c1", Email: "a@b.com"},
+				}, 1, nil)
+			},
+			wantLen:   1,
+			wantTotal: 1,
+		},
+		{
+			name:    "invalid plan returns ErrInvalidPlan",
+			plan:    "nonexistent",
+			page:    1,
+			perPage: 20,
+			setup:   func(ar *MockAdminRepo) {},
+			wantErr: ErrInvalidPlan,
+		},
+		{
+			name:    "invalid status gets cleared",
+			status:  "bogus",
+			page:    1,
+			perPage: 10,
+			setup: func(ar *MockAdminRepo) {
+				ar.On("ListCustomers", mock.Anything, "", "", "", 10, 0).Return([]*domain.Customer{}, 0, nil)
+			},
+			wantLen:   0,
+			wantTotal: 0,
+		},
+		{
+			name:    "repo error propagates",
+			page:    1,
+			perPage: 20,
+			setup: func(ar *MockAdminRepo) {
+				ar.On("ListCustomers", mock.Anything, "", "", "", 20, 0).Return(nil, 0, errDBDown)
+			},
+			wantErr: errDBDown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, adminRepo, _, _ := newTestAdminService()
+			tt.setup(adminRepo)
+
+			customers, total, err := svc.ListCustomers(context.Background(), tt.search, tt.plan, tt.status, tt.page, tt.perPage)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Len(t, customers, tt.wantLen)
+			assert.Equal(t, tt.wantTotal, total)
+			adminRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestAdminService_GetCustomerDetail(t *testing.T) {
+	tests := []struct {
+		name    string
+		id      string
+		setup   func(*MockAdminRepo)
+		wantErr error
+	}{
+		{
+			name: "success",
+			id:   "c1",
+			setup: func(ar *MockAdminRepo) {
+				ar.On("GetCustomerDetail", mock.Anything, "c1").Return(&domain.AdminCustomerDetail{
+					Customer: &domain.Customer{ID: "c1"},
+				}, nil)
+			},
+		},
+		{
+			name: "not found",
+			id:   "missing",
+			setup: func(ar *MockAdminRepo) {
+				ar.On("GetCustomerDetail", mock.Anything, "missing").Return(nil, nil)
+			},
+			wantErr: ErrCustomerNotFound,
+		},
+		{
+			name: "repo error",
+			id:   "c1",
+			setup: func(ar *MockAdminRepo) {
+				ar.On("GetCustomerDetail", mock.Anything, "c1").Return(nil, errDBDown)
+			},
+			wantErr: errDBDown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, adminRepo, _, _ := newTestAdminService()
+			tt.setup(adminRepo)
+
+			detail, err := svc.GetCustomerDetail(context.Background(), tt.id)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			assert.NoError(t, err)
+			assert.NotNil(t, detail)
+			adminRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestAdminService_ChangePlan(t *testing.T) {
+	tests := []struct {
+		name    string
+		custID  string
+		newPlan string
+		setup   func(*MockCustomerRepo)
+		wantErr error
+	}{
+		{
+			name:    "success",
+			custID:  "c1",
+			newPlan: domain.PlanLaunch,
+			setup: func(cr *MockCustomerRepo) {
+				cr.On("GetByID", mock.Anything, "c1").Return(&domain.Customer{ID: "c1"}, nil)
+				cr.On("UpdatePlan", mock.Anything, "c1", domain.PlanLaunch).Return(nil)
+			},
+		},
+		{
+			name:    "invalid plan",
+			custID:  "c1",
+			newPlan: "gold",
+			setup:   func(cr *MockCustomerRepo) {},
+			wantErr: ErrInvalidPlan,
+		},
+		{
+			name:    "customer not found",
+			custID:  "missing",
+			newPlan: domain.PlanShield,
+			setup: func(cr *MockCustomerRepo) {
+				cr.On("GetByID", mock.Anything, "missing").Return(nil, nil)
+			},
+			wantErr: ErrCustomerNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, _, customerRepo, _ := newTestAdminService()
+			tt.setup(customerRepo)
+
+			err := svc.ChangePlan(context.Background(), tt.custID, tt.newPlan)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			assert.NoError(t, err)
+			customerRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestAdminService_SuspendCustomer(t *testing.T) {
+	tests := []struct {
+		name    string
+		adminID string
+		custID  string
+		setup   func(*MockAdminRepo)
+		wantErr error
+	}{
+		{
+			name:    "success",
+			adminID: "admin-1",
+			custID:  "c1",
+			setup: func(ar *MockAdminRepo) {
+				ar.On("SuspendCustomer", mock.Anything, "c1").Return(nil)
+			},
+		},
+		{
+			name:    "self-suspend blocked",
+			adminID: "c1",
+			custID:  "c1",
+			setup:   func(ar *MockAdminRepo) {},
+			wantErr: ErrAdminSelfSuspend,
+		},
+		{
+			name:    "not found",
+			adminID: "admin-1",
+			custID:  "missing",
+			setup: func(ar *MockAdminRepo) {
+				ar.On("SuspendCustomer", mock.Anything, "missing").Return(repository.ErrNotFound)
+			},
+			wantErr: ErrCustomerNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, adminRepo, _, _ := newTestAdminService()
+			tt.setup(adminRepo)
+
+			err := svc.SuspendCustomer(context.Background(), tt.adminID, tt.custID)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			assert.NoError(t, err)
+			adminRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestAdminService_ActivateCustomer(t *testing.T) {
+	tests := []struct {
+		name    string
+		custID  string
+		setup   func(*MockAdminRepo)
+		wantErr error
+	}{
+		{
+			name:   "success",
+			custID: "c1",
+			setup: func(ar *MockAdminRepo) {
+				ar.On("ActivateCustomer", mock.Anything, "c1").Return(nil)
+			},
+		},
+		{
+			name:   "not found",
+			custID: "missing",
+			setup: func(ar *MockAdminRepo) {
+				ar.On("ActivateCustomer", mock.Anything, "missing").Return(repository.ErrNotFound)
+			},
+			wantErr: ErrCustomerNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, adminRepo, _, _ := newTestAdminService()
+			tt.setup(adminRepo)
+
+			err := svc.ActivateCustomer(context.Background(), tt.custID)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			assert.NoError(t, err)
+			adminRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestAdminService_GetRevenueChart(t *testing.T) {
+	tests := []struct {
+		name     string
+		days     int
+		wantDays int
+	}{
+		{"valid days", 30, 30},
+		{"zero defaults to 30", 0, 30},
+		{"over 365 defaults to 30", 400, 30},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, adminRepo, _, _ := newTestAdminService()
+			adminRepo.On("GetRevenueChart", mock.Anything, tt.wantDays).Return([]*domain.RevenueChartPoint{
+				{Date: "2026-03-01", AmountSatang: 100},
+			}, nil)
+
+			points, err := svc.GetRevenueChart(context.Background(), tt.days)
+
+			assert.NoError(t, err)
+			assert.Len(t, points, 1)
+			adminRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestAdminService_GetGrowthChart(t *testing.T) {
+	tests := []struct {
+		name     string
+		days     int
+		wantDays int
+	}{
+		{"valid days", 30, 30},
+		{"zero defaults to 30", 0, 30},
+		{"over 365 defaults to 30", 400, 30},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, adminRepo, _, _ := newTestAdminService()
+			adminRepo.On("GetGrowthChart", mock.Anything, tt.wantDays).Return([]*domain.GrowthChartPoint{
+				{Date: "2026-03-01", NewCustomers: 5, TotalCustomers: 100},
+			}, nil)
+
+			points, err := svc.GetGrowthChart(context.Background(), tt.days)
+
+			assert.NoError(t, err)
+			assert.Len(t, points, 1)
+			adminRepo.AssertExpectations(t)
+		})
+	}
+}

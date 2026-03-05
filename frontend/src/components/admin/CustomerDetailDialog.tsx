@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -34,6 +35,8 @@ export function CustomerDetailDialog({ customerId, onClose }: CustomerDetailDial
   const grantCredits = useAdminGrantCredits()
 
   const [newPlan, setNewPlan] = useState('')
+  const [confirmSuspend, setConfirmSuspend] = useState(false)
+  const [confirmPlanChange, setConfirmPlanChange] = useState(false)
   const [creditForm, setCreditForm] = useState({
     total_replays: 1,
     max_events_per_replay: 5000,
@@ -45,7 +48,7 @@ export function CustomerDetailDialog({ customerId, onClose }: CustomerDetailDial
 
   const handlePlanChange = () => {
     if (!customer || !newPlan || newPlan === customer.plan) return
-    updatePlan.mutate({ customerId: customer.id, plan: newPlan })
+    setConfirmPlanChange(true)
   }
 
   const handleSuspendToggle = () => {
@@ -53,7 +56,7 @@ export function CustomerDetailDialog({ customerId, onClose }: CustomerDetailDial
     if (customer.suspended_at) {
       activate.mutate(customer.id)
     } else {
-      suspend.mutate(customer.id)
+      setConfirmSuspend(true)
     }
   }
 
@@ -271,6 +274,40 @@ export function CustomerDetailDialog({ customerId, onClose }: CustomerDetailDial
           </div>
         )}
       </DialogContent>
+
+      <Dialog open={confirmSuspend} onOpenChange={setConfirmSuspend}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันการระงับบัญชี</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            คุณต้องการระงับบัญชีของ <span className="font-medium text-foreground">{customer?.email}</span> ใช่หรือไม่? ผู้ใช้จะไม่สามารถเข้าใช้งานระบบได้
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setConfirmSuspend(false)}>ยกเลิก</Button>
+            <Button variant="destructive" size="sm" onClick={() => { if (!customer) return; suspend.mutate(customer.id); setConfirmSuspend(false) }} disabled={suspend.isPending}>
+              {suspend.isPending ? 'กำลังระงับ...' : 'ยืนยันระงับ'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmPlanChange} onOpenChange={setConfirmPlanChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ยืนยันการเปลี่ยนแผน</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            เปลี่ยนแผนจาก <Badge variant="secondary" className="text-xs">{PLAN_LABELS[customer?.plan ?? ''] ?? customer?.plan}</Badge> เป็น <Badge variant="secondary" className="text-xs">{PLAN_LABELS[newPlan] ?? newPlan}</Badge>
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setConfirmPlanChange(false)}>ยกเลิก</Button>
+            <Button size="sm" onClick={() => { if (!customer) return; updatePlan.mutate({ customerId: customer.id, plan: newPlan }); setConfirmPlanChange(false) }} disabled={updatePlan.isPending}>
+              {updatePlan.isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }
