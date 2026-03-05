@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -17,23 +18,26 @@ var (
 )
 
 type AdminService struct {
-	adminRepo    repository.AdminRepository
-	customerRepo repository.CustomerRepository
-	creditRepo   repository.ReplayCreditRepository
-	pool         *pgxpool.Pool
+	adminRepo         repository.AdminRepository
+	customerRepo      repository.CustomerRepository
+	creditRepo        repository.ReplayCreditRepository
+	replaySessionRepo repository.ReplaySessionRepository
+	pool              *pgxpool.Pool
 }
 
 func NewAdminService(
 	adminRepo repository.AdminRepository,
 	customerRepo repository.CustomerRepository,
 	creditRepo repository.ReplayCreditRepository,
+	replaySessionRepo repository.ReplaySessionRepository,
 	pool *pgxpool.Pool,
 ) *AdminService {
 	return &AdminService{
-		adminRepo:    adminRepo,
-		customerRepo: customerRepo,
-		creditRepo:   creditRepo,
-		pool:         pool,
+		adminRepo:         adminRepo,
+		customerRepo:      customerRepo,
+		creditRepo:        creditRepo,
+		replaySessionRepo: replaySessionRepo,
+		pool:              pool,
 	}
 }
 
@@ -72,7 +76,7 @@ func (s *AdminService) GetCustomerDetail(ctx context.Context, customerID string)
 	return detail, nil
 }
 
-func (s *AdminService) ChangePlan(ctx context.Context, customerID, newPlan string) error {
+func (s *AdminService) ChangePlan(ctx context.Context, adminID, customerID, newPlan string) error {
 	if _, ok := domain.PlanLimitsMap[newPlan]; !ok {
 		return ErrInvalidPlan
 	}
@@ -85,7 +89,11 @@ func (s *AdminService) ChangePlan(ctx context.Context, customerID, newPlan strin
 		return ErrCustomerNotFound
 	}
 
-	return s.customerRepo.UpdatePlan(ctx, customerID, newPlan)
+	if err := s.customerRepo.UpdatePlan(ctx, customerID, newPlan); err != nil {
+		return err
+	}
+	s.logAudit(ctx, adminID, "change_plan", "customer", customerID, &customerID, map[string]string{"new_plan": newPlan})
+	return nil
 }
 
 func (s *AdminService) SuspendCustomer(ctx context.Context, adminID, customerID string) error {
@@ -96,13 +104,19 @@ func (s *AdminService) SuspendCustomer(ctx context.Context, adminID, customerID 
 	if errors.Is(err, repository.ErrNotFound) {
 		return ErrCustomerNotFound
 	}
+	if err == nil {
+		s.logAudit(ctx, adminID, "suspend_customer", "customer", customerID, &customerID, nil)
+	}
 	return err
 }
 
-func (s *AdminService) ActivateCustomer(ctx context.Context, customerID string) error {
+func (s *AdminService) ActivateCustomer(ctx context.Context, adminID, customerID string) error {
 	err := s.adminRepo.ActivateCustomer(ctx, customerID)
 	if errors.Is(err, repository.ErrNotFound) {
 		return ErrCustomerNotFound
+	}
+	if err == nil {
+		s.logAudit(ctx, adminID, "activate_customer", "customer", customerID, &customerID, nil)
 	}
 	return err
 }
@@ -179,6 +193,12 @@ func (s *AdminService) GrantCredits(ctx context.Context, adminID, customerID str
 		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
+	s.logAudit(ctx, adminID, "grant_credits", "customer", customerID, &customerID, map[string]interface{}{
+		"pack_type":      input.PackType,
+		"total_replays":  input.TotalReplays,
+		"credit_id":      credit.ID,
+	})
+
 	return grant, nil
 }
 
@@ -231,4 +251,185 @@ func (s *AdminService) ListCreditGrants(ctx context.Context, page, perPage int) 
 	}
 	offset := (page - 1) * perPage
 	return s.adminRepo.ListCreditGrants(ctx, perPage, offset)
+}
+
+func (s *AdminService) logAudit(ctx context.Context, adminID, action, targetType, targetID string, targetCustomerID *string, details any) {
+	detailsJSON, _ := json.Marshal(details)
+	_ = s.adminRepo.CreateAuditLog(ctx, &domain.AuditLogEntry{
+		AdminID:          adminID,
+		Action:           action,
+		TargetType:       targetType,
+		TargetID:         targetID,
+		TargetCustomerID: targetCustomerID,
+		Details:          detailsJSON,
+	})
+}
+
+func (s *AdminService) normalizePagination(page, perPage int) (int, int, int) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 20
+	}
+	return page, perPage, (page - 1) * perPage
+}
+
+// F1: Sale Pages
+
+func (s *AdminService) ListAllSalePages(ctx context.Context, search, customerID string, published *bool, page, perPage int) ([]*domain.AdminSalePage, int, error) {
+	page, perPage, offset := s.normalizePagination(page, perPage)
+	_ = page
+	return s.adminRepo.ListAllSalePages(ctx, search, customerID, published, perPage, offset)
+}
+
+func (s *AdminService) GetSalePageDetail(ctx context.Context, id string) (*domain.AdminSalePageDetail, error) {
+	detail, err := s.adminRepo.GetSalePageAdminDetail(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get sale page detail: %w", err)
+	}
+	if detail == nil {
+		return nil, ErrSalePageNotFound
+	}
+	return detail, nil
+}
+
+func (s *AdminService) DisableSalePage(ctx context.Context, adminID, id string) error {
+	err := s.adminRepo.SetSalePagePublished(ctx, id, false)
+	if errors.Is(err, repository.ErrNotFound) {
+		return ErrSalePageNotFound
+	}
+	if err != nil {
+		return err
+	}
+	s.logAudit(ctx, adminID, "disable_sale_page", "sale_page", id, nil, nil)
+	return nil
+}
+
+func (s *AdminService) EnableSalePage(ctx context.Context, adminID, id string) error {
+	err := s.adminRepo.SetSalePagePublished(ctx, id, true)
+	if errors.Is(err, repository.ErrNotFound) {
+		return ErrSalePageNotFound
+	}
+	if err != nil {
+		return err
+	}
+	s.logAudit(ctx, adminID, "enable_sale_page", "sale_page", id, nil, nil)
+	return nil
+}
+
+func (s *AdminService) DeleteSalePage(ctx context.Context, adminID, id string) error {
+	detail, err := s.adminRepo.GetSalePageAdminDetail(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get sale page for delete: %w", err)
+	}
+	if detail == nil {
+		return ErrSalePageNotFound
+	}
+
+	if err := s.adminRepo.DeleteSalePageByAdmin(ctx, id); err != nil {
+		return err
+	}
+
+	custID := detail.SalePage.CustomerID
+	s.logAudit(ctx, adminID, "delete_sale_page", "sale_page", id, &custID, nil)
+	return nil
+}
+
+// F2: Pixels
+
+func (s *AdminService) ListAllPixels(ctx context.Context, search, customerID string, active *bool, page, perPage int) ([]*domain.AdminPixel, int, error) {
+	page, perPage, offset := s.normalizePagination(page, perPage)
+	_ = page
+	return s.adminRepo.ListAllPixels(ctx, search, customerID, active, perPage, offset)
+}
+
+func (s *AdminService) GetPixelDetail(ctx context.Context, id string) (*domain.AdminPixelDetail, error) {
+	detail, err := s.adminRepo.GetPixelAdminDetail(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get pixel detail: %w", err)
+	}
+	if detail == nil {
+		return nil, ErrPixelNotFound
+	}
+	return detail, nil
+}
+
+func (s *AdminService) DisablePixel(ctx context.Context, adminID, id string) error {
+	err := s.adminRepo.SetPixelActive(ctx, id, false)
+	if errors.Is(err, repository.ErrNotFound) {
+		return ErrPixelNotFound
+	}
+	if err != nil {
+		return err
+	}
+	s.logAudit(ctx, adminID, "disable_pixel", "pixel", id, nil, nil)
+	return nil
+}
+
+func (s *AdminService) EnablePixel(ctx context.Context, adminID, id string) error {
+	err := s.adminRepo.SetPixelActive(ctx, id, true)
+	if errors.Is(err, repository.ErrNotFound) {
+		return ErrPixelNotFound
+	}
+	if err != nil {
+		return err
+	}
+	s.logAudit(ctx, adminID, "enable_pixel", "pixel", id, nil, nil)
+	return nil
+}
+
+// F3: Replays
+
+func (s *AdminService) ListAllReplaySessions(ctx context.Context, status, customerID string, page, perPage int) ([]*domain.AdminReplaySession, int, error) {
+	page, perPage, offset := s.normalizePagination(page, perPage)
+	_ = page
+	return s.adminRepo.ListAllReplaySessions(ctx, status, customerID, perPage, offset)
+}
+
+func (s *AdminService) GetReplayDetail(ctx context.Context, id string) (*domain.AdminReplaySessionDetail, error) {
+	detail, err := s.adminRepo.GetReplaySessionAdminDetail(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get replay detail: %w", err)
+	}
+	if detail == nil {
+		return nil, ErrReplayNotFound
+	}
+	return detail, nil
+}
+
+func (s *AdminService) CancelReplay(ctx context.Context, adminID, id string) error {
+	session, err := s.replaySessionRepo.CancelSession(ctx, id)
+	if errors.Is(err, repository.ErrNotFound) {
+		return ErrReplayNotFound
+	}
+	if err != nil {
+		return err
+	}
+	custID := session.CustomerID
+	s.logAudit(ctx, adminID, "cancel_replay", "replay_session", id, &custID, nil)
+	return nil
+}
+
+// F4: Events
+
+func (s *AdminService) ListAllEvents(ctx context.Context, customerID, pixelID, eventName string, page, perPage int) ([]*domain.AdminEvent, int, error) {
+	page, perPage, offset := s.normalizePagination(page, perPage)
+	_ = page
+	return s.adminRepo.ListAllEvents(ctx, customerID, pixelID, eventName, perPage, offset)
+}
+
+func (s *AdminService) GetEventStats(ctx context.Context, hours int) (*domain.AdminEventStats, error) {
+	if hours < 1 || hours > 72 {
+		hours = 24
+	}
+	return s.adminRepo.GetEventStats(ctx, hours)
+}
+
+// F5: Audit Log
+
+func (s *AdminService) ListAuditLogs(ctx context.Context, adminID, action, targetCustomerID string, from, to *time.Time, page, perPage int) ([]*domain.AuditLogEntry, int, error) {
+	page, perPage, offset := s.normalizePagination(page, perPage)
+	_ = page
+	return s.adminRepo.ListAuditLogs(ctx, adminID, action, targetCustomerID, from, to, perPage, offset)
 }

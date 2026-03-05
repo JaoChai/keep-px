@@ -85,7 +85,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService, quotaService)
 	analyticsService := service.NewAnalyticsService(pool)
 	salePageService := service.NewSalePageService(shutdownCtx, salePageRepo, customerRepo, pixelRepo, quotaService)
-	adminService := service.NewAdminService(adminRepo, customerRepo, creditRepo, pool)
+	adminService := service.NewAdminService(adminRepo, customerRepo, creditRepo, replaySessionRepo, pool)
 
 	// Storage
 	storageService := service.NewStorageService(cfg)
@@ -218,6 +218,31 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 				r.Get("/purchases", adminHandler.ListPurchases)
 				r.Get("/subscriptions", adminHandler.ListSubscriptions)
 				r.Get("/credit-grants", adminHandler.ListCreditGrants)
+
+				// F1: Sale Pages
+				r.Get("/sale-pages", adminHandler.ListSalePages)
+				r.Get("/sale-pages/{id}", adminHandler.GetSalePageDetail)
+				r.Post("/sale-pages/{id}/disable", adminHandler.DisableSalePage)
+				r.Post("/sale-pages/{id}/enable", adminHandler.EnableSalePage)
+				r.Delete("/sale-pages/{id}", adminHandler.DeleteSalePage)
+
+				// F2: Pixels
+				r.Get("/pixels", adminHandler.ListPixels)
+				r.Get("/pixels/{id}", adminHandler.GetPixelDetail)
+				r.Post("/pixels/{id}/disable", adminHandler.DisablePixel)
+				r.Post("/pixels/{id}/enable", adminHandler.EnablePixel)
+
+				// F3: Replays
+				r.Get("/replays", adminHandler.ListReplays)
+				r.Get("/replays/{id}", adminHandler.GetReplayDetail)
+				r.Post("/replays/{id}/cancel", adminHandler.CancelReplay)
+
+				// F4: Events
+				r.Get("/events/stats", adminHandler.GetEventStats)
+				r.Get("/events", adminHandler.ListEvents)
+
+				// F5: Audit Log
+				r.Get("/audit-log", adminHandler.ListAuditLog)
 			})
 
 		})
