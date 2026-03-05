@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router'
 import { Loader2 } from 'lucide-react'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute'
+import { AdminRoute } from '@/components/shared/AdminRoute'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { HomePage } from '@/pages/HomePage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -16,6 +17,9 @@ const SalePageEditorPage = lazy(() => import('@/pages/SalePageEditorPage').then(
 const BlockEditorPage = lazy(() => import('@/pages/BlockEditorPage').then(m => ({ default: m.BlockEditorPage })))
 const BillingPage = lazy(() => import('@/pages/BillingPage').then(m => ({ default: m.BillingPage })))
 const ReplayPage = lazy(() => import('@/pages/ReplayPage').then(m => ({ default: m.ReplayPage })))
+const AdminCustomersPage = lazy(() => import('@/pages/admin/AdminCustomersPage').then(m => ({ default: m.AdminCustomersPage })))
+const AdminAnalyticsPage = lazy(() => import('@/pages/admin/AdminAnalyticsPage').then(m => ({ default: m.AdminAnalyticsPage })))
+const AdminBillingPage = lazy(() => import('@/pages/admin/AdminBillingPage').then(m => ({ default: m.AdminBillingPage })))
 
 const lazyFallback = <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
 
@@ -52,6 +56,9 @@ export const router = createBrowserRouter([
       { path: '/replay', element: <Suspense fallback={lazyFallback}><ReplayPage /></Suspense> },
       { path: '/billing', element: <Suspense fallback={lazyFallback}><BillingPage /></Suspense> },
       { path: '/settings', element: <SettingsPage /> },
+      { path: '/admin/customers', element: <AdminRoute><Suspense fallback={lazyFallback}><AdminCustomersPage /></Suspense></AdminRoute> },
+      { path: '/admin/analytics', element: <AdminRoute><Suspense fallback={lazyFallback}><AdminAnalyticsPage /></Suspense></AdminRoute> },
+      { path: '/admin/billing', element: <AdminRoute><Suspense fallback={lazyFallback}><AdminBillingPage /></Suspense></AdminRoute> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

@@ -69,6 +69,9 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	usageRepo := postgres.NewEventUsageRepo(pool)
 	webhookEventRepo := postgres.NewWebhookEventRepo(pool)
 
+	// Admin repository
+	adminRepo := postgres.NewAdminRepo(pool)
+
 	// Facebook CAPI client
 	capiClient := facebook.NewCAPIClient(cfg.FBGraphAPIURL)
 
@@ -82,6 +85,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService, quotaService)
 	analyticsService := service.NewAnalyticsService(pool)
 	salePageService := service.NewSalePageService(shutdownCtx, salePageRepo, customerRepo, pixelRepo, quotaService)
+	adminService := service.NewAdminService(adminRepo, customerRepo, creditRepo, pool)
 
 	// Storage
 	storageService := service.NewStorageService(cfg)
@@ -97,6 +101,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	salePageHandler := handler.NewSalePageHandler(salePageService, cfg.BaseURL, logger)
 	uploadHandler := handler.NewUploadHandler(storageService)
 	billingHandler := handler.NewBillingHandler(billingService, quotaService, cfg, logger)
+	adminHandler := handler.NewAdminHandler(adminService, logger)
 
 	// Health check
 	r.Get("/health", healthHandler.Health)
@@ -194,6 +199,26 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 			// Upload
 			r.Post("/uploads/image", uploadHandler.UploadImage)
+
+			// Admin routes (JWT + AdminOnly)
+			r.Route("/admin", func(r chi.Router) {
+				r.Use(middleware.AdminOnly)
+
+				r.Get("/customers", adminHandler.ListCustomers)
+				r.Get("/customers/{id}", adminHandler.GetCustomerDetail)
+				r.Put("/customers/{id}/plan", adminHandler.ChangePlan)
+				r.Post("/customers/{id}/suspend", adminHandler.SuspendCustomer)
+				r.Post("/customers/{id}/activate", adminHandler.ActivateCustomer)
+				r.Post("/customers/{id}/credits", adminHandler.GrantCredits)
+
+				r.Get("/analytics/overview", adminHandler.GetPlatformOverview)
+				r.Get("/analytics/revenue", adminHandler.GetRevenueChart)
+				r.Get("/analytics/growth", adminHandler.GetGrowthChart)
+
+				r.Get("/purchases", adminHandler.ListPurchases)
+				r.Get("/subscriptions", adminHandler.ListSubscriptions)
+				r.Get("/credit-grants", adminHandler.ListCreditGrants)
+			})
 
 		})
 	})

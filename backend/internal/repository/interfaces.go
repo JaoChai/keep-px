@@ -131,3 +131,16 @@ type WebhookEventRepository interface {
 	CreateIfNotExists(ctx context.Context, stripeEventID string, eventType string) (inserted bool, err error)
 	Delete(ctx context.Context, stripeEventID string) error
 }
+
+type AdminRepository interface {
+	ListCustomers(ctx context.Context, search, plan, status string, limit, offset int) ([]*domain.Customer, int, error)
+	GetCustomerDetail(ctx context.Context, id string) (*domain.AdminCustomerDetail, error)
+	SuspendCustomer(ctx context.Context, id string) error
+	ActivateCustomer(ctx context.Context, id string) error
+	GetPlatformStats(ctx context.Context) (*domain.PlatformStats, error)
+	GetRevenueChart(ctx context.Context, days int) ([]*domain.RevenueChartPoint, error)
+	GetGrowthChart(ctx context.Context, days int) ([]*domain.GrowthChartPoint, error)
+	ListAllPurchases(ctx context.Context, status string, limit, offset int) ([]*domain.AdminPurchase, int, error)
+	ListAllSubscriptions(ctx context.Context, status string, limit, offset int) ([]*domain.AdminSubscription, int, error)
+	ListCreditGrants(ctx context.Context, limit, offset int) ([]*domain.AdminCreditGrantWithCustomer, int, error)
+}

@@ -4,6 +4,8 @@ export interface Customer {
   name: string
   api_key: string
   plan: string
+  is_admin?: boolean
+  suspended_at?: string
   created_at: string
   updated_at: string
 }

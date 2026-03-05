@@ -35,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
               email: state.customer.email,
               name: state.customer.name,
               plan: state.customer.plan,
+              is_admin: state.customer.is_admin,
               api_key: '',
               created_at: state.customer.created_at,
               updated_at: state.customer.updated_at,
