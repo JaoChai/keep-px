@@ -10,6 +10,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { PixelsPage } from '@/pages/PixelsPage'
 import { EventsPage } from '@/pages/EventsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { GuidePage } from '@/pages/GuidePage'
 import { SalePagesPage } from '@/pages/SalePagesPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
       { path: '/replay', element: <Suspense fallback={lazyFallback}><ReplayPage /></Suspense> },
       { path: '/billing', element: <Suspense fallback={lazyFallback}><BillingPage /></Suspense> },
       { path: '/settings', element: <SettingsPage /> },
+      { path: '/guide', element: <GuidePage /> },
       { path: '/admin/customers', element: <AdminRoute><Suspense fallback={lazyFallback}><AdminCustomersPage /></Suspense></AdminRoute> },
       { path: '/admin/analytics', element: <AdminRoute><Suspense fallback={lazyFallback}><AdminAnalyticsPage /></Suspense></AdminRoute> },
       { path: '/admin/billing', element: <AdminRoute><Suspense fallback={lazyFallback}><AdminBillingPage /></Suspense></AdminRoute> },
