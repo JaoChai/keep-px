@@ -25,7 +25,7 @@ import { NotificationBell } from './NotificationBell'
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'แดชบอร์ด' },
   { to: '/pixels', icon: Radio, label: 'พิกเซล' },
-  { to: '/sale-pages', icon: FileText, label: 'หน้าขาย' },
+  { to: '/sale-pages', icon: FileText, label: 'เซลเพจ' },
   { to: '/events', icon: Activity, label: 'อีเวนต์' },
   { to: '/replay', icon: RotateCcw, label: 'รีเพลย์' },
   { to: '/billing', icon: CreditCard, label: 'การเงิน' },

@@ -126,7 +126,7 @@ export function CustomerDetailDialog({ customerId, onClose }: CustomerDetailDial
                 {[
                   { label: 'พิกเซล', value: detail.pixel_count },
                   { label: 'อีเวนต์', value: detail.event_count.toLocaleString() },
-                  { label: 'หน้าขาย', value: detail.sale_page_count },
+                  { label: 'เซลเพจ', value: detail.sale_page_count },
                   { label: 'รีเพลย์', value: detail.replay_count },
                 ].map((s) => (
                   <div key={s.label} className="bg-muted rounded-lg p-3 text-center">

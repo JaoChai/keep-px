@@ -16,7 +16,7 @@ export class SidebarPage {
     this.brand = page.getByRole('heading', { name: 'Pixlinks' })
     this.dashboardLink = page.getByRole('link', { name: 'แดชบอร์ด' })
     this.pixelsLink = page.getByRole('link', { name: 'พิกเซล' })
-    this.salePagesLink = page.getByRole('link', { name: 'หน้าขาย' })
+    this.salePagesLink = page.getByRole('link', { name: 'เซลเพจ' })
     this.eventsLink = page.getByRole('link', { name: 'อีเวนต์' })
     this.replayCenterLink = page.getByRole('link', { name: 'รีเพลย์' })
     this.settingsLink = page.getByRole('link', { name: 'ตั้งค่า' })

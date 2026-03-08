@@ -408,7 +408,7 @@ export function EventsPage() {
         <div className="text-center py-12 border border-dashed border-border rounded-lg">
           <p className="text-muted-foreground">ยังไม่มีอีเวนต์ที่บันทึก</p>
           <p className="text-sm text-muted-foreground mt-1">
-            อีเวนต์จะปรากฏที่นี่เมื่อหน้าขายของคุณเริ่มได้รับการเข้าชม
+            อีเวนต์จะปรากฏที่นี่เมื่อเซลเพจของคุณเริ่มได้รับการเข้าชม
           </p>
         </div>
       ) : (

@@ -94,7 +94,7 @@ export function SettingsPage() {
             </div>
             <div className="flex items-center justify-between mt-3">
               <p className="text-xs text-muted-foreground">
-                คีย์นี้ใช้สำหรับเทมเพลตหน้าขายเพื่อส่งอีเวนต์ไปยังพิกเซลของคุณ
+                คีย์นี้ใช้สำหรับเทมเพลตเซลเพจเพื่อส่งอีเวนต์ไปยังพิกเซลของคุณ
               </p>
               <Button
                 variant="outline"

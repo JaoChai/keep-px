@@ -32,12 +32,12 @@ export function SalePagesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">หน้าขาย</h1>
-          <p className="text-sm text-muted-foreground mt-1">สร้างและจัดการหน้าขายของคุณ</p>
+          <h1 className="text-2xl font-bold text-foreground">เซลเพจ</h1>
+          <p className="text-sm text-muted-foreground mt-1">สร้างและจัดการเซลเพจของคุณ</p>
         </div>
         <Button onClick={() => navigate('/sale-pages/new')}>
           <Plus className="h-4 w-4" />
-          สร้างหน้าขาย
+          สร้างเซลเพจ
         </Button>
       </div>
 
@@ -48,10 +48,10 @@ export function SalePagesPage() {
         <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>
       ) : !salePages || salePages.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-border rounded-lg">
-          <p className="text-muted-foreground mb-4">ยังไม่มีหน้าขาย</p>
+          <p className="text-muted-foreground mb-4">ยังไม่มีเซลเพจ</p>
           <Button variant="outline" onClick={() => navigate('/sale-pages/new')}>
             <Plus className="h-4 w-4" />
-            สร้างหน้าขายแรกของคุณ
+            สร้างเซลเพจแรกของคุณ
           </Button>
         </div>
       ) : (
@@ -135,10 +135,10 @@ export function SalePagesPage() {
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
         <DialogContent onClose={() => setDeleteConfirm(null)}>
           <DialogHeader>
-            <DialogTitle>ลบหน้าขาย</DialogTitle>
+            <DialogTitle>ลบเซลเพจ</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground mt-2">
-            คุณแน่ใจหรือไม่ว่าต้องการลบหน้าขายนี้? ไม่สามารถย้อนกลับได้
+            คุณแน่ใจหรือไม่ว่าต้องการลบเซลเพจนี้? ไม่สามารถย้อนกลับได้
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirm(null)}>ยกเลิก</Button>
