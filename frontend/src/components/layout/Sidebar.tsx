@@ -17,6 +17,7 @@ import {
   Crosshair,
   RefreshCw,
   ScrollText,
+  BookOpen,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
@@ -30,6 +31,7 @@ const navItems = [
   { to: '/replay', icon: RotateCcw, label: 'รีเพลย์' },
   { to: '/billing', icon: CreditCard, label: 'การเงิน' },
   { to: '/settings', icon: Settings, label: 'ตั้งค่า' },
+  { to: '/guide', icon: BookOpen, label: 'คู่มือ' },
 ]
 
 interface SidebarProps {
