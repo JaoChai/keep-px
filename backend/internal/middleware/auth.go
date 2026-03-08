@@ -19,13 +19,13 @@ func JWTAuth(secret string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
-				http.Error(w, `{"error":"missing authorization header"}`, http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "missing authorization header")
 				return
 			}
 
 			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 			if tokenStr == authHeader {
-				http.Error(w, `{"error":"invalid authorization format"}`, http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "invalid authorization format")
 				return
 			}
 
@@ -36,19 +36,19 @@ func JWTAuth(secret string) func(http.Handler) http.Handler {
 				return []byte(secret), nil
 			})
 			if err != nil || !token.Valid {
-				http.Error(w, `{"error":"invalid token"}`, http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "invalid token")
 				return
 			}
 
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
-				http.Error(w, `{"error":"invalid claims"}`, http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "invalid claims")
 				return
 			}
 
 			customerID, ok := claims["sub"].(string)
 			if !ok {
-				http.Error(w, `{"error":"invalid subject"}`, http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "invalid subject")
 				return
 			}
 

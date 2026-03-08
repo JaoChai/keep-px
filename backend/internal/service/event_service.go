@@ -100,6 +100,16 @@ func (s *EventService) Ingest(ctx context.Context, customerID string, input Inge
 			continue
 		}
 
+		// Skip events with oversized payloads
+		if len(eventInput.EventData) > maxEventDataSize || len(eventInput.UserData) > maxUserDataSize {
+			s.logger.Warn("event payload too large, skipping",
+				"pixel_id", eventInput.PixelID,
+				"event_data_size", len(eventInput.EventData),
+				"user_data_size", len(eventInput.UserData),
+			)
+			continue
+		}
+
 		eventTime := time.Now()
 		if eventInput.EventTime != "" {
 			if parsed, err := time.Parse(time.RFC3339, eventInput.EventTime); err == nil {
@@ -308,6 +318,8 @@ const (
 	maxFBCookieLen     = 500 // max length for _fbc/_fbp cookie values
 	maxFBClidLen       = 200 // max length for fbclid URL parameter
 	defaultCountry     = "th" // Pixlinks v1 operates in Thailand only
+	maxEventDataSize   = 64 * 1024 // 64 KB per event_data field
+	maxUserDataSize    = 16 * 1024 // 16 KB per user_data field
 )
 
 func (s *EventService) ListRecent(ctx context.Context, customerID string, since time.Time, pixelID string) ([]*domain.RealtimeEvent, error) {

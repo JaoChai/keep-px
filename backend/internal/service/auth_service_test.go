@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -84,6 +85,7 @@ func TestAuthService_Register(t *testing.T) {
 				assert.NotEmpty(t, tokens.AccessToken)
 				assert.NotEmpty(t, tokens.RefreshToken)
 				assert.NotNil(t, tokens.Customer)
+				assert.Equal(t, domain.PlanSandbox, tokens.Customer.Plan)
 			}
 			customerRepo.AssertExpectations(t)
 			refreshTokenRepo.AssertExpectations(t)
@@ -227,6 +229,48 @@ func TestAuthService_RefreshTokens(t *testing.T) {
 				assert.NotEmpty(t, tokens.RefreshToken)
 			}
 			customerRepo.AssertExpectations(t)
+			refreshTokenRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestAuthService_Logout(t *testing.T) {
+	tests := []struct {
+		name       string
+		customerID string
+		setup      func(*MockRefreshTokenRepo)
+		wantErr    bool
+	}{
+		{
+			name:       "success",
+			customerID: "cust-1",
+			setup: func(rt *MockRefreshTokenRepo) {
+				rt.On("DeleteByCustomerID", mock.Anything, "cust-1").Return(nil)
+			},
+			wantErr: false,
+		},
+		{
+			name:       "repo error",
+			customerID: "cust-2",
+			setup: func(rt *MockRefreshTokenRepo) {
+				rt.On("DeleteByCustomerID", mock.Anything, "cust-2").Return(errors.New("db error"))
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, _, refreshTokenRepo := newTestAuthService()
+			tt.setup(refreshTokenRepo)
+
+			err := svc.Logout(context.Background(), tt.customerID)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
 			refreshTokenRepo.AssertExpectations(t)
 		})
 	}

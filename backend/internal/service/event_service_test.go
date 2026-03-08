@@ -394,6 +394,119 @@ func TestEventService_Ingest_BackupPixelFanOut(t *testing.T) {
 	// The pixelRepo.GetByID("pixel-backup") call may or may not have completed by now.
 }
 
+func TestEventService_Ingest_OversizedPayload(t *testing.T) {
+	tests := []struct {
+		name        string
+		eventData   json.RawMessage
+		userData    json.RawMessage
+		wantCreated int
+		expectCreate bool
+	}{
+		{
+			name:         "event_data exceeds 64KB limit",
+			eventData:    json.RawMessage(`{"data":"` + strings.Repeat("x", 64*1024) + `"}`),
+			userData:     json.RawMessage(`{}`),
+			wantCreated:  0,
+			expectCreate: false,
+		},
+		{
+			name:         "user_data exceeds 16KB limit",
+			eventData:    json.RawMessage(`{}`),
+			userData:     json.RawMessage(`{"data":"` + strings.Repeat("x", 16*1024) + `"}`),
+			wantCreated:  0,
+			expectCreate: false,
+		},
+		{
+			name:         "both fields oversized",
+			eventData:    json.RawMessage(`{"data":"` + strings.Repeat("x", 64*1024) + `"}`),
+			userData:     json.RawMessage(`{"data":"` + strings.Repeat("x", 16*1024) + `"}`),
+			wantCreated:  0,
+			expectCreate: false,
+		},
+		{
+			name:         "payloads within limits",
+			eventData:    json.RawMessage(`{"data":"` + strings.Repeat("x", 100) + `"}`),
+			userData:     json.RawMessage(`{"data":"` + strings.Repeat("x", 100) + `"}`),
+			wantCreated:  1,
+			expectCreate: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, eventRepo, pixelRepo := newTestEventService()
+
+			pixelRepo.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
+				ID:         "pixel-1",
+				CustomerID: "cust-1",
+				IsActive:   true,
+			}}, nil)
+			if tt.expectCreate {
+				eventRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(true, nil)
+			}
+
+			input := IngestBatchInput{
+				Events: []IngestEventInput{
+					{
+						PixelID:   "pixel-1",
+						EventName: "PageView",
+						EventData: tt.eventData,
+						UserData:  tt.userData,
+					},
+				},
+			}
+
+			created, err := svc.Ingest(context.Background(), "cust-1", input, ClientContext{
+				IP:        "192.168.1.1",
+				UserAgent: "TestAgent/1.0",
+			})
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantCreated, created)
+			eventRepo.AssertExpectations(t)
+			pixelRepo.AssertExpectations(t)
+		})
+	}
+}
+
+func TestEventService_Ingest_OversizedPayload_MixedBatch(t *testing.T) {
+	svc, eventRepo, pixelRepo := newTestEventService()
+
+	pixelRepo.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
+		ID:         "pixel-1",
+		CustomerID: "cust-1",
+		IsActive:   true,
+	}}, nil)
+	eventRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(true, nil)
+
+	input := IngestBatchInput{
+		Events: []IngestEventInput{
+			{
+				PixelID:   "pixel-1",
+				EventName: "PageView",
+				EventData: json.RawMessage(`{"data":"` + strings.Repeat("x", 64*1024) + `"}`),
+				UserData:  json.RawMessage(`{}`),
+			},
+			{
+				PixelID:   "pixel-1",
+				EventName: "Purchase",
+				EventData: json.RawMessage(`{"value":"100"}`),
+				UserData:  json.RawMessage(`{"email":"test@example.com"}`),
+			},
+		},
+	}
+
+	created, err := svc.Ingest(context.Background(), "cust-1", input, ClientContext{
+		IP:        "192.168.1.1",
+		UserAgent: "TestAgent/1.0",
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, created, "only the valid event should be created; oversized event should be skipped")
+	eventRepo.AssertExpectations(t)
+	pixelRepo.AssertExpectations(t)
+}
+
 func TestEventService_ListByCustomerID(t *testing.T) {
 	tests := []struct {
 		name      string

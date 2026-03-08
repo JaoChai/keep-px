@@ -42,7 +42,7 @@ func APIKeyAuthWithContext(ctx context.Context, customerRepo repository.Customer
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			apiKey := r.Header.Get("X-API-Key")
 			if apiKey == "" {
-				http.Error(w, `{"error":"missing API key"}`, http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "missing API key")
 				return
 			}
 
@@ -59,7 +59,7 @@ func APIKeyAuthWithContext(ctx context.Context, customerRepo repository.Customer
 
 			customer, err := customerRepo.GetByAPIKey(r.Context(), apiKey)
 			if err != nil || customer == nil {
-				http.Error(w, `{"error":"invalid API key"}`, http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "invalid API key")
 				return
 			}
 

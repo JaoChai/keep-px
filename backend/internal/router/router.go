@@ -141,6 +141,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 			// Auth - get current user
 			r.Get("/auth/me", authHandler.Me)
+			r.Post("/auth/logout", authHandler.Logout)
 			r.Post("/auth/regenerate-api-key", authHandler.RegenerateAPIKey)
 
 			// Pixel routes - Phase 3
