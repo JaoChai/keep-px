@@ -14,11 +14,16 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
-	"github.com/jaochai/pixlinks/backend/internal/middleware"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
-const testJWTSecret = "test-secret"
+const (
+	testJWTSecret    = "test-secret"
+	testCustomerID   = "cust-1"
+	testPixelID      = "px-1"
+	testPixelMissing = "px-nonexistent"
+	testSalePageID   = "sp-1"
+)
 
 // testJWT generates a valid JWT token for testing with the given customerID and admin flag.
 func testJWT(customerID string, isAdmin bool) string {
@@ -35,19 +40,6 @@ func testJWT(customerID string, isAdmin bool) string {
 	return tokenStr
 }
 
-// ctxWithCustomer returns a context with customer_id set (bypasses middleware).
-func ctxWithCustomer(customerID string) context.Context {
-	ctx := context.WithValue(context.Background(), middleware.CustomerIDKey, customerID)
-	ctx = context.WithValue(ctx, middleware.IsAdminKey, false)
-	return ctx
-}
-
-// ctxWithAdmin returns a context with customer_id and is_admin=true set.
-func ctxWithAdmin(customerID string) context.Context {
-	ctx := context.WithValue(context.Background(), middleware.CustomerIDKey, customerID)
-	ctx = context.WithValue(ctx, middleware.IsAdminKey, true)
-	return ctx
-}
 
 // doRequest creates an HTTP test request, optionally sets the Authorization header and JSON body,
 // and returns the recorded response.

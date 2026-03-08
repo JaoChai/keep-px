@@ -30,10 +30,10 @@ func TestAuthHandler_Me(t *testing.T) {
 	}{
 		{
 			name:  "success — valid token returns customer data",
-			token: testJWT("cust-1", false),
+			token: testJWT(testCustomerID, false),
 			setupMocks: func(cr *MockCustomerRepo) {
-				cr.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
-					ID:    "cust-1",
+				cr.On("GetByID", mock.Anything, testCustomerID).Return(&domain.Customer{
+					ID:    testCustomerID,
 					Email: "user@example.com",
 					Name:  "Test User",
 					Plan:  domain.PlanSandbox,
@@ -118,9 +118,9 @@ func TestAuthHandler_Logout(t *testing.T) {
 	}{
 		{
 			name:  "success — logged out",
-			token: testJWT("cust-1", false),
+			token: testJWT(testCustomerID, false),
 			setupMocks: func(rt *MockRefreshTokenRepo) {
-				rt.On("DeleteByCustomerID", mock.Anything, "cust-1").Return(nil)
+				rt.On("DeleteByCustomerID", mock.Anything, testCustomerID).Return(nil)
 			},
 			wantStatus: http.StatusOK,
 			wantMsg:    "logged out",
@@ -306,7 +306,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			},
 			setupMocks: func(cr *MockCustomerRepo, rt *MockRefreshTokenRepo) {
 				cr.On("GetByEmail", mock.Anything, "user@example.com").Return(&domain.Customer{
-					ID:           "cust-1",
+					ID:           testCustomerID,
 					Email:        "user@example.com",
 					PasswordHash: "$2a$10$invalidhashforwrongpassword",
 				}, nil)
@@ -480,19 +480,19 @@ func TestAuthHandler_Refresh(t *testing.T) {
 			setupMocks: func(cr *MockCustomerRepo, rt *MockRefreshTokenRepo) {
 				// The service hashes the token before lookup.
 				rt.On("GetByTokenHash", mock.Anything, mock.AnythingOfType("string")).Return(
-					"cust-1",
+					testCustomerID,
 					time.Now().Add(7*24*time.Hour),
 					nil,
 				)
 				rt.On("DeleteByTokenHash", mock.Anything, mock.AnythingOfType("string")).Return(nil)
-				cr.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
-					ID:    "cust-1",
+				cr.On("GetByID", mock.Anything, testCustomerID).Return(&domain.Customer{
+					ID:    testCustomerID,
 					Email: "user@example.com",
 					Name:  "Test User",
 					Plan:  domain.PlanSandbox,
 				}, nil)
 				// New refresh token is created during token generation.
-				rt.On("Create", mock.Anything, "cust-1", mock.AnythingOfType("string"), mock.AnythingOfType("time.Time")).Return(nil)
+				rt.On("Create", mock.Anything, testCustomerID, mock.AnythingOfType("string"), mock.AnythingOfType("time.Time")).Return(nil)
 			},
 			wantStatus: http.StatusOK,
 		},
@@ -592,10 +592,10 @@ func TestAuthHandler_RegenerateAPIKey(t *testing.T) {
 	}{
 		{
 			name:  "success — returns updated customer",
-			token: testJWT("cust-1", false),
+			token: testJWT(testCustomerID, false),
 			setupMocks: func(cr *MockCustomerRepo) {
-				cr.On("RegenerateAPIKey", mock.Anything, "cust-1", mock.AnythingOfType("string")).Return(&domain.Customer{
-					ID:     "cust-1",
+				cr.On("RegenerateAPIKey", mock.Anything, testCustomerID, mock.AnythingOfType("string")).Return(&domain.Customer{
+					ID:     testCustomerID,
 					Email:  "user@example.com",
 					Name:   "Test User",
 					APIKey: "pk_new_generated_key",

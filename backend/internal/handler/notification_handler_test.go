@@ -27,18 +27,18 @@ func TestNotificationHandler_List(t *testing.T) {
 
 		now := time.Now()
 		notifs := []*domain.Notification{
-			{ID: "n1", CustomerID: "cust-1", Type: domain.NotificationTypeSystem, Title: "Welcome", Body: "Hello", CreatedAt: now},
-			{ID: "n2", CustomerID: "cust-1", Type: domain.NotificationTypeReplayCompleted, Title: "Replay done", Body: "Your replay completed", CreatedAt: now},
+			{ID: "n1", CustomerID: testCustomerID, Type: domain.NotificationTypeSystem, Title: "Welcome", Body: "Hello", CreatedAt: now},
+			{ID: "n2", CustomerID: testCustomerID, Type: domain.NotificationTypeReplayCompleted, Title: "Replay done", Body: "Your replay completed", CreatedAt: now},
 		}
 
-		notifRepo.On("ListByCustomerID", mock.Anything, "cust-1", 20).Return(notifs, nil)
-		notifRepo.On("CountUnread", mock.Anything, "cust-1").Return(1, nil)
+		notifRepo.On("ListByCustomerID", mock.Anything, testCustomerID, 20).Return(notifs, nil)
+		notifRepo.On("CountUnread", mock.Anything, testCustomerID).Return(1, nil)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Get("/notifications", h.List)
 
-		rec := doRequest(r, "GET", "/notifications", nil, testJWT("cust-1", false))
+		rec := doRequest(r, "GET", "/notifications", nil, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 200, rec.Code)
 
@@ -55,14 +55,14 @@ func TestNotificationHandler_List(t *testing.T) {
 		svc := newTestNotificationService(notifRepo)
 		h := NewNotificationHandler(svc)
 
-		notifRepo.On("ListByCustomerID", mock.Anything, "cust-1", 5).Return([]*domain.Notification{}, nil)
-		notifRepo.On("CountUnread", mock.Anything, "cust-1").Return(0, nil)
+		notifRepo.On("ListByCustomerID", mock.Anything, testCustomerID, 5).Return([]*domain.Notification{}, nil)
+		notifRepo.On("CountUnread", mock.Anything, testCustomerID).Return(0, nil)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Get("/notifications", h.List)
 
-		rec := doRequest(r, "GET", "/notifications?limit=5", nil, testJWT("cust-1", false))
+		rec := doRequest(r, "GET", "/notifications?limit=5", nil, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 200, rec.Code)
 		notifRepo.AssertExpectations(t)
@@ -89,13 +89,13 @@ func TestNotificationHandler_UnreadCount(t *testing.T) {
 		svc := newTestNotificationService(notifRepo)
 		h := NewNotificationHandler(svc)
 
-		notifRepo.On("CountUnread", mock.Anything, "cust-1").Return(7, nil)
+		notifRepo.On("CountUnread", mock.Anything, testCustomerID).Return(7, nil)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Get("/notifications/unread-count", h.UnreadCount)
 
-		rec := doRequest(r, "GET", "/notifications/unread-count", nil, testJWT("cust-1", false))
+		rec := doRequest(r, "GET", "/notifications/unread-count", nil, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 200, rec.Code)
 
@@ -131,13 +131,13 @@ func TestNotificationHandler_MarkRead(t *testing.T) {
 		svc := newTestNotificationService(notifRepo)
 		h := NewNotificationHandler(svc)
 
-		notifRepo.On("MarkRead", mock.Anything, "notif-1", "cust-1").Return(nil)
+		notifRepo.On("MarkRead", mock.Anything, "notif-1", testCustomerID).Return(nil)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Put("/notifications/{id}/read", h.MarkRead)
 
-		rec := doRequest(r, "PUT", "/notifications/notif-1/read", nil, testJWT("cust-1", false))
+		rec := doRequest(r, "PUT", "/notifications/notif-1/read", nil, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 200, rec.Code)
 
@@ -154,13 +154,13 @@ func TestNotificationHandler_MarkRead(t *testing.T) {
 		svc := newTestNotificationService(notifRepo)
 		h := NewNotificationHandler(svc)
 
-		notifRepo.On("MarkRead", mock.Anything, "nonexistent", "cust-1").Return(repository.ErrNotFound)
+		notifRepo.On("MarkRead", mock.Anything, "nonexistent", testCustomerID).Return(repository.ErrNotFound)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Put("/notifications/{id}/read", h.MarkRead)
 
-		rec := doRequest(r, "PUT", "/notifications/nonexistent/read", nil, testJWT("cust-1", false))
+		rec := doRequest(r, "PUT", "/notifications/nonexistent/read", nil, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 404, rec.Code)
 
@@ -193,13 +193,13 @@ func TestNotificationHandler_MarkAllRead(t *testing.T) {
 		svc := newTestNotificationService(notifRepo)
 		h := NewNotificationHandler(svc)
 
-		notifRepo.On("MarkAllRead", mock.Anything, "cust-1").Return(nil)
+		notifRepo.On("MarkAllRead", mock.Anything, testCustomerID).Return(nil)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Put("/notifications/read-all", h.MarkAllRead)
 
-		rec := doRequest(r, "PUT", "/notifications/read-all", nil, testJWT("cust-1", false))
+		rec := doRequest(r, "PUT", "/notifications/read-all", nil, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 200, rec.Code)
 

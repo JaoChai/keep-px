@@ -277,7 +277,7 @@ func TestEventHandler_ListRecent(t *testing.T) {
 		h := NewEventHandler(eventSvc)
 
 		realtimeEvents := []*domain.RealtimeEvent{
-			{ID: "e1", PixelID: "px-1", EventName: "PageView"},
+			{ID: "e1", PixelID: testPixelID, EventName: "PageView"},
 		}
 		// Without "since" and no "limit", handler passes limit=0, service clamps to 100
 		eventRepo.On("ListLatestByCustomerID", mock.Anything, eventTestCustomerID, "", 100).Return(realtimeEvents, nil)
@@ -300,7 +300,7 @@ func TestEventHandler_ListRecent(t *testing.T) {
 		h := NewEventHandler(eventSvc)
 
 		realtimeEvents := []*domain.RealtimeEvent{
-			{ID: "e2", PixelID: "px-1", EventName: "Purchase"},
+			{ID: "e2", PixelID: testPixelID, EventName: "Purchase"},
 		}
 		// "since" within 5 minutes should pass through without clamping
 		eventRepo.On("ListRecentByCustomerID", mock.Anything, eventTestCustomerID, mock.AnythingOfType("time.Time"), "", 50).Return(realtimeEvents, nil)
@@ -348,13 +348,13 @@ func TestEventHandler_GetByID(t *testing.T) {
 
 		event := &domain.PixelEvent{
 			ID:        eventID,
-			PixelID:   "px-1",
+			PixelID:   testPixelID,
 			EventName: "PageView",
 			EventData: json.RawMessage(`{}`),
 		}
 		eventRepo.On("GetByID", mock.Anything, eventID).Return(event, nil)
-		pixelRepo.On("GetByID", mock.Anything, "px-1").Return(&domain.Pixel{
-			ID:         "px-1",
+		pixelRepo.On("GetByID", mock.Anything, testPixelID).Return(&domain.Pixel{
+			ID:         testPixelID,
 			CustomerID: eventTestCustomerID,
 		}, nil)
 

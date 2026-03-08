@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -19,43 +18,10 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
-// ---------------------------------------------------------------------------
-// Mock Pool for BillingService (service.Pool interface)
-// ---------------------------------------------------------------------------
+// nbMockPool implements service.Pool for tests (Begin is never called in these tests).
+type nbMockPool struct{}
 
-// nbMockTx implements pgx.Tx for the mock pool (minimal stub).
-type nbMockTx struct{ mock.Mock }
-
-func (m *nbMockTx) Begin(ctx context.Context) (pgx.Tx, error)   { return nil, nil }
-func (m *nbMockTx) Commit(ctx context.Context) error             { return nil }
-func (m *nbMockTx) Rollback(ctx context.Context) error           { return nil }
-func (m *nbMockTx) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
-	return 0, nil
-}
-func (m *nbMockTx) SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults { return nil }
-func (m *nbMockTx) LargeObjects() pgx.LargeObjects                               { return pgx.LargeObjects{} }
-func (m *nbMockTx) Prepare(ctx context.Context, name, sql string) (*pgconn.StatementDescription, error) {
-	return nil, nil
-}
-func (m *nbMockTx) Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
-	return pgconn.CommandTag{}, nil
-}
-func (m *nbMockTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
-	return nil, nil
-}
-func (m *nbMockTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row { return nil }
-func (m *nbMockTx) Conn() *pgx.Conn                                               { return nil }
-
-// nbMockPool implements service.Pool for tests.
-type nbMockPool struct{ mock.Mock }
-
-func (m *nbMockPool) Begin(ctx context.Context) (pgx.Tx, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(pgx.Tx), args.Error(1)
-}
+func (m *nbMockPool) Begin(_ context.Context) (pgx.Tx, error) { return nil, nil }
 
 // ---------------------------------------------------------------------------
 // Billing handler test helpers
@@ -129,21 +95,21 @@ func TestBillingHandler_GetBillingOverview(t *testing.T) {
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
 		customer := &domain.Customer{
-			ID:    "cust-1",
+			ID:    testCustomerID,
 			Email: "test@example.com",
 			Name:  "Test User",
 			Plan:  domain.PlanSandbox,
 		}
-		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(customer, nil)
-		purchaseRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return([]*domain.Purchase{}, nil)
-		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
-		subRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{}, nil)
+		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
+		purchaseRepo.On("ListByCustomerID", mock.Anything, testCustomerID).Return([]*domain.Purchase{}, nil)
+		creditRepo.On("GetActiveByCustomerID", mock.Anything, testCustomerID).Return([]*domain.ReplayCredit{}, nil)
+		subRepo.On("ListByCustomerID", mock.Anything, testCustomerID).Return([]*domain.Subscription{}, nil)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Get("/billing/overview", h.GetBillingOverview)
 
-		rec := doRequest(r, "GET", "/billing/overview", nil, testJWT("cust-1", false))
+		rec := doRequest(r, "GET", "/billing/overview", nil, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 200, rec.Code)
 
@@ -200,19 +166,19 @@ func TestBillingHandler_GetQuota(t *testing.T) {
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
 		customer := &domain.Customer{
-			ID:   "cust-1",
+			ID:   testCustomerID,
 			Plan: domain.PlanSandbox,
 		}
-		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(customer, nil)
-		subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{}, nil)
-		creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
-		usageRepo.On("GetCurrentMonth", mock.Anything, "cust-1").Return((*domain.EventUsage)(nil), nil)
+		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
+		subRepo.On("GetActiveByCustomerID", mock.Anything, testCustomerID).Return([]*domain.Subscription{}, nil)
+		creditRepo.On("GetActiveByCustomerID", mock.Anything, testCustomerID).Return([]*domain.ReplayCredit{}, nil)
+		usageRepo.On("GetCurrentMonth", mock.Anything, testCustomerID).Return((*domain.EventUsage)(nil), nil)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Get("/billing/quota", h.GetQuota)
 
-		rec := doRequest(r, "GET", "/billing/quota", nil, testJWT("cust-1", false))
+		rec := doRequest(r, "GET", "/billing/quota", nil, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 200, rec.Code)
 
@@ -269,15 +235,15 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 
 		// When Stripe is not configured, CreateReplayPackCheckout calls EnsureStripeCustomer
 		// which returns ErrStripeNotConfigured.
-		customer := &domain.Customer{ID: "cust-1", Email: "test@example.com", Name: "Test"}
-		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(customer, nil)
+		customer := &domain.Customer{ID: testCustomerID, Email: "test@example.com", Name: "Test"}
+		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
 		body := map[string]string{"pack_type": domain.PackReplay1}
-		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT("cust-1", false))
+		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 503, rec.Code)
 
@@ -304,15 +270,15 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		// addonPriceID returns error for unknown addon type when price ID is empty
 		// For a known addon type with no price, it still returns the empty string which fails.
 		// The addon type validation happens at the service level.
-		customer := &domain.Customer{ID: "cust-1", Email: "test@example.com", Name: "Test"}
-		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(customer, nil)
+		customer := &domain.Customer{ID: testCustomerID, Email: "test@example.com", Name: "Test"}
+		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
 		body := map[string]string{"addon_type": domain.AddonEvents1M}
-		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT("cust-1", false))
+		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT(testCustomerID, false))
 
 		// Should be 503 (Stripe not configured) because EnsureStripeCustomer is called
 		// OR 400 (invalid addon type) if the price ID is empty.
@@ -342,7 +308,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 
 		// plan_type with empty price ID in config returns ErrInvalidPlanType (400)
 		body := map[string]string{"plan_type": domain.SubTypePlanLaunch}
-		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT("cust-1", false))
+		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 400, rec.Code)
 
@@ -368,7 +334,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		r.Post("/billing/checkout", h.CreateCheckout)
 
 		body := map[string]string{}
-		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT("cust-1", false))
+		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 400, rec.Code)
 
@@ -419,14 +385,14 @@ func TestBillingHandler_CreatePortalSession(t *testing.T) {
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
-		customer := &domain.Customer{ID: "cust-1", Email: "test@example.com", Name: "Test"}
-		customerRepo.On("GetByID", mock.Anything, "cust-1").Return(customer, nil)
+		customer := &domain.Customer{ID: testCustomerID, Email: "test@example.com", Name: "Test"}
+		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Post("/billing/portal", h.CreatePortalSession)
 
-		rec := doRequest(r, "POST", "/billing/portal", nil, testJWT("cust-1", false))
+		rec := doRequest(r, "POST", "/billing/portal", nil, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 503, rec.Code)
 

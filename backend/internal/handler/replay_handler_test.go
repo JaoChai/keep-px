@@ -246,8 +246,8 @@ func TestReplayHandler_List(t *testing.T) {
 		h := NewReplayHandler(svc)
 
 		sessions := []*domain.ReplaySession{
-			{ID: "s1", CustomerID: replayTestCustomerID, SourcePixelID: "px-1", TargetPixelID: "px-2", Status: "completed", TotalEvents: 10},
-			{ID: "s2", CustomerID: replayTestCustomerID, SourcePixelID: "px-1", TargetPixelID: "px-3", Status: "running", TotalEvents: 5},
+			{ID: "s1", CustomerID: replayTestCustomerID, SourcePixelID: testPixelID, TargetPixelID: "px-2", Status: "completed", TotalEvents: 10},
+			{ID: "s2", CustomerID: replayTestCustomerID, SourcePixelID: testPixelID, TargetPixelID: "px-3", Status: "running", TotalEvents: 5},
 		}
 		sessionRepo.On("ListByCustomerID", mock.Anything, replayTestCustomerID).Return(sessions, nil)
 
@@ -296,7 +296,7 @@ func TestReplayHandler_GetByID(t *testing.T) {
 		session := &domain.ReplaySession{
 			ID:            sessionID,
 			CustomerID:    replayTestCustomerID,
-			SourcePixelID: "px-1",
+			SourcePixelID: testPixelID,
 			TargetPixelID: "px-2",
 			Status:        "completed",
 			TotalEvents:   10,

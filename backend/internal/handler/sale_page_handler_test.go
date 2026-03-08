@@ -100,13 +100,13 @@ func validSimpleContent() json.RawMessage {
 func TestSalePageHandler_List(t *testing.T) {
 	t.Run("success returns sale page list", func(t *testing.T) {
 		env := setupSalePageTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		token := testJWT(customerID, false)
 
 		env.salePageRepo.On("ListByCustomerID", mock.Anything, customerID).
 			Return([]*domain.SalePage{
 				{
-					ID:           "sp-1",
+					ID:           testSalePageID,
 					CustomerID:   customerID,
 					Name:         "Page 1",
 					Slug:         "page-1",
@@ -134,7 +134,7 @@ func TestSalePageHandler_List(t *testing.T) {
 func TestSalePageHandler_Create(t *testing.T) {
 	t.Run("success creates sale page", func(t *testing.T) {
 		env := setupSalePageTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		token := testJWT(customerID, false)
 
 		env.setupQuotaAllowed(customerID, 0)
@@ -159,7 +159,7 @@ func TestSalePageHandler_Create(t *testing.T) {
 
 	t.Run("quota exceeded returns 402", func(t *testing.T) {
 		env := setupSalePageTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		token := testJWT(customerID, false)
 
 		env.setupQuotaExceeded(customerID)
@@ -181,7 +181,7 @@ func TestSalePageHandler_Create(t *testing.T) {
 
 	t.Run("invalid slug returns 400", func(t *testing.T) {
 		env := setupSalePageTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		token := testJWT(customerID, false)
 
 		env.setupQuotaAllowed(customerID, 0)
@@ -203,7 +203,7 @@ func TestSalePageHandler_Create(t *testing.T) {
 
 	t.Run("slug taken returns 409", func(t *testing.T) {
 		env := setupSalePageTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		token := testJWT(customerID, false)
 
 		env.setupQuotaAllowed(customerID, 0)
@@ -232,8 +232,8 @@ func TestSalePageHandler_Create(t *testing.T) {
 func TestSalePageHandler_Update(t *testing.T) {
 	t.Run("success updates sale page", func(t *testing.T) {
 		env := setupSalePageTest(t)
-		customerID := "cust-1"
-		pageID := "sp-1"
+		customerID := testCustomerID
+		pageID := testSalePageID
 		token := testJWT(customerID, false)
 
 		existing := &domain.SalePage{
@@ -263,7 +263,7 @@ func TestSalePageHandler_Update(t *testing.T) {
 
 	t.Run("not found returns 404", func(t *testing.T) {
 		env := setupSalePageTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		pageID := "sp-nonexistent"
 		token := testJWT(customerID, false)
 
@@ -283,9 +283,9 @@ func TestSalePageHandler_Update(t *testing.T) {
 
 	t.Run("not owned returns 403", func(t *testing.T) {
 		env := setupSalePageTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		otherCustomer := "cust-other"
-		pageID := "sp-1"
+		pageID := testSalePageID
 		token := testJWT(customerID, false)
 
 		env.salePageRepo.On("GetByID", mock.Anything, pageID).
@@ -318,8 +318,8 @@ func TestSalePageHandler_Update(t *testing.T) {
 func TestSalePageHandler_Delete(t *testing.T) {
 	t.Run("success deletes sale page", func(t *testing.T) {
 		env := setupSalePageTest(t)
-		customerID := "cust-1"
-		pageID := "sp-1"
+		customerID := testCustomerID
+		pageID := testSalePageID
 		token := testJWT(customerID, false)
 
 		env.salePageRepo.On("GetByID", mock.Anything, pageID).
@@ -343,7 +343,7 @@ func TestSalePageHandler_Delete(t *testing.T) {
 
 	t.Run("not found returns 404", func(t *testing.T) {
 		env := setupSalePageTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		pageID := "sp-nonexistent"
 		token := testJWT(customerID, false)
 

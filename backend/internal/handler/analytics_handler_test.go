@@ -50,7 +50,7 @@ func TestAnalyticsHandler_Overview_WithAuth(t *testing.T) {
 		JSON(w, http.StatusOK, APIResponse{Data: map[string]string{"customer_id": customerID}})
 	})
 
-	rec := doRequest(r, "GET", "/analytics/overview", nil, testJWT("cust-1", false))
+	rec := doRequest(r, "GET", "/analytics/overview", nil, testJWT(testCustomerID, false))
 	assert.Equal(t, 200, rec.Code)
 }
 
@@ -62,6 +62,6 @@ func TestAnalyticsHandler_EventChart_WithAuth(t *testing.T) {
 		JSON(w, http.StatusOK, APIResponse{Data: map[string]string{"customer_id": customerID}})
 	})
 
-	rec := doRequest(r, "GET", "/analytics/events/chart", nil, testJWT("cust-1", false))
+	rec := doRequest(r, "GET", "/analytics/events/chart", nil, testJWT(testCustomerID, false))
 	assert.Equal(t, 200, rec.Code)
 }

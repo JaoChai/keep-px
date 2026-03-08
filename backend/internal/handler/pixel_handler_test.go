@@ -95,12 +95,12 @@ func (env *pixelTestEnv) setupQuotaExceeded(customerID string) {
 func TestPixelHandler_List(t *testing.T) {
 	t.Run("success returns pixel list", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		token := testJWT(customerID, false)
 
 		env.pixelRepo.On("ListByCustomerID", mock.Anything, customerID).
 			Return([]*domain.Pixel{
-				{ID: "px-1", CustomerID: customerID, Name: "Pixel 1", FBPixelID: "111"},
+				{ID: testPixelID, CustomerID: customerID, Name: "Pixel 1", FBPixelID: "111"},
 				{ID: "px-2", CustomerID: customerID, Name: "Pixel 2", FBPixelID: "222"},
 			}, nil)
 
@@ -129,7 +129,7 @@ func TestPixelHandler_List(t *testing.T) {
 func TestPixelHandler_Create(t *testing.T) {
 	t.Run("success creates pixel", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		token := testJWT(customerID, false)
 
 		env.setupQuotaAllowed(customerID, 0)
@@ -153,7 +153,7 @@ func TestPixelHandler_Create(t *testing.T) {
 
 	t.Run("missing required fields returns 400", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		token := testJWT(customerID, false)
 
 		// Only provide name, missing fb_pixel_id and fb_access_token
@@ -171,7 +171,7 @@ func TestPixelHandler_Create(t *testing.T) {
 
 	t.Run("quota exceeded returns 402", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		token := testJWT(customerID, false)
 
 		env.setupQuotaExceeded(customerID)
@@ -211,8 +211,8 @@ func TestPixelHandler_Create(t *testing.T) {
 func TestPixelHandler_Update(t *testing.T) {
 	t.Run("success updates pixel", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
-		pixelID := "px-1"
+		customerID := testCustomerID
+		pixelID := testPixelID
 		token := testJWT(customerID, false)
 
 		existingPixel := &domain.Pixel{
@@ -244,8 +244,8 @@ func TestPixelHandler_Update(t *testing.T) {
 
 	t.Run("pixel not found returns 404", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
-		pixelID := "px-nonexistent"
+		customerID := testCustomerID
+		pixelID := testPixelMissing
 		token := testJWT(customerID, false)
 
 		env.pixelRepo.On("GetByID", mock.Anything, pixelID).Return((*domain.Pixel)(nil), nil)
@@ -263,9 +263,9 @@ func TestPixelHandler_Update(t *testing.T) {
 
 	t.Run("not owned returns 403", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
+		customerID := testCustomerID
 		otherCustomer := "cust-other"
-		pixelID := "px-1"
+		pixelID := testPixelID
 		token := testJWT(customerID, false)
 
 		env.pixelRepo.On("GetByID", mock.Anything, pixelID).
@@ -288,8 +288,8 @@ func TestPixelHandler_Update(t *testing.T) {
 
 	t.Run("backup pixel is self returns 400", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
-		pixelID := "px-1"
+		customerID := testCustomerID
+		pixelID := testPixelID
 		token := testJWT(customerID, false)
 
 		env.pixelRepo.On("GetByID", mock.Anything, pixelID).
@@ -324,8 +324,8 @@ func TestPixelHandler_Update(t *testing.T) {
 func TestPixelHandler_Delete(t *testing.T) {
 	t.Run("success deletes pixel", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
-		pixelID := "px-1"
+		customerID := testCustomerID
+		pixelID := testPixelID
 		token := testJWT(customerID, false)
 
 		env.pixelRepo.On("GetByID", mock.Anything, pixelID).
@@ -346,8 +346,8 @@ func TestPixelHandler_Delete(t *testing.T) {
 
 	t.Run("not found returns 404", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
-		pixelID := "px-nonexistent"
+		customerID := testCustomerID
+		pixelID := testPixelMissing
 		token := testJWT(customerID, false)
 
 		env.pixelRepo.On("GetByID", mock.Anything, pixelID).Return((*domain.Pixel)(nil), nil)
@@ -365,8 +365,8 @@ func TestPixelHandler_Delete(t *testing.T) {
 func TestPixelHandler_Test(t *testing.T) {
 	t.Run("no access token returns 400", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
-		pixelID := "px-1"
+		customerID := testCustomerID
+		pixelID := testPixelID
 		token := testJWT(customerID, false)
 
 		env.pixelRepo.On("GetByID", mock.Anything, pixelID).
@@ -388,8 +388,8 @@ func TestPixelHandler_Test(t *testing.T) {
 
 	t.Run("pixel not found returns 404", func(t *testing.T) {
 		env := setupPixelTest(t)
-		customerID := "cust-1"
-		pixelID := "px-nonexistent"
+		customerID := testCustomerID
+		pixelID := testPixelMissing
 		token := testJWT(customerID, false)
 
 		env.pixelRepo.On("GetByID", mock.Anything, pixelID).Return((*domain.Pixel)(nil), nil)
