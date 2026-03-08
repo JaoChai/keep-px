@@ -178,80 +178,19 @@ func (s *QuotaService) CheckSalePageCreationQuota(ctx context.Context, customerI
 	return nil
 }
 
-// CheckReplayEventCount verifies that at least one active credit can handle the given event count.
-// This is a pre-flight check to reject replays early before loading events into memory.
-func (s *QuotaService) CheckReplayEventCount(ctx context.Context, customerID string, eventCount int) error {
-	credits, err := s.creditRepo.GetActiveByCustomerID(ctx, customerID)
-	if err != nil {
-		return fmt.Errorf("check active credits: %w", err)
-	}
-	if len(credits) == 0 {
-		return ErrQuotaReplayNotAllowed
-	}
-
-	for _, c := range credits {
-		if c.RemainingReplays() != 0 && (c.MaxEventsPerReplay == 0 || eventCount <= c.MaxEventsPerReplay) {
-			return nil
-		}
-	}
-
-	// Credits exist but none can handle the event count
-	hasRemaining := false
-	for _, c := range credits {
-		if c.RemainingReplays() != 0 {
-			hasRemaining = true
-			break
-		}
-	}
-	if !hasRemaining {
-		return ErrQuotaReplayNotAllowed
-	}
-	return ErrQuotaReplayEventsExceeded
-}
-
 // ConsumeReplayCredit atomically consumes one replay from the customer's active credits.
-// Pre-flight validation checks credit availability and event limits before consuming.
+// Uses SELECT ... FOR UPDATE SKIP LOCKED to prevent TOCTOU race conditions.
 // Returns the credit used so the caller can access MaxEventsPerReplay.
 func (s *QuotaService) ConsumeReplayCredit(ctx context.Context, customerID string, eventCount int) (*domain.ReplayCredit, error) {
-	// Pre-flight: check credits exist and event count is within limits before consuming
-	credits, err := s.creditRepo.GetActiveByCustomerID(ctx, customerID)
-	if err != nil {
-		return nil, fmt.Errorf("check active credits: %w", err)
-	}
-	if len(credits) == 0 {
-		return nil, ErrQuotaReplayNotAllowed
-	}
-
-	// Verify at least one credit can handle the event count
-	hasValidCredit := false
-	for _, c := range credits {
-		if c.RemainingReplays() != 0 && (c.MaxEventsPerReplay == 0 || eventCount <= c.MaxEventsPerReplay) {
-			hasValidCredit = true
-			break
-		}
-	}
-	if !hasValidCredit {
-		// Check if it's an event limit issue vs no remaining replays
-		hasRemaining := false
-		for _, c := range credits {
-			if c.RemainingReplays() != 0 {
-				hasRemaining = true
-				break
-			}
-		}
-		if !hasRemaining {
-			return nil, ErrQuotaReplayNotAllowed
-		}
-		return nil, ErrQuotaReplayEventsExceeded
-	}
-
-	// Atomically consume a credit that can handle the event count
+	// Atomically consume a credit that can handle the event count.
+	// ConsumeOneCredit uses SELECT ... FOR UPDATE SKIP LOCKED to prevent
+	// concurrent requests from consuming the same credit.
 	credit, err := s.creditRepo.ConsumeOneCredit(ctx, customerID, eventCount)
 	if err != nil {
 		return nil, fmt.Errorf("consume credit: %w", err)
 	}
 	if credit == nil {
-		// Atomic consume failed — do read-only query to determine error type
+		// Atomic consume failed — do read-only query to classify the error
 		readCredits, readErr := s.creditRepo.GetActiveByCustomerID(ctx, customerID)
 		if readErr != nil || len(readCredits) == 0 {
 			return nil, ErrQuotaReplayNotAllowed

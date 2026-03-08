@@ -100,7 +100,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*AuthT
 		PasswordHash: string(hashedPassword),
 		Name:         input.Name,
 		APIKey:       apiKey,
-		Plan:         "free",
+		Plan:         domain.PlanSandbox,
 	}
 
 	if err := s.customerRepo.Create(ctx, customer); err != nil {
@@ -196,6 +196,13 @@ func (s *AuthService) GoogleAuth(ctx context.Context, input GoogleAuthInput) (*A
 	}
 
 	return s.generateTokens(ctx, customer)
+}
+
+func (s *AuthService) Logout(ctx context.Context, customerID string) error {
+	if err := s.refreshTokenRepo.DeleteByCustomerID(ctx, customerID); err != nil {
+		return fmt.Errorf("delete refresh tokens: %w", err)
+	}
+	return nil
 }
 
 func (s *AuthService) RegenerateAPIKey(ctx context.Context, customerID string) (*domain.Customer, error) {

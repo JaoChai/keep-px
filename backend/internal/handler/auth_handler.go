@@ -120,6 +120,16 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, APIResponse{Data: customer})
 }
 
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
+	if err := h.authService.Logout(r.Context(), customerID); err != nil {
+		h.logger.Error("logout failed", "error", err)
+		ErrorJSON(w, http.StatusInternalServerError, "logout failed")
+		return
+	}
+	JSON(w, http.StatusOK, APIResponse{Message: "logged out"})
+}
+
 func (h *AuthHandler) RegenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	customer, err := h.authService.RegenerateAPIKey(r.Context(), customerID)
