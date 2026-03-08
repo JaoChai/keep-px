@@ -21,7 +21,7 @@ const features = [
     icon: FileText,
     title: 'Sale Pages',
     description:
-      'สร้างหน้าขายที่รองรับหลาย Pixel พร้อมติดตาม Event อัตโนมัติ',
+      'สร้างเซลเพจที่รองรับหลาย Pixel พร้อมติดตาม Event อัตโนมัติ',
   },
 ]
 
@@ -34,7 +34,7 @@ const steps = [
   {
     number: '2',
     title: 'เชื่อมต่อ Sale Page',
-    description: 'สร้างหน้าขายและเชื่อมต่อกับ Pixel',
+    description: 'สร้างเซลเพจและเชื่อมต่อกับ Pixel',
   },
   {
     number: '3',

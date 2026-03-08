@@ -23,7 +23,7 @@ test.describe('Navigation @smoke', () => {
 
     const routes = [
       { name: 'พิกเซล', url: '/pixels' },
-      { name: 'หน้าขาย', url: '/sale-pages' },
+      { name: 'เซลเพจ', url: '/sale-pages' },
       { name: 'อีเวนต์', url: '/events' },
       { name: 'รีเพลย์', url: '/replay' },
       { name: 'ตั้งค่า', url: '/settings' },
