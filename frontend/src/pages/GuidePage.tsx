@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import {
   Search,
   BookOpen,
@@ -9,7 +9,6 @@ import {
   CreditCard,
   Settings,
   ChevronDown,
-  ChevronRight,
   Zap,
   Globe,
   Eye,
@@ -17,9 +16,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   LogIn,
+  ChevronsUpDown,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
@@ -29,8 +30,11 @@ import { cn } from '@/lib/utils'
 interface GuideSection {
   id: string
   icon: React.ElementType
+  iconColor: string
+  iconBg: string
   title: string
   badge?: string
+  description: string
   subsections: GuideSubsection[]
 }
 
@@ -73,7 +77,7 @@ function InfoBox({ type, children }: { type: 'tip' | 'warning' | 'important'; ch
     warning: AlertTriangle,
     important: Zap,
   }
-  const labels = { tip: 'เคล็ดลับ', warning: 'คำเตือน', important: 'สำคัญ' }
+  const labels = { tip: 'Tips', warning: 'Warning', important: 'Note' }
   const Icon = icons[type]
   return (
     <div className={cn('flex gap-3 rounded-lg border p-3 text-sm', styles[type])}>
@@ -115,6 +119,39 @@ function GuideTable({ headers, rows }: { headers: string[]; rows: string[][] }) 
 }
 
 // ---------------------------------------------------------------------------
+// Animated Collapsible Wrapper
+// ---------------------------------------------------------------------------
+
+function AnimatedCollapse({ open, children }: { open: boolean; children: React.ReactNode }) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState<number | undefined>(open ? undefined : 0)
+
+  useEffect(() => {
+    if (!contentRef.current) return
+    if (open) {
+      setHeight(contentRef.current.scrollHeight)
+      const timer = setTimeout(() => setHeight(undefined), 200)
+      return () => clearTimeout(timer)
+    } else {
+      const h = contentRef.current.scrollHeight
+      requestAnimationFrame(() => {
+        setHeight(h)
+        requestAnimationFrame(() => setHeight(0))
+      })
+    }
+  }, [open])
+
+  return (
+    <div
+      className="overflow-hidden transition-[height] duration-200 ease-in-out"
+      style={{ height: height === undefined ? 'auto' : height }}
+    >
+      <div ref={contentRef}>{children}</div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Guide Content Data
 // ---------------------------------------------------------------------------
 
@@ -122,30 +159,32 @@ const guideSections: GuideSection[] = [
   {
     id: 'getting-started',
     icon: LogIn,
-    title: 'เริ่มต้นใช้งาน',
-    badge: 'เริ่มที่นี่',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+    iconBg: 'bg-blue-100 dark:bg-blue-900/40',
+    title: 'Getting Started',
+    badge: 'Start Here',
+    description: 'Sign up and learn the first steps',
     subsections: [
       {
         id: 'login',
-        title: 'สมัครและเข้าสู่ระบบ',
+        title: 'Sign Up & Log In',
         content: (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              เข้าเว็บ Keep-PX แล้วกด <strong className="text-foreground">"เข้าสู่ระบบด้วย Google"</strong> ระบบจะสร้างบัญชีให้อัตโนมัติจาก Google Account เมื่อเข้าสู่ระบบสำเร็จจะถูกพาไปที่หน้าแดชบอร์ดทันที
+              Go to Keep-PX and click <strong className="text-foreground">"Sign in with Google"</strong> — your account is created automatically. After logging in, you'll be directed to the dashboard immediately.
             </p>
           </div>
         ),
       },
       {
         id: 'first-steps',
-        title: 'หลังเข้าสู่ระบบครั้งแรก',
+        title: 'First Steps After Login',
         content: (
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground mb-3">ขั้นตอนแนะนำหลังล็อกอินครั้งแรก:</p>
-            <FlowStep step={1} label="ไปที่ Pixels → สร้าง Pixel ตัวแรก" />
-            <FlowStep step={2} label="ไปที่เซลเพจ → สร้างเซลเพจแรก เชื่อม Pixel ที่สร้างไว้" />
-            <FlowStep step={3} label="เผยแพร่เซลเพจ → แชร์ลิงก์ให้ลูกค้า" />
-            <FlowStep step={4} label="กลับมาดูข้อมูลที่หน้า Events และ แดชบอร์ด" last />
+            <FlowStep step={1} label="Go to Pixels > Create your first Pixel" />
+            <FlowStep step={2} label="Go to Sale Pages > Create a sale page & link your Pixel" />
+            <FlowStep step={3} label="Publish the page > Share the link with your audience" />
+            <FlowStep step={4} label="Check Events and Dashboard for your data" last />
           </div>
         ),
       },
@@ -154,48 +193,51 @@ const guideSections: GuideSection[] = [
   {
     id: 'dashboard',
     icon: Eye,
-    title: 'แดชบอร์ด',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+    iconBg: 'bg-purple-100 dark:bg-purple-900/40',
+    title: 'Dashboard',
+    description: 'Overview and analytics at a glance',
     subsections: [
       {
         id: 'dashboard-overview',
-        title: 'ตัวเลขสรุป',
+        title: 'Summary Cards',
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">หน้าแดชบอร์ดแสดงภาพรวมทั้งหมดผ่าน 5 การ์ดหลัก:</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">The dashboard shows your overview through 5 main cards:</p>
             <GuideTable
-              headers={['การ์ด', 'ความหมาย']}
+              headers={['Card', 'Description']}
               rows={[
-                ['Active Pixels', 'จำนวน Pixel ที่เปิดใช้งาน / ทั้งหมด'],
-                ['Events Today', 'จำนวน Event วันนี้ (แสดงแนวโน้มเทียบวันก่อน)'],
-                ['CAPI Rate', 'อัตราส่ง Event ไป Facebook สำเร็จ'],
-                ['Events This Week', 'จำนวน Event สัปดาห์นี้'],
-                ['Active Replays', 'จำนวน Replay ที่กำลังทำงาน'],
+                ['Active Pixels', 'Active / Total Pixel count'],
+                ['Events Today', 'Today\'s events (with trend vs yesterday)'],
+                ['CAPI Rate', 'Successful event send rate to Facebook'],
+                ['Events This Week', 'Event count this week'],
+                ['Active Replays', 'Currently running replays'],
               ]}
             />
             <InfoBox type="tip">
-              การ์ด CAPI Rate แสดงสีตามสถานะ: เขียว = ดี, เหลือง = ปานกลาง, แดง = มีปัญหาควรตรวจสอบ
+              CAPI Rate is color-coded: green = good, yellow = moderate, red = needs attention
             </InfoBox>
           </div>
         ),
       },
       {
         id: 'dashboard-quota',
-        title: 'โควตา Event รายเดือน',
+        title: 'Monthly Event Quota',
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              แถบแสดงจำนวน Event ที่ใช้ไปเทียบกับ Limit ของแพ็กเกจ ถ้าใกล้เต็มให้พิจารณาอัปเกรดแพ็กเกจหรือซื้อ Add-on เพิ่ม
+              The progress bar shows events used vs your plan's limit. If approaching the limit, consider upgrading or purchasing Add-ons.
             </p>
           </div>
         ),
       },
       {
         id: 'dashboard-chart',
-        title: 'กราฟและข้อมูล',
+        title: 'Charts & Data',
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              กราฟ Event Volume แสดงแนวโน้มตามเวลา เลือกดูได้ 7 วัน, 14 วัน, 30 วัน, 90 วัน นอกจากนี้ยังมีกิจกรรมล่าสุด, สถานะ Pixel ทั้งหมด และ Event ยอดนิยม
+              The Event Volume chart shows trends over time — choose from 7d, 14d, 30d, or 90d views. Also see recent activity, Pixel status, and top event types.
             </p>
           </div>
         ),
@@ -205,22 +247,25 @@ const guideSections: GuideSection[] = [
   {
     id: 'pixels',
     icon: Radio,
-    title: 'จัดการ Pixel',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-900/40',
+    title: 'Pixel Management',
+    description: 'Create, configure, and test your Pixels',
     subsections: [
       {
         id: 'pixel-create',
-        title: 'สร้าง Pixel ใหม่',
+        title: 'Create a New Pixel',
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">กดปุ่ม "สร้าง Pixel" แล้วกรอกข้อมูลดังนี้:</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">Click "Create Pixel" and fill in the details:</p>
             <GuideTable
-              headers={['ช่อง', 'คำอธิบาย', 'ตัวอย่าง']}
+              headers={['Field', 'Description', 'Example']}
               rows={[
-                ['ชื่อ Pixel', 'ชื่อที่ตั้งเอง ไว้จำง่าย ๆ', 'Pixel โฆษณาเสื้อผ้า'],
-                ['Facebook Pixel ID', 'รหัส Pixel จาก Events Manager', '123456789012345'],
-                ['Access Token', 'โทเค็นสำหรับส่ง CAPI', 'EAAxxxxxxxx...'],
-                ['Test Event Code', '(ไม่บังคับ) โค้ดทดสอบ', 'TEST12345'],
-                ['Backup Pixel', '(ไม่บังคับ) Pixel สำรอง', 'เลือกจากรายการ'],
+                ['Pixel Name', 'Internal name for easy reference', 'Clothing Ads Pixel'],
+                ['Facebook Pixel ID', 'Pixel ID from Events Manager', '123456789012345'],
+                ['Access Token', 'Token for CAPI', 'EAAxxxxxxxx...'],
+                ['Test Event Code', '(Optional) Test code', 'TEST12345'],
+                ['Backup Pixel', '(Optional) Backup pixel', 'Select from list'],
               ]}
             />
           </div>
@@ -228,28 +273,28 @@ const guideSections: GuideSection[] = [
       },
       {
         id: 'pixel-find-credentials',
-        title: 'หา Pixel ID และ Access Token',
+        title: 'Finding Pixel ID & Access Token',
         content: (
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground mb-3">ค้นหาข้อมูลได้จาก Facebook Events Manager:</p>
-            <FlowStep step={1} label="เข้า Facebook Events Manager → เลือก Pixel ของคุณ" />
-            <FlowStep step={2} label="Pixel ID: แสดงอยู่ใต้ชื่อ Pixel (เลข 15-16 หลัก)" />
-            <FlowStep step={3} label="Access Token: ไปที่ Settings → Generate Access Token" last />
+            <p className="text-sm text-muted-foreground mb-3">Find these in Facebook Events Manager:</p>
+            <FlowStep step={1} label="Open Facebook Events Manager > Select your Pixel" />
+            <FlowStep step={2} label="Pixel ID: Shown below the Pixel name (15-16 digits)" />
+            <FlowStep step={3} label="Access Token: Go to Settings > Generate Access Token" last />
           </div>
         ),
       },
       {
         id: 'pixel-actions',
-        title: 'การจัดการ Pixel',
+        title: 'Managing Pixels',
         content: (
           <div className="space-y-4">
             <GuideTable
-              headers={['ปุ่ม', 'ทำอะไร']}
+              headers={['Action', 'What It Does']}
               rows={[
-                ['Test Connection', 'ทดสอบเชื่อมต่อ Facebook CAPI'],
-                ['แก้ไข', 'แก้ไขข้อมูล Pixel'],
-                ['ลบ', 'ลบ Pixel (Event ที่เก็บแล้วยังอยู่)'],
-                ['สลับสถานะ', 'เปิด/ปิด Pixel ชั่วคราว'],
+                ['Test Connection', 'Test Facebook CAPI connection'],
+                ['Edit', 'Modify Pixel settings'],
+                ['Delete', 'Remove Pixel (stored events remain)'],
+                ['Toggle Status', 'Enable/Disable Pixel temporarily'],
               ]}
             />
           </div>
@@ -261,10 +306,10 @@ const guideSections: GuideSection[] = [
         content: (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              เมื่อเปิด Backup Pixel ระบบจะส่ง Event ไปยัง Pixel สำรอง <strong className="text-foreground">พร้อมกัน</strong> กับ Pixel หลักผ่าน CAPI ถ้า Pixel หลักโดนแบน ยังมีข้อมูลอยู่ใน Pixel สำรอง
+              With Backup Pixel enabled, events are sent to both the primary and backup Pixels <strong className="text-foreground">simultaneously</strong> via CAPI. If your primary gets banned, the backup still has all the data.
             </p>
             <InfoBox type="important">
-              ต้องสร้าง Pixel ที่ 2 ก่อน แล้วค่อยแก้ไข Pixel ที่ 1 เพื่อเลือก Pixel ที่ 2 เป็น Backup
+              Create Pixel B first, then edit Pixel A to select Pixel B as its backup.
             </InfoBox>
           </div>
         ),
@@ -274,15 +319,18 @@ const guideSections: GuideSection[] = [
   {
     id: 'events',
     icon: Activity,
-    title: 'ดู Events',
+    iconColor: 'text-orange-600 dark:text-orange-400',
+    iconBg: 'bg-orange-100 dark:bg-orange-900/40',
+    title: 'Event Tracking',
+    description: 'Real-time and historical event data',
     subsections: [
       {
         id: 'events-live',
-        title: 'โหมด Live (เรียลไทม์)',
+        title: 'Live Mode (Real-time)',
         content: (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              ดู Event ที่เข้ามาแบบสด ๆ ขณะที่ลูกค้าเข้าเซลเพจ
+              Watch events arrive in real-time as visitors interact with your sale pages.
             </p>
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary" className="gap-1"><Play className="h-3 w-3" /> Play/Pause</Badge>
@@ -290,13 +338,13 @@ const guideSections: GuideSection[] = [
               <Badge variant="secondary" className="gap-1">Clear</Badge>
             </div>
             <GuideTable
-              headers={['คอลัมน์', 'ตัวอย่าง']}
+              headers={['Column', 'Example']}
               rows={[
                 ['Event Name', 'PageView, Purchase, Lead, ViewContent'],
-                ['Pixel', 'ชื่อ Pixel ที่รับ Event'],
-                ['Source URL', 'หน้าเว็บที่ Event เกิด'],
-                ['CAPI', 'ส่งสำเร็จ / ส่งไม่สำเร็จ'],
-                ['เวลา', '2 นาทีที่แล้ว'],
+                ['Pixel', 'Pixel that received the event'],
+                ['Source URL', 'Page where the event occurred'],
+                ['CAPI', 'Success / Failed'],
+                ['Time', '2 minutes ago'],
               ]}
             />
           </div>
@@ -304,11 +352,11 @@ const guideSections: GuideSection[] = [
       },
       {
         id: 'events-history',
-        title: 'โหมด History (ย้อนหลัง)',
+        title: 'History Mode',
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              ดู Event ย้อนหลังทั้งหมด มี Filter ตาม Pixel และแบ่งหน้า (50 Event/หน้า)
+              Browse all past events with Pixel filter and pagination (50 events/page).
             </p>
           </div>
         ),
@@ -318,76 +366,79 @@ const guideSections: GuideSection[] = [
   {
     id: 'replay',
     icon: RotateCcw,
+    iconColor: 'text-rose-600 dark:text-rose-400',
+    iconBg: 'bg-rose-100 dark:bg-rose-900/40',
     title: 'Replay Center',
-    badge: 'สำคัญ',
+    badge: 'Important',
+    description: 'Re-send events to a new Pixel after a ban',
     subsections: [
       {
         id: 'replay-what',
-        title: 'Replay คืออะไร?',
+        title: 'What is Replay?',
         content: (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Replay คือการนำ Event ที่เก็บไว้ในระบบ ส่งซ้ำไปยัง Pixel ตัวใหม่ผ่าน Facebook CAPI
+              Replay re-sends stored events to a new Pixel via Facebook CAPI.
             </p>
-            <p className="text-sm font-medium text-foreground">ใช้เมื่อไหร่?</p>
+            <p className="text-sm font-medium text-foreground">When to use:</p>
             <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
-              <li>แอดเคาท์โดนแบน ต้องย้ายข้อมูลไปยัง Pixel ใหม่</li>
-              <li>อยากส่ง Event ซ้ำเพื่อให้ Facebook เรียนรู้ข้อมูลได้เร็วขึ้น</li>
+              <li>Ad account banned — migrate data to a new Pixel</li>
+              <li>Want to re-send events so Facebook learns faster</li>
             </ul>
           </div>
         ),
       },
       {
         id: 'replay-create',
-        title: 'วิธีสร้าง Replay',
+        title: 'Creating a Replay',
         content: (
           <div className="space-y-4">
             <GuideTable
-              headers={['ช่อง', 'คำอธิบาย']}
+              headers={['Field', 'Description']}
               rows={[
-                ['Source Pixel', 'Pixel ต้นทาง (ดึง Event จาก Pixel นี้)'],
-                ['Target Pixel', 'Pixel ปลายทาง (ส่ง Event ไปยัง Pixel นี้)'],
-                ['Event Type', '(ไม่บังคับ) เลือก Replay เฉพาะบางประเภท'],
-                ['Date Range', '(ไม่บังคับ) กำหนดช่วงเวลา'],
-                ['Time Mode', 'Original = เวลาเดิม / Current = เวลาปัจจุบัน'],
-                ['Batch Delay', 'หน่วงเวลาระหว่างชุด (0-60,000 ms)'],
+                ['Source Pixel', 'Source Pixel (pull events from here)'],
+                ['Target Pixel', 'Destination Pixel (send events here)'],
+                ['Event Type', '(Optional) Filter specific event types'],
+                ['Date Range', '(Optional) Set time range'],
+                ['Time Mode', 'Original = keep timestamps / Current = use current time'],
+                ['Batch Delay', 'Delay between batches (0-60,000 ms)'],
               ]}
             />
             <InfoBox type="warning">
-              Event เก่ากว่า 7 วัน ควรเลือก Time Mode = "Current" เพราะ Facebook อาจปฏิเสธ Event ที่เก่าเกินไป
+              Events older than 7 days: use Time Mode = "Current" since Facebook may reject old timestamps.
             </InfoBox>
           </div>
         ),
       },
       {
         id: 'replay-status',
-        title: 'สถานะ Replay',
+        title: 'Replay Status',
         content: (
           <div className="space-y-4">
             <GuideTable
-              headers={['สถานะ', 'ความหมาย']}
+              headers={['Status', 'Meaning']}
               rows={[
-                ['Pending', 'รอเริ่ม'],
-                ['Running', 'กำลังส่ง Event อยู่'],
-                ['Completed', 'ส่งเสร็จเรียบร้อย'],
-                ['Failed', 'ส่งไม่สำเร็จ (ดูข้อผิดพลาด)'],
-                ['Cancelled', 'ถูกยกเลิก'],
+                ['Pending', 'Waiting to start'],
+                ['Running', 'Sending events'],
+                ['Completed', 'All events sent successfully'],
+                ['Failed', 'Send failed (check error details)'],
+                ['Cancelled', 'Manually cancelled'],
               ]}
             />
             <p className="text-sm text-muted-foreground">
-              ปุ่ม <strong className="text-foreground">Cancel</strong> ยกเลิก Replay ที่กำลังทำงาน,{' '}
-              <strong className="text-foreground">Retry Failed</strong> ส่ง Event ที่ล้มเหลวซ้ำ
+              <strong className="text-foreground">Cancel</strong> stops a running replay.{' '}
+              <strong className="text-foreground">Retry Failed</strong> re-sends failed events.
             </p>
           </div>
         ),
       },
       {
         id: 'replay-credit',
-        title: 'Replay Credit',
+        title: 'Replay Credits',
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              การ Replay แต่ละครั้งใช้ <strong className="text-foreground">1 Credit</strong> ดูจำนวนคงเหลือได้ที่หน้า Replay หรือหน้า Billing ซื้อเพิ่มได้ที่ Billing &rarr; แท็บ Replays
+              Each replay uses <strong className="text-foreground">1 Credit</strong>. Check your balance on the Replay or Billing page. Purchase more at Billing &rarr; Replays tab.
             </p>
           </div>
         ),
@@ -397,29 +448,32 @@ const guideSections: GuideSection[] = [
   {
     id: 'sale-pages',
     icon: FileText,
-    title: 'เซลเพจ',
+    iconColor: 'text-pink-600 dark:text-pink-400',
+    iconBg: 'bg-pink-100 dark:bg-pink-900/40',
+    title: 'Sale Pages',
+    description: 'Create landing pages with auto-tracking',
     subsections: [
       {
         id: 'salepage-what',
-        title: 'เซลเพจคืออะไร?',
+        title: 'What are Sale Pages?',
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              เซลเพจคือหน้าเว็บที่ Keep-PX สร้างและโฮสต์ให้ ใช้สำหรับแสดงสินค้า/บริการ และ <strong className="text-foreground">เก็บข้อมูล Pixel อัตโนมัติ</strong> เมื่อมีคนเข้าชม แชร์ลิงก์ไปยัง Social Media หรืออีเมลได้เลย
+              Sale pages are hosted landing pages created by Keep-PX for showcasing products/services. They <strong className="text-foreground">automatically capture Pixel events</strong> when visited. Share the link on social media or email.
             </p>
           </div>
         ),
       },
       {
         id: 'salepage-templates',
-        title: 'เลือก Template',
+        title: 'Templates',
         content: (
           <div className="space-y-4">
             <GuideTable
-              headers={['Template', 'คำอธิบาย']}
+              headers={['Template', 'Description']}
               rows={[
-                ['Classic', 'แบบตายตัว กรอกข้อมูลตามช่อง เรียบง่าย'],
-                ['Blocks', 'แบบลาก-วาง ปรับแต่งอิสระ ยืดหยุ่นกว่า'],
+                ['Classic', 'Fixed layout — fill in the fields, simple and clean'],
+                ['Blocks', 'Drag-and-drop — fully customizable and flexible'],
               ]}
             />
           </div>
@@ -427,26 +481,26 @@ const guideSections: GuideSection[] = [
       },
       {
         id: 'salepage-settings',
-        title: 'ตั้งค่าเซลเพจ',
+        title: 'Page Settings',
         content: (
           <div className="space-y-4">
-            <p className="text-sm font-medium text-foreground">ข้อมูลพื้นฐาน</p>
+            <p className="text-sm font-medium text-foreground">Basic Info</p>
             <GuideTable
-              headers={['ช่อง', 'คำอธิบาย']}
+              headers={['Field', 'Description']}
               rows={[
-                ['ชื่อหน้า', 'ชื่อภายใน ไว้จำ (ลูกค้าไม่เห็น)'],
-                ['URL Slug', 'ส่วนท้ายของลิงก์ เช่น my-product → /p/my-product'],
-                ['เชื่อม Pixel', 'เลือก Pixel ที่ต้องการเก็บข้อมูล (เลือกได้หลายตัว)'],
+                ['Page Name', 'Internal name (visitors don\'t see this)'],
+                ['URL Slug', 'URL path e.g. my-product > /p/my-product'],
+                ['Link Pixels', 'Select Pixels for tracking (multi-select)'],
               ]}
             />
-            <p className="text-sm font-medium text-foreground mt-4">การติดตาม (Tracking)</p>
+            <p className="text-sm font-medium text-foreground mt-4">Tracking</p>
             <GuideTable
-              headers={['ช่อง', 'คำอธิบาย']}
+              headers={['Field', 'Description']}
               rows={[
-                ['CTA Event', 'Event ที่ยิงเมื่อกดปุ่ม: Lead / Purchase / Contact / CompleteRegistration'],
-                ['Content Name', 'ชื่อสินค้า (ส่งให้ Facebook)'],
-                ['Content Value', 'ราคาสินค้า (ส่งให้ Facebook)'],
-                ['Currency', 'สกุลเงิน: THB, USD'],
+                ['CTA Event', 'Event fired on button click: Lead / Purchase / Contact / CompleteRegistration'],
+                ['Content Name', 'Product name (sent to Facebook)'],
+                ['Content Value', 'Product price (sent to Facebook)'],
+                ['Currency', 'Currency: THB, USD'],
               ]}
             />
           </div>
@@ -454,29 +508,29 @@ const guideSections: GuideSection[] = [
       },
       {
         id: 'salepage-auto-events',
-        title: 'Event ที่ยิงอัตโนมัติ',
+        title: 'Auto-fired Events',
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">เมื่อลูกค้าเข้าชมเซลเพจ ระบบจะยิง Event อัตโนมัติ:</p>
-            <FlowStep step={1} label="ลูกค้าเปิดหน้า → ยิง PageView + ViewContent" />
-            <FlowStep step={2} label="ลูกค้ากดปุ่ม CTA → ยิง Purchase / Lead / Contact" />
-            <FlowStep step={3} label="ลูกค้ากดลิงก์ LINE / โทรศัพท์ → ยิง Contact" last />
+            <p className="text-sm text-muted-foreground leading-relaxed">Events are fired automatically when visitors interact:</p>
+            <FlowStep step={1} label="Visitor opens page > PageView + ViewContent" />
+            <FlowStep step={2} label="Visitor clicks CTA > Purchase / Lead / Contact" />
+            <FlowStep step={3} label="Visitor clicks LINE / Phone > Contact" last />
             <InfoBox type="tip">
-              ทุก Event ถูกส่งผ่าน Facebook CAPI โดยอัตโนมัติ ไม่ต้องเขียนโค้ดเพิ่ม
+              All events are sent via Facebook CAPI automatically — no code needed.
             </InfoBox>
           </div>
         ),
       },
       {
         id: 'salepage-publish',
-        title: 'เผยแพร่และแชร์',
+        title: 'Publishing',
         content: (
           <div className="space-y-3">
             <GuideTable
-              headers={['ปุ่ม', 'ความหมาย']}
+              headers={['Action', 'Description']}
               rows={[
-                ['Save as Draft', 'บันทึกไว้ก่อน ยังไม่เผยแพร่'],
-                ['Publish', 'เผยแพร่ทันที — ลูกค้าเข้าถึงได้ผ่านลิงก์'],
+                ['Save as Draft', 'Save without publishing'],
+                ['Publish', 'Go live — visitors can access via the link'],
               ]}
             />
           </div>
@@ -487,20 +541,23 @@ const guideSections: GuideSection[] = [
   {
     id: 'billing',
     icon: CreditCard,
-    title: 'การเงิน',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+    iconBg: 'bg-amber-100 dark:bg-amber-900/40',
+    title: 'Billing',
+    description: 'Plans, credits, and subscriptions',
     subsections: [
       {
         id: 'billing-plans',
-        title: 'แพ็กเกจ',
+        title: 'Plans',
         content: (
           <div className="space-y-4">
             <GuideTable
-              headers={['แพ็กเกจ', 'Event/เดือน', 'คำอธิบาย']}
+              headers={['Plan', 'Events/Month', 'Description']}
               rows={[
-                ['Sandbox (ฟรี)', 'จำกัด', 'ทดลองใช้งาน'],
-                ['Launch', '1M', 'สำหรับเริ่มต้น'],
-                ['Shield', '5M', 'สำหรับธุรกิจขนาดกลาง'],
-                ['Vault', 'ไม่จำกัด', 'สำหรับธุรกิจขนาดใหญ่'],
+                ['Sandbox (Free)', 'Limited', 'Trial'],
+                ['Launch', '1M', 'For getting started'],
+                ['Shield', '5M', 'For medium businesses'],
+                ['Vault', 'Unlimited', 'For large businesses'],
               ]}
             />
           </div>
@@ -508,11 +565,11 @@ const guideSections: GuideSection[] = [
       },
       {
         id: 'billing-replay-packs',
-        title: 'ซื้อ Replay Credit',
+        title: 'Replay Credit Packs',
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              ซื้อ Replay Credit เพิ่มเติมได้ที่แท็บ Replays ในหน้าการเงิน มีแพ็ก 1 ครั้ง, 3 ครั้ง, และ Unlimited กดปุ่ม "Buy Pack" แล้วชำระเงินผ่าน Stripe
+              Purchase additional Replay Credits in the Replays tab on the Billing page. Available packs: 1 credit, 3 credits, and Unlimited. Click "Buy Pack" and pay via Stripe.
             </p>
           </div>
         ),
@@ -522,13 +579,13 @@ const guideSections: GuideSection[] = [
         title: 'Add-ons',
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">ซื้อเพิ่มเติมเป็น Subscription รายเดือน:</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">Monthly subscription add-ons:</p>
             <GuideTable
-              headers={['Add-on', 'ได้อะไร']}
+              headers={['Add-on', 'What You Get']}
               rows={[
-                ['Events +1M', 'เพิ่มโควตา Event อีก 1 ล้าน/เดือน'],
-                ['Sale Pages +10', 'เพิ่มเซลเพจอีก 10 หน้า'],
-                ['Pixels +10', 'เพิ่ม Pixel อีก 10 ตัว'],
+                ['Events +1M', '+1 million event quota/month'],
+                ['Sale Pages +10', '+10 sale pages'],
+                ['Pixels +10', '+10 pixels'],
               ]}
             />
           </div>
@@ -536,11 +593,11 @@ const guideSections: GuideSection[] = [
       },
       {
         id: 'billing-manage',
-        title: 'จัดการ Billing',
+        title: 'Manage Billing',
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              กดปุ่ม "Manage Billing" เพื่อเปิดหน้า Stripe Customer Portal สำหรับเปลี่ยนบัตรเครดิต, ดูใบเสร็จ, หรือยกเลิก Subscription
+              Click "Manage Billing" to open the Stripe Customer Portal for changing payment method, viewing invoices, or cancelling subscriptions.
             </p>
           </div>
         ),
@@ -550,15 +607,18 @@ const guideSections: GuideSection[] = [
   {
     id: 'settings',
     icon: Settings,
-    title: 'ตั้งค่าบัญชี',
+    iconColor: 'text-slate-600 dark:text-slate-400',
+    iconBg: 'bg-slate-100 dark:bg-slate-800/60',
+    title: 'Account Settings',
+    description: 'Profile and API key management',
     subsections: [
       {
         id: 'settings-profile',
-        title: 'ข้อมูลโปรไฟล์',
+        title: 'Profile',
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              แสดงชื่อ, อีเมล จาก Google Account และแพ็กเกจปัจจุบัน (อ่านอย่างเดียว)
+              Shows your name, email from Google Account, and current plan (read-only).
             </p>
           </div>
         ),
@@ -569,18 +629,18 @@ const guideSections: GuideSection[] = [
         content: (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              API Key ใช้สำหรับให้เซลเพจส่ง Event เข้าระบบ
+              The API Key is used by sale pages to send events to the system.
             </p>
             <GuideTable
-              headers={['ปุ่ม', 'ทำอะไร']}
+              headers={['Action', 'What It Does']}
               rows={[
-                ['Show/Hide', 'แสดง/ซ่อน API Key'],
-                ['Copy', 'คัดลอก API Key'],
-                ['Regenerate', 'สร้าง Key ใหม่ (คีย์เก่าจะใช้ไม่ได้ทันที)'],
+                ['Show/Hide', 'Toggle API Key visibility'],
+                ['Copy', 'Copy API Key to clipboard'],
+                ['Regenerate', 'Create new key (old key stops working immediately)'],
               ]}
             />
             <InfoBox type="warning">
-              ถ้า Regenerate API Key เซลเพจที่ใช้คีย์เก่าจะส่ง Event ไม่ได้ ระบบจัดการให้อัตโนมัติสำหรับเซลเพจที่สร้างในระบบ
+              After regenerating, sale pages using the old key won't be able to send events. System-created sale pages are updated automatically.
             </InfoBox>
           </div>
         ),
@@ -590,7 +650,10 @@ const guideSections: GuideSection[] = [
   {
     id: 'glossary',
     icon: BookOpen,
-    title: 'คำศัพท์สำคัญ',
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    iconBg: 'bg-teal-100 dark:bg-teal-900/40',
+    title: 'Glossary',
+    description: 'Key terms and definitions',
     subsections: [
       {
         id: 'glossary-pixel',
@@ -598,26 +661,26 @@ const guideSections: GuideSection[] = [
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              โค้ดติดตามจาก Facebook สำหรับเก็บข้อมูลพฤติกรรมลูกค้า ประกอบด้วย <strong className="text-foreground">Pixel ID</strong> (ตัวเลข 15-16 หลัก) และ <strong className="text-foreground">Access Token</strong> (กุญแจสำหรับส่งข้อมูลไป Facebook)
+              Facebook's tracking code for collecting visitor behavior data. Consists of a <strong className="text-foreground">Pixel ID</strong> (15-16 digit number) and an <strong className="text-foreground">Access Token</strong> (key for sending data to Facebook).
             </p>
           </div>
         ),
       },
       {
         id: 'glossary-events',
-        title: 'Event (เหตุการณ์)',
+        title: 'Events',
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">การกระทำที่ลูกค้าทำบนเว็บไซต์:</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">Actions visitors take on your website:</p>
             <GuideTable
-              headers={['Event', 'ความหมาย']}
+              headers={['Event', 'Meaning']}
               rows={[
-                ['PageView', 'เปิดหน้าเว็บ'],
-                ['ViewContent', 'ดูเนื้อหาสินค้า'],
-                ['Lead', 'สนใจสินค้า (กรอกฟอร์ม, กดดูรายละเอียด)'],
-                ['Purchase', 'ซื้อสินค้า'],
-                ['Contact', 'ติดต่อร้าน (กด LINE, กดโทร)'],
-                ['CompleteRegistration', 'สมัครสมาชิกสำเร็จ'],
+                ['PageView', 'Opened a page'],
+                ['ViewContent', 'Viewed product content'],
+                ['Lead', 'Showed interest (filled form, clicked details)'],
+                ['Purchase', 'Made a purchase'],
+                ['Contact', 'Contacted the store (LINE, phone)'],
+                ['CompleteRegistration', 'Completed sign-up'],
               ]}
             />
           </div>
@@ -629,23 +692,23 @@ const guideSections: GuideSection[] = [
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              วิธีส่งข้อมูล Event ไป Facebook ผ่านเซิร์ฟเวอร์ (Server-to-Server) เสถียรกว่า Pixel บนเว็บ ไม่โดน Ad Blocker บล็อก ข้อมูลแม่นยำกว่า Keep-PX ใช้ CAPI เป็นวิธีหลักในการส่ง Event
+              Server-to-Server method for sending events to Facebook. More reliable than browser-based tracking, not blocked by ad blockers, and more accurate. Keep-PX uses CAPI as the primary event delivery method.
             </p>
           </div>
         ),
       },
       {
         id: 'glossary-other',
-        title: 'คำอื่น ๆ',
+        title: 'Other Terms',
         content: (
           <div className="space-y-4">
             <GuideTable
-              headers={['คำ', 'ความหมาย']}
+              headers={['Term', 'Definition']}
               rows={[
-                ['Backup Pixel', 'Pixel สำรองที่รับ Event พร้อม Pixel หลักผ่าน CAPI'],
-                ['Replay', 'ส่ง Event ซ้ำไปยัง Pixel ตัวใหม่'],
-                ['Replay Credit', 'หน่วยนับจำนวนครั้งที่ Replay ได้'],
-                ['Event Quota', 'จำนวน Event สูงสุดต่อเดือน ขึ้นกับแพ็กเกจ'],
+                ['Backup Pixel', 'Secondary Pixel that receives events alongside the primary via CAPI'],
+                ['Replay', 'Re-send stored events to a new Pixel'],
+                ['Replay Credit', 'Unit counting how many replays you can run'],
+                ['Event Quota', 'Maximum events per month, based on your plan'],
               ]}
             />
           </div>
@@ -656,56 +719,67 @@ const guideSections: GuideSection[] = [
   {
     id: 'scenarios',
     icon: Globe,
-    title: 'สถานการณ์จริง',
+    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-indigo-100 dark:bg-indigo-900/40',
+    title: 'Real-World Scenarios',
+    description: 'Step-by-step guides for common situations',
     subsections: [
       {
         id: 'scenario-new',
-        title: 'เริ่มต้นใช้งานครั้งแรก',
+        title: 'First-Time Setup',
         content: (
           <div className="space-y-2">
-            <FlowStep step={1} label="เข้าสู่ระบบด้วย Google" />
-            <FlowStep step={2} label="ไปที่ Pixels → สร้าง Pixel (กรอก Pixel ID + Access Token)" />
-            <FlowStep step={3} label="กด Test Connection ยืนยันว่าเชื่อมต่อ Facebook ได้" />
-            <FlowStep step={4} label="ไปที่เซลเพจ → สร้างเซลเพจ → เชื่อม Pixel" />
-            <FlowStep step={5} label="กด Publish → คัดลอกลิงก์ /p/xxx" />
-            <FlowStep step={6} label="แชร์ลิงก์ไปยัง Facebook, LINE, อีเมล" />
-            <FlowStep step={7} label="กลับมาดู Events → เปิดโหมด Live → ดู Event เข้ามาสด" last />
+            <FlowStep step={1} label="Sign in with Google" />
+            <FlowStep step={2} label="Go to Pixels > Create Pixel (enter Pixel ID + Access Token)" />
+            <FlowStep step={3} label="Click Test Connection to verify Facebook connectivity" />
+            <FlowStep step={4} label="Go to Sale Pages > Create page > Link Pixel" />
+            <FlowStep step={5} label="Click Publish > Copy link /p/xxx" />
+            <FlowStep step={6} label="Share link on Facebook, LINE, email" />
+            <FlowStep step={7} label="Check Events > Live Mode to watch events arrive" last />
           </div>
         ),
       },
       {
         id: 'scenario-banned',
-        title: 'แอดเคาท์โดนแบน — กู้คืนข้อมูล',
+        title: 'Account Banned — Data Recovery',
         content: (
           <div className="space-y-2">
-            <FlowStep step={1} label="สร้างแอดเคาท์ Facebook ใหม่ + สร้าง Pixel ใหม่" />
-            <FlowStep step={2} label="ไปที่ Pixels → สร้าง Pixel ใหม่ในระบบ" />
-            <FlowStep step={3} label="ไปที่ Replay Center" />
-            <FlowStep step={4} label="เลือก Source = Pixel เก่า, Target = Pixel ใหม่" />
-            <FlowStep step={5} label="(ถ้า Event เก่ากว่า 7 วัน) เลือก Time Mode = Current" />
-            <FlowStep step={6} label="กด Preview → ตรวจดูจำนวน Event → กดยืนยัน" />
-            <FlowStep step={7} label="รอ Replay ทำงาน → ดูสถานะที่แผงขวา → เสร็จ!" last />
+            <FlowStep step={1} label="Create a new Facebook ad account + new Pixel" />
+            <FlowStep step={2} label="Go to Pixels > Create the new Pixel in Keep-PX" />
+            <FlowStep step={3} label="Go to Replay Center" />
+            <FlowStep step={4} label="Set Source = old Pixel, Target = new Pixel" />
+            <FlowStep step={5} label="(If events > 7 days old) Select Time Mode = Current" />
+            <FlowStep step={6} label="Click Preview > Review event count > Confirm" />
+            <FlowStep step={7} label="Wait for Replay to complete > Check status panel > Done!" last />
             <InfoBox type="tip">
-              ถ้าอยากกรองเฉพาะ Event บางประเภท เช่น Purchase ให้เลือก Event Type Filter ก่อนกด Preview
+              To replay only specific event types (e.g. Purchase), set the Event Type filter before clicking Preview.
             </InfoBox>
           </div>
         ),
       },
       {
         id: 'scenario-backup',
-        title: 'ป้องกันล่วงหน้าด้วย Backup Pixel',
+        title: 'Proactive Protection with Backup Pixel',
         content: (
           <div className="space-y-2">
-            <FlowStep step={1} label="สร้าง Pixel หลัก (Pixel A)" />
-            <FlowStep step={2} label="สร้าง Pixel สำรอง (Pixel B) ในแอดเคาท์อื่น" />
-            <FlowStep step={3} label="แก้ไข Pixel A → เลือก Pixel B เป็น Backup" />
-            <FlowStep step={4} label="ทุก Event จะถูกส่งไปทั้ง Pixel A และ B พร้อมกัน" />
-            <FlowStep step={5} label="ถ้า Pixel A โดนแบน → Pixel B ยังมีข้อมูลครบ" last />
+            <FlowStep step={1} label="Create primary Pixel (Pixel A)" />
+            <FlowStep step={2} label="Create backup Pixel (Pixel B) in a different ad account" />
+            <FlowStep step={3} label="Edit Pixel A > Select Pixel B as Backup" />
+            <FlowStep step={4} label="All events are now sent to both Pixel A and B simultaneously" />
+            <FlowStep step={5} label="If Pixel A gets banned > Pixel B still has all the data" last />
           </div>
         ),
       },
     ],
   },
+]
+
+// Quick-start cards config
+const quickStartCards = [
+  { sectionId: 'pixels', icon: Radio, label: 'Create Pixel', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/40' },
+  { sectionId: 'sale-pages', icon: FileText, label: 'Create Sale Page', color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-100 dark:bg-pink-900/40' },
+  { sectionId: 'replay', icon: RotateCcw, label: 'Replay Events', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/40' },
+  { sectionId: 'glossary', icon: BookOpen, label: 'Glossary', color: 'text-teal-600 dark:text-teal-400', bg: 'bg-teal-100 dark:bg-teal-900/40' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -714,10 +788,7 @@ const guideSections: GuideSection[] = [
 
 export function GuidePage() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeSection, setActiveSection] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['getting-started']))
-  const [expandedSubsections, setExpandedSubsections] = useState<Set<string>>(new Set(['login', 'first-steps']))
-  const contentRef = useRef<HTMLDivElement>(null)
 
   // Filter sections by search query
   const filteredSections = useMemo(() => {
@@ -725,7 +796,7 @@ export function GuidePage() {
     const q = searchQuery.toLowerCase()
     return guideSections
       .map((section) => {
-        const sectionMatch = section.title.toLowerCase().includes(q)
+        const sectionMatch = section.title.toLowerCase().includes(q) || section.description.toLowerCase().includes(q)
         const matchedSubs = section.subsections.filter((sub) => sub.title.toLowerCase().includes(q))
         if (sectionMatch) return section
         if (matchedSubs.length > 0) return { ...section, subsections: matchedSubs }
@@ -738,16 +809,12 @@ export function GuidePage() {
     setSearchQuery(value)
     if (value.trim()) {
       const q = value.toLowerCase()
-      const matched = guideSections
-        .map((section) => {
-          const sectionMatch = section.title.toLowerCase().includes(q)
-          const matchedSubs = section.subsections.filter((sub) => sub.title.toLowerCase().includes(q))
-          if (sectionMatch || matchedSubs.length > 0) return section
-          return null
-        })
-        .filter(Boolean) as GuideSection[]
+      const matched = guideSections.filter((s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.description.toLowerCase().includes(q) ||
+        s.subsections.some((sub) => sub.title.toLowerCase().includes(q))
+      )
       setExpandedSections(new Set(matched.map((s) => s.id)))
-      setExpandedSubsections(new Set(matched.flatMap((s) => s.subsections.map((sub) => sub.id))))
     }
   }, [])
 
@@ -760,198 +827,183 @@ export function GuidePage() {
     })
   }, [])
 
-  const toggleSubsection = useCallback((id: string) => {
-    setExpandedSubsections((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
-
   const scrollToSection = useCallback((sectionId: string) => {
-    setActiveSection(sectionId)
     setExpandedSections((prev) => new Set([...prev, sectionId]))
-    const el = document.getElementById(`section-${sectionId}`)
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // Small delay so the section expands before scrolling
+    setTimeout(() => {
+      const el = document.getElementById(`section-${sectionId}`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
   }, [])
 
-  // Track active section on scroll
-  useEffect(() => {
-    const container = contentRef.current
-    if (!container) return
-    const handleScroll = () => {
-      const sections = container.querySelectorAll('[data-section-id]')
-      for (const section of sections) {
-        const rect = section.getBoundingClientRect()
-        if (rect.top <= 120 && rect.bottom > 120) {
-          setActiveSection(section.getAttribute('data-section-id'))
-          break
-        }
-      }
+  const allExpanded = expandedSections.size === guideSections.length
+  const toggleAll = useCallback(() => {
+    if (allExpanded) {
+      setExpandedSections(new Set())
+    } else {
+      setExpandedSections(new Set(guideSections.map((s) => s.id)))
     }
-    container.addEventListener('scroll', handleScroll, { passive: true })
-    return () => container.removeEventListener('scroll', handleScroll)
-  }, [])
+  }, [allExpanded])
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] gap-0">
-      {/* Table of Contents Sidebar */}
-      <aside className="hidden xl:flex w-[240px] shrink-0 flex-col border-r border-border bg-card/50">
-        <div className="p-4 border-b border-border">
-          <h2 className="text-sm font-semibold text-foreground">สารบัญ</h2>
-        </div>
-        <nav className="flex-1 overflow-y-auto py-2 px-2">
-          <ul className="space-y-0.5">
-            {guideSections.map((section) => (
-              <li key={section.id}>
-                <button
-                  onClick={() => scrollToSection(section.id)}
-                  className={cn(
-                    'flex items-center gap-2 w-full rounded-md px-2.5 py-2 text-sm transition-colors cursor-pointer',
-                    activeSection === section.id
-                      ? 'bg-accent text-accent-foreground font-medium'
-                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                  )}
-                >
-                  <section.icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{section.title}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <div ref={contentRef} className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <BookOpen className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">คู่มือการใช้งาน</h1>
-                <p className="text-sm text-muted-foreground">ทุกสิ่งที่ต้องรู้เกี่ยวกับ Keep-PX</p>
-              </div>
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <BookOpen className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">User Guide</h1>
+              <p className="text-sm text-muted-foreground">Everything you need to know about Keep-PX</p>
             </div>
           </div>
+        </div>
 
-          {/* Search */}
-          <div className="relative mb-8">
+        {/* Quick-Start Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          {quickStartCards.map((card) => (
+            <button
+              key={card.sectionId}
+              onClick={() => scrollToSection(card.sectionId)}
+              aria-label={`Jump to ${card.label} section`}
+              className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 hover:bg-accent/50 hover:border-border/80 transition-colors cursor-pointer group"
+            >
+              <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg transition-transform group-hover:scale-105', card.bg)}>
+                <card.icon className={cn('h-5 w-5', card.color)} />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors text-center">
+                {card.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search + Expand All */}
+        <div className="flex items-center gap-2 mb-6">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="ค้นหาหัวข้อ... เช่น Pixel, Replay, เซลเพจ"
+              placeholder="Search topics... e.g. Pixel, Replay, Sale Page"
               className="pl-9 h-10"
             />
             {searchQuery && (
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                พบ {filteredSections.length} หัวข้อ
+                {filteredSections.length} found
               </span>
             )}
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleAll}
+            className="shrink-0 gap-1.5 h-10 cursor-pointer"
+          >
+            <ChevronsUpDown className="h-4 w-4" />
+            <span className="hidden sm:inline">{allExpanded ? 'Collapse All' : 'Expand All'}</span>
+          </Button>
+        </div>
 
-          {/* No Results */}
-          {filteredSections.length === 0 && (
-            <div className="text-center py-12">
-              <Search className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">ไม่พบหัวข้อที่ค้นหา</p>
-              <button
-                onClick={() => setSearchQuery('')}
-                className="text-sm text-primary hover:underline mt-1 cursor-pointer"
+        {/* Horizontal Pill Nav (visible md+) */}
+        <nav aria-label="Guide sections" className="hidden md:flex items-center gap-1.5 mb-6 overflow-x-auto pb-1 scrollbar-thin">
+          {guideSections.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => scrollToSection(section.id)}
+              aria-current={expandedSections.has(section.id) ? 'true' : undefined}
+              className={cn(
+                'flex items-center gap-1.5 shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer border',
+                expandedSections.has(section.id)
+                  ? 'bg-accent text-accent-foreground border-border'
+                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground border-transparent'
+              )}
+            >
+              <section.icon className="h-3.5 w-3.5" />
+              {section.title}
+            </button>
+          ))}
+        </nav>
+
+        {/* No Results */}
+        {filteredSections.length === 0 && (
+          <div className="text-center py-12">
+            <Search className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">No topics found</p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-sm text-primary hover:underline mt-1 cursor-pointer"
+            >
+              Clear search
+            </button>
+          </div>
+        )}
+
+        {/* Sections — Single-Level Accordion */}
+        <div className="space-y-3">
+          {filteredSections.map((section) => {
+            const isExpanded = expandedSections.has(section.id)
+            return (
+              <div
+                key={section.id}
+                id={`section-${section.id}`}
+                className="rounded-xl border border-border bg-card overflow-hidden"
               >
-                ล้างการค้นหา
-              </button>
-            </div>
-          )}
-
-          {/* Sections */}
-          <div className="space-y-4">
-            {filteredSections.map((section) => {
-              const isExpanded = expandedSections.has(section.id)
-              return (
-                <div
-                  key={section.id}
-                  id={`section-${section.id}`}
-                  data-section-id={section.id}
-                  className="rounded-xl border border-border bg-card overflow-hidden"
+                {/* Section Header */}
+                <button
+                  onClick={() => toggleSection(section.id)}
+                  aria-expanded={isExpanded}
+                  aria-controls={`section-content-${section.id}`}
+                  className="flex items-center justify-between w-full px-5 py-4 hover:bg-accent/30 transition-colors cursor-pointer"
                 >
-                  {/* Section Header */}
-                  <button
-                    onClick={() => toggleSection(section.id)}
-                    className="flex items-center justify-between w-full px-5 py-4 hover:bg-accent/30 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                        <section.icon className="h-4 w-4 text-foreground" />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', section.iconBg)}>
+                      <section.icon className={cn('h-5 w-5', section.iconColor)} />
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-semibold text-foreground">{section.title}</span>
+                        {section.badge && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{section.badge}</Badge>
+                        )}
                       </div>
-                      <span className="text-base font-semibold text-foreground">{section.title}</span>
-                      {section.badge && (
-                        <Badge variant="secondary" className="text-xs">{section.badge}</Badge>
-                      )}
+                      <p className="text-xs text-muted-foreground truncate">{section.description}</p>
                     </div>
-                    <ChevronDown
-                      className={cn(
-                        'h-4 w-4 text-muted-foreground transition-transform duration-200',
-                        isExpanded && 'rotate-180'
-                      )}
-                    />
-                  </button>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      'h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0 ml-2',
+                      isExpanded && 'rotate-180'
+                    )}
+                  />
+                </button>
 
-                  {/* Subsections */}
-                  {isExpanded && (
-                    <div className="border-t border-border">
-                      {section.subsections.map((sub, subIdx) => {
-                        const isSubExpanded = expandedSubsections.has(sub.id)
-                        return (
-                          <div
-                            key={sub.id}
-                            className={cn(
-                              subIdx < section.subsections.length - 1 && 'border-b border-border/50'
-                            )}
-                          >
-                            <button
-                              onClick={() => toggleSubsection(sub.id)}
-                              className="flex items-center gap-2 w-full px-5 py-3 text-sm hover:bg-accent/20 transition-colors cursor-pointer"
-                            >
-                              <ChevronRight
-                                className={cn(
-                                  'h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 shrink-0',
-                                  isSubExpanded && 'rotate-90'
-                                )}
-                              />
-                              <span className={cn(
-                                'text-left font-medium',
-                                isSubExpanded ? 'text-foreground' : 'text-muted-foreground'
-                              )}>
-                                {sub.title}
-                              </span>
-                            </button>
-                            {isSubExpanded && (
-                              <div className="px-5 pb-4 pl-10">
-                                {sub.content}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+                {/* Subsections Content — Flat (no nested accordion) */}
+                <AnimatedCollapse open={isExpanded}>
+                  <div id={`section-content-${section.id}`} role="region" className="border-t border-border px-5 py-5 space-y-6">
+                    {section.subsections.map((sub) => (
+                      <div key={sub.id}>
+                        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                          <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                          {sub.title}
+                        </h3>
+                        {sub.content}
+                      </div>
+                    ))}
+                  </div>
+                </AnimatedCollapse>
+              </div>
+            )
+          })}
+        </div>
 
-          {/* Footer */}
-          <div className="mt-8 mb-4 text-center">
-            <p className="text-xs text-muted-foreground">
-              ต้องการความช่วยเหลือเพิ่มเติม? ติดต่อทีมซัพพอร์ตได้ตลอดเวลา
-            </p>
-          </div>
+        {/* Footer */}
+        <div className="mt-8 mb-4 text-center">
+          <p className="text-xs text-muted-foreground">
+            Need more help? Contact our support team anytime.
+          </p>
         </div>
       </div>
     </div>
