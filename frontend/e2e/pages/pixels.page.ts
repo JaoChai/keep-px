@@ -32,7 +32,7 @@ export class PixelsPage {
     this.saveButton = page.locator('form').getByRole('button', { name: /เพิ่มพิกเซล|บันทึกการเปลี่ยนแปลง/ })
     this.cancelButton = page.getByRole('button', { name: 'ยกเลิก' })
 
-    this.deleteConfirmButton = page.getByRole('button', { name: 'ลบ' })
+    this.deleteConfirmButton = page.locator('button.bg-destructive', { hasText: 'ลบ' })
   }
 
   async goto() {
@@ -41,9 +41,12 @@ export class PixelsPage {
 
   async createPixel(name: string, pixelId: string, accessToken: string) {
     await this.addPixelButton.click()
+    await this.dialogTitle.waitFor({ state: 'visible' })
     await this.nameInput.fill(name)
     await this.pixelIdInput.fill(pixelId)
     await this.accessTokenInput.fill(accessToken)
     await this.saveButton.click()
+    // Wait for dialog to close (pixel created successfully)
+    await this.dialogTitle.waitFor({ state: 'hidden', timeout: 10000 })
   }
 }

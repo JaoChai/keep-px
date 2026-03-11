@@ -13,7 +13,9 @@ test.describe('Navigation @smoke', () => {
     await expect(sidebar.salePagesLink).toBeVisible()
     await expect(sidebar.eventsLink).toBeVisible()
     await expect(sidebar.replayCenterLink).toBeVisible()
+    await expect(sidebar.billingLink).toBeVisible()
     await expect(sidebar.settingsLink).toBeVisible()
+    await expect(sidebar.guideLink).toBeVisible()
     await expect(sidebar.logoutButton).toBeVisible()
   })
 
@@ -26,7 +28,9 @@ test.describe('Navigation @smoke', () => {
       { name: 'เซลเพจ', url: '/sale-pages' },
       { name: 'อีเวนต์', url: '/events' },
       { name: 'รีเพลย์', url: '/replay' },
+      { name: 'การเงิน', url: '/billing' },
       { name: 'ตั้งค่า', url: '/settings' },
+      { name: 'คู่มือ', url: '/guide' },
       { name: 'แดชบอร์ด', url: '/dashboard' },
     ]
 

@@ -6,7 +6,7 @@ async function deletePixelByName(page: import('@playwright/test').Page, name: st
   const row = page.locator('tr', { hasText: name })
   if (await row.count() === 0) return
   await row.getByRole('button').filter({ has: page.locator('[class*="lucide-trash"]') }).click()
-  await page.getByRole('button', { name: 'ลบ' }).click()
+  await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
   await expect(row).not.toBeVisible()
 }
 
@@ -14,15 +14,15 @@ test.describe('Pixels', () => {
   // Clean up test-created pixels after each test to stay within quota
   test.afterEach(async ({ page }) => {
     await page.goto('/pixels')
+    await page.waitForLoadState('networkidle')
     for (const pattern of ['Test Pixel', 'Edit Test', 'Updated', 'Delete Test']) {
-      const rows = page.locator('tr', { hasText: pattern })
-      const count = await rows.count()
-      for (let i = count - 1; i >= 0; i--) {
-        const rowText = await rows.nth(i).innerText()
-        const name = rowText.split('\t')[0]?.trim()
-        if (name) {
-          await deletePixelByName(page, name)
-        }
+      let rows = page.locator('tr', { hasText: pattern })
+      let count = await rows.count()
+      while (count > 0) {
+        await deletePixelByName(page, pattern)
+        await page.waitForTimeout(500)
+        rows = page.locator('tr', { hasText: pattern })
+        count = await rows.count()
       }
     }
   })

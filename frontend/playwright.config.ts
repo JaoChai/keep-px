@@ -5,10 +5,10 @@ const useExternalURL = !!process.env.E2E_BASE_URL
 
 export default defineConfig({
   testDir: './e2e/tests',
-  fullyParallel: true,
+  fullyParallel: !useExternalURL,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  workers: isCI ? 1 : undefined,
+  workers: isCI || useExternalURL ? 1 : undefined,
   reporter: 'html',
   use: {
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:5173',
