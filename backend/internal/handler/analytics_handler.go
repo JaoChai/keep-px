@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -10,10 +11,11 @@ import (
 
 type AnalyticsHandler struct {
 	analyticsService *service.AnalyticsService
+	logger           *slog.Logger
 }
 
-func NewAnalyticsHandler(analyticsService *service.AnalyticsService) *AnalyticsHandler {
-	return &AnalyticsHandler{analyticsService: analyticsService}
+func NewAnalyticsHandler(analyticsService *service.AnalyticsService, logger *slog.Logger) *AnalyticsHandler {
+	return &AnalyticsHandler{analyticsService: analyticsService, logger: logger}
 }
 
 func (h *AnalyticsHandler) Overview(w http.ResponseWriter, r *http.Request) {
@@ -21,7 +23,7 @@ func (h *AnalyticsHandler) Overview(w http.ResponseWriter, r *http.Request) {
 
 	stats, err := h.analyticsService.GetOverview(r.Context(), customerID)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get overview")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get overview", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: stats})
@@ -36,7 +38,7 @@ func (h *AnalyticsHandler) EventChart(w http.ResponseWriter, r *http.Request) {
 
 	data, err := h.analyticsService.GetEventChart(r.Context(), customerID, days)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get event chart")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get event chart", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: data})

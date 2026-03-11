@@ -90,7 +90,7 @@ func (h *SalePageHandler) List(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	pages, err := h.salePageService.List(r.Context(), customerID)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list sale pages")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list sale pages", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: pages})
@@ -135,7 +135,7 @@ func (h *SalePageHandler) Create(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusForbidden, "one or more pixels not owned by you")
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to create sale page")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to create sale page", err)
 		return
 	}
 	JSON(w, http.StatusCreated, APIResponse{Data: page})
@@ -181,7 +181,7 @@ func (h *SalePageHandler) Update(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusForbidden, "one or more pixels not owned by you")
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to update sale page")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to update sale page", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: page})
@@ -201,7 +201,7 @@ func (h *SalePageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusForbidden, "sale page not owned by you")
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to delete sale page")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to delete sale page", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Message: "sale page deleted"})
@@ -216,6 +216,11 @@ func (h *SalePageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 			h.renderNotFound(w)
 			return
 		}
+		h.logger.Error("failed to get publish data",
+			"error", err,
+			"method", r.Method,
+			"path", r.URL.Path,
+		)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -237,6 +242,11 @@ func (h *SalePageHandler) Preview(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
+		h.logger.Error("failed to get sale page for preview",
+			"error", err,
+			"method", r.Method,
+			"path", r.URL.Path,
+		)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

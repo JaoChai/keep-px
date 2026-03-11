@@ -42,8 +42,7 @@ func (h *AdminHandler) ListCustomers(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusBadRequest, "invalid plan filter")
 			return
 		}
-		h.logger.Error("list customers failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list customers")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list customers", err)
 		return
 	}
 
@@ -76,8 +75,7 @@ func (h *AdminHandler) GetCustomerDetail(w http.ResponseWriter, r *http.Request)
 			ErrorJSON(w, http.StatusNotFound, "customer not found")
 			return
 		}
-		h.logger.Error("get customer detail failed", "error", err, "customer_id", customerID)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get customer detail")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get customer detail", err)
 		return
 	}
 
@@ -110,8 +108,7 @@ func (h *AdminHandler) ChangePlan(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, service.ErrInvalidPlan):
 			ErrorJSON(w, http.StatusBadRequest, "invalid plan")
 		default:
-			h.logger.Error("change plan failed", "error", err, "customer_id", customerID)
-			ErrorJSON(w, http.StatusInternalServerError, "failed to change plan")
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to change plan", err)
 		}
 		return
 	}
@@ -130,8 +127,7 @@ func (h *AdminHandler) SuspendCustomer(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, service.ErrCustomerNotFound):
 			ErrorJSON(w, http.StatusNotFound, "customer not found")
 		default:
-			h.logger.Error("suspend customer failed", "error", err, "customer_id", customerID)
-			ErrorJSON(w, http.StatusInternalServerError, "failed to suspend customer")
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to suspend customer", err)
 		}
 		return
 	}
@@ -148,8 +144,7 @@ func (h *AdminHandler) ActivateCustomer(w http.ResponseWriter, r *http.Request) 
 			ErrorJSON(w, http.StatusNotFound, "customer not found")
 			return
 		}
-		h.logger.Error("activate customer failed", "error", err, "customer_id", customerID)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to activate customer")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to activate customer", err)
 		return
 	}
 
@@ -176,8 +171,7 @@ func (h *AdminHandler) GrantCredits(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "customer not found")
 			return
 		}
-		h.logger.Error("grant credits failed", "error", err, "customer_id", customerID)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to grant credits")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to grant credits", err)
 		return
 	}
 
@@ -187,8 +181,7 @@ func (h *AdminHandler) GrantCredits(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) GetPlatformOverview(w http.ResponseWriter, r *http.Request) {
 	stats, err := h.adminService.GetPlatformOverview(r.Context())
 	if err != nil {
-		h.logger.Error("get platform overview failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get platform overview")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get platform overview", err)
 		return
 	}
 
@@ -200,8 +193,7 @@ func (h *AdminHandler) GetRevenueChart(w http.ResponseWriter, r *http.Request) {
 
 	chart, err := h.adminService.GetRevenueChart(r.Context(), days)
 	if err != nil {
-		h.logger.Error("get revenue chart failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get revenue chart")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get revenue chart", err)
 		return
 	}
 
@@ -213,8 +205,7 @@ func (h *AdminHandler) GetGrowthChart(w http.ResponseWriter, r *http.Request) {
 
 	chart, err := h.adminService.GetGrowthChart(r.Context(), days)
 	if err != nil {
-		h.logger.Error("get growth chart failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get growth chart")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get growth chart", err)
 		return
 	}
 
@@ -228,8 +219,7 @@ func (h *AdminHandler) ListPurchases(w http.ResponseWriter, r *http.Request) {
 
 	purchases, total, err := h.adminService.ListAllPurchases(r.Context(), status, page, perPage)
 	if err != nil {
-		h.logger.Error("list purchases failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list purchases")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list purchases", err)
 		return
 	}
 
@@ -254,8 +244,7 @@ func (h *AdminHandler) ListSubscriptions(w http.ResponseWriter, r *http.Request)
 
 	subs, total, err := h.adminService.ListAllSubscriptions(r.Context(), status, page, perPage)
 	if err != nil {
-		h.logger.Error("list subscriptions failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list subscriptions")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list subscriptions", err)
 		return
 	}
 
@@ -279,8 +268,7 @@ func (h *AdminHandler) ListCreditGrants(w http.ResponseWriter, r *http.Request) 
 
 	grants, total, err := h.adminService.ListCreditGrants(r.Context(), page, perPage)
 	if err != nil {
-		h.logger.Error("list credit grants failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list credit grants")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list credit grants", err)
 		return
 	}
 
@@ -344,8 +332,7 @@ func (h *AdminHandler) ListSalePages(w http.ResponseWriter, r *http.Request) {
 
 	pages, total, err := h.adminService.ListAllSalePages(r.Context(), search, customerID, published, page, perPage)
 	if err != nil {
-		h.logger.Error("list sale pages failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list sale pages")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list sale pages", err)
 		return
 	}
 
@@ -361,8 +348,7 @@ func (h *AdminHandler) GetSalePageDetail(w http.ResponseWriter, r *http.Request)
 			ErrorJSON(w, http.StatusNotFound, "sale page not found")
 			return
 		}
-		h.logger.Error("get sale page detail failed", "error", err, "id", id)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get sale page detail")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get sale page detail", err)
 		return
 	}
 
@@ -378,8 +364,7 @@ func (h *AdminHandler) DisableSalePage(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "sale page not found")
 			return
 		}
-		h.logger.Error("disable sale page failed", "error", err, "id", id)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to disable sale page")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to disable sale page", err)
 		return
 	}
 
@@ -395,8 +380,7 @@ func (h *AdminHandler) EnableSalePage(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "sale page not found")
 			return
 		}
-		h.logger.Error("enable sale page failed", "error", err, "id", id)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to enable sale page")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to enable sale page", err)
 		return
 	}
 
@@ -412,8 +396,7 @@ func (h *AdminHandler) DeleteSalePage(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "sale page not found")
 			return
 		}
-		h.logger.Error("delete sale page failed", "error", err, "id", id)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to delete sale page")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to delete sale page", err)
 		return
 	}
 
@@ -431,8 +414,7 @@ func (h *AdminHandler) ListPixels(w http.ResponseWriter, r *http.Request) {
 
 	pixels, total, err := h.adminService.ListAllPixels(r.Context(), search, customerID, active, page, perPage)
 	if err != nil {
-		h.logger.Error("list pixels failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list pixels")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list pixels", err)
 		return
 	}
 
@@ -448,8 +430,7 @@ func (h *AdminHandler) GetPixelDetail(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "pixel not found")
 			return
 		}
-		h.logger.Error("get pixel detail failed", "error", err, "id", id)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get pixel detail")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get pixel detail", err)
 		return
 	}
 
@@ -465,8 +446,7 @@ func (h *AdminHandler) DisablePixel(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "pixel not found")
 			return
 		}
-		h.logger.Error("disable pixel failed", "error", err, "id", id)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to disable pixel")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to disable pixel", err)
 		return
 	}
 
@@ -482,8 +462,7 @@ func (h *AdminHandler) EnablePixel(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "pixel not found")
 			return
 		}
-		h.logger.Error("enable pixel failed", "error", err, "id", id)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to enable pixel")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to enable pixel", err)
 		return
 	}
 
@@ -500,8 +479,7 @@ func (h *AdminHandler) ListReplays(w http.ResponseWriter, r *http.Request) {
 
 	sessions, total, err := h.adminService.ListAllReplaySessions(r.Context(), status, customerID, page, perPage)
 	if err != nil {
-		h.logger.Error("list replays failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list replays")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list replays", err)
 		return
 	}
 
@@ -517,8 +495,7 @@ func (h *AdminHandler) GetReplayDetail(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "replay session not found")
 			return
 		}
-		h.logger.Error("get replay detail failed", "error", err, "id", id)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get replay detail")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get replay detail", err)
 		return
 	}
 
@@ -534,8 +511,7 @@ func (h *AdminHandler) CancelReplay(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "replay session not found")
 			return
 		}
-		h.logger.Error("cancel replay failed", "error", err, "id", id)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to cancel replay")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to cancel replay", err)
 		return
 	}
 
@@ -553,8 +529,7 @@ func (h *AdminHandler) ListEvents(w http.ResponseWriter, r *http.Request) {
 
 	events, total, err := h.adminService.ListAllEvents(r.Context(), customerID, pixelID, eventName, page, perPage)
 	if err != nil {
-		h.logger.Error("list events failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list events")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list events", err)
 		return
 	}
 
@@ -566,8 +541,7 @@ func (h *AdminHandler) GetEventStats(w http.ResponseWriter, r *http.Request) {
 
 	stats, err := h.adminService.GetEventStats(r.Context(), hours)
 	if err != nil {
-		h.logger.Error("get event stats failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get event stats")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get event stats", err)
 		return
 	}
 
@@ -597,8 +571,7 @@ func (h *AdminHandler) ListAuditLog(w http.ResponseWriter, r *http.Request) {
 
 	entries, total, err := h.adminService.ListAuditLogs(r.Context(), adminID, action, targetCustomerID, from, to, page, perPage)
 	if err != nil {
-		h.logger.Error("list audit log failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list audit log")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list audit log", err)
 		return
 	}
 

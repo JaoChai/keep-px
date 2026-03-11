@@ -47,11 +47,12 @@ func main() {
 		logger.Error("failed to parse database URL", "error", err)
 		os.Exit(1)
 	}
-	poolConfig.MaxConns = 50
-	poolConfig.MinConns = 5
-	poolConfig.MaxConnLifetime = 1 * time.Hour
-	poolConfig.MaxConnIdleTime = 15 * time.Minute
-	poolConfig.HealthCheckPeriod = 30 * time.Second
+	poolConfig.MaxConns = cfg.DBMaxConns
+	poolConfig.MinConns = cfg.DBMinConns
+	poolConfig.MaxConnLifetime = cfg.DBMaxConnLifetime
+	poolConfig.MaxConnIdleTime = cfg.DBMaxConnIdleTime
+	poolConfig.HealthCheckPeriod = cfg.DBHealthCheckPeriod
+	poolConfig.ConnConfig.ConnectTimeout = cfg.DBConnectTimeout
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), poolConfig)
 	if err != nil {
@@ -60,11 +61,18 @@ func main() {
 	}
 	defer pool.Close()
 
-	if err := pool.Ping(context.Background()); err != nil {
+	pingCtx, pingCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer pingCancel()
+	if err := pool.Ping(pingCtx); err != nil {
 		logger.Error("failed to ping database", "error", err)
 		os.Exit(1)
 	}
-	logger.Info("connected to database")
+	logger.Info("connected to database",
+		"max_conns", cfg.DBMaxConns,
+		"min_conns", cfg.DBMinConns,
+		"connect_timeout", cfg.DBConnectTimeout.String(),
+		"query_timeout", cfg.DBQueryTimeout.String(),
+	)
 
 	// Run database migrations
 	if err := runMigrations(cfg.DatabaseURL, logger); err != nil {

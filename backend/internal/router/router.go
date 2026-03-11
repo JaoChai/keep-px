@@ -93,15 +93,18 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	// Handlers
 	healthHandler := handler.NewHealthHandler(pool)
 	authHandler := handler.NewAuthHandler(authService, logger)
-	pixelHandler := handler.NewPixelHandler(pixelService)
-	eventHandler := handler.NewEventHandler(eventService)
-	replayHandler := handler.NewReplayHandler(replayService)
-	analyticsHandler := handler.NewAnalyticsHandler(analyticsService)
-	notifHandler := handler.NewNotificationHandler(notifService)
+	pixelHandler := handler.NewPixelHandler(pixelService, logger)
+	eventHandler := handler.NewEventHandler(eventService, logger)
+	replayHandler := handler.NewReplayHandler(replayService, logger)
+	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, logger)
+	notifHandler := handler.NewNotificationHandler(notifService, logger)
 	salePageHandler := handler.NewSalePageHandler(salePageService, cfg.BaseURL, logger)
 	uploadHandler := handler.NewUploadHandler(storageService)
 	billingHandler := handler.NewBillingHandler(billingService, quotaService, cfg, logger)
 	adminHandler := handler.NewAdminHandler(adminService, logger)
+
+	// DB query timeout for all routes except Stripe webhook
+	dbTimeout := middleware.DBTimeout(cfg.DBQueryTimeout)
 
 	// Health check
 	r.Get("/health", healthHandler.Health)
@@ -112,32 +115,38 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	// Public sale page route (rate limited)
 	r.Group(func(r chi.Router) {
 		r.Use(rateLimiter)
+		r.Use(dbTimeout)
 		r.Get("/p/{slug}", salePageHandler.Serve)
 	})
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(rateLimiter)
-		// Auth routes (public)
-		r.Route("/auth", func(r chi.Router) {
-			r.Post("/register", authHandler.Register)
-			r.Post("/login", authHandler.Login)
-			r.Post("/google", authHandler.GoogleAuth)
-			r.Post("/refresh", authHandler.Refresh)
-		})
 
-		// Stripe webhook (no auth - uses Stripe signature verification)
+		// Stripe webhook (no auth, no DB timeout - Stripe retries can take longer)
 		r.Post("/billing/webhook", billingHandler.Webhook)
 
-		// Event ingestion (API key auth)
-		r.Route("/events", func(r chi.Router) {
-			r.Use(middleware.APIKeyAuthWithContext(shutdownCtx, customerRepo))
-			r.Post("/ingest", eventHandler.Ingest)
-		})
-
-		// Dashboard routes (JWT auth)
+		// All other API routes get DB query timeout
 		r.Group(func(r chi.Router) {
-			r.Use(middleware.JWTAuth(cfg.JWTSecret))
+			r.Use(dbTimeout)
+
+			// Auth routes (public)
+			r.Route("/auth", func(r chi.Router) {
+				r.Post("/register", authHandler.Register)
+				r.Post("/login", authHandler.Login)
+				r.Post("/google", authHandler.GoogleAuth)
+				r.Post("/refresh", authHandler.Refresh)
+			})
+
+			// Event ingestion (API key auth)
+			r.Route("/events", func(r chi.Router) {
+				r.Use(middleware.APIKeyAuthWithContext(shutdownCtx, customerRepo))
+				r.Post("/ingest", eventHandler.Ingest)
+			})
+
+			// Dashboard routes (JWT auth)
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.JWTAuth(cfg.JWTSecret))
 
 			// Auth - get current user
 			r.Get("/auth/me", authHandler.Me)
@@ -247,6 +256,8 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 			})
 
 		})
+
+		}) // end dbTimeout group
 	})
 
 	return r, func() { replayService.Shutdown() }

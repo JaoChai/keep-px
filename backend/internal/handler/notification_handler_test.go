@@ -23,7 +23,7 @@ func TestNotificationHandler_List(t *testing.T) {
 	t.Run("success returns 200 with notifications", func(t *testing.T) {
 		notifRepo := &MockNotificationRepo{}
 		svc := newTestNotificationService(notifRepo)
-		h := NewNotificationHandler(svc)
+		h := NewNotificationHandler(svc, testLogger())
 
 		now := time.Now()
 		notifs := []*domain.Notification{
@@ -53,7 +53,7 @@ func TestNotificationHandler_List(t *testing.T) {
 	t.Run("with limit query param", func(t *testing.T) {
 		notifRepo := &MockNotificationRepo{}
 		svc := newTestNotificationService(notifRepo)
-		h := NewNotificationHandler(svc)
+		h := NewNotificationHandler(svc, testLogger())
 
 		notifRepo.On("ListByCustomerID", mock.Anything, testCustomerID, 5).Return([]*domain.Notification{}, nil)
 		notifRepo.On("CountUnread", mock.Anything, testCustomerID).Return(0, nil)
@@ -71,7 +71,7 @@ func TestNotificationHandler_List(t *testing.T) {
 	t.Run("no auth returns 401", func(t *testing.T) {
 		notifRepo := &MockNotificationRepo{}
 		svc := newTestNotificationService(notifRepo)
-		h := NewNotificationHandler(svc)
+		h := NewNotificationHandler(svc, testLogger())
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
@@ -87,7 +87,7 @@ func TestNotificationHandler_UnreadCount(t *testing.T) {
 	t.Run("success returns 200 with unread count", func(t *testing.T) {
 		notifRepo := &MockNotificationRepo{}
 		svc := newTestNotificationService(notifRepo)
-		h := NewNotificationHandler(svc)
+		h := NewNotificationHandler(svc, testLogger())
 
 		notifRepo.On("CountUnread", mock.Anything, testCustomerID).Return(7, nil)
 
@@ -113,7 +113,7 @@ func TestNotificationHandler_UnreadCount(t *testing.T) {
 	t.Run("no auth returns 401", func(t *testing.T) {
 		notifRepo := &MockNotificationRepo{}
 		svc := newTestNotificationService(notifRepo)
-		h := NewNotificationHandler(svc)
+		h := NewNotificationHandler(svc, testLogger())
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
@@ -129,7 +129,7 @@ func TestNotificationHandler_MarkRead(t *testing.T) {
 	t.Run("success returns 200", func(t *testing.T) {
 		notifRepo := &MockNotificationRepo{}
 		svc := newTestNotificationService(notifRepo)
-		h := NewNotificationHandler(svc)
+		h := NewNotificationHandler(svc, testLogger())
 
 		notifRepo.On("MarkRead", mock.Anything, "notif-1", testCustomerID).Return(nil)
 
@@ -152,7 +152,7 @@ func TestNotificationHandler_MarkRead(t *testing.T) {
 	t.Run("not found returns 404", func(t *testing.T) {
 		notifRepo := &MockNotificationRepo{}
 		svc := newTestNotificationService(notifRepo)
-		h := NewNotificationHandler(svc)
+		h := NewNotificationHandler(svc, testLogger())
 
 		notifRepo.On("MarkRead", mock.Anything, "nonexistent", testCustomerID).Return(repository.ErrNotFound)
 
@@ -175,7 +175,7 @@ func TestNotificationHandler_MarkRead(t *testing.T) {
 	t.Run("no auth returns 401", func(t *testing.T) {
 		notifRepo := &MockNotificationRepo{}
 		svc := newTestNotificationService(notifRepo)
-		h := NewNotificationHandler(svc)
+		h := NewNotificationHandler(svc, testLogger())
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
@@ -191,7 +191,7 @@ func TestNotificationHandler_MarkAllRead(t *testing.T) {
 	t.Run("success returns 200", func(t *testing.T) {
 		notifRepo := &MockNotificationRepo{}
 		svc := newTestNotificationService(notifRepo)
-		h := NewNotificationHandler(svc)
+		h := NewNotificationHandler(svc, testLogger())
 
 		notifRepo.On("MarkAllRead", mock.Anything, testCustomerID).Return(nil)
 
@@ -214,7 +214,7 @@ func TestNotificationHandler_MarkAllRead(t *testing.T) {
 	t.Run("no auth returns 401", func(t *testing.T) {
 		notifRepo := &MockNotificationRepo{}
 		svc := newTestNotificationService(notifRepo)
-		h := NewNotificationHandler(svc)
+		h := NewNotificationHandler(svc, testLogger())
 
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))

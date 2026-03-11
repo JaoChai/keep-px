@@ -46,7 +46,7 @@ func setupPixelTest(t *testing.T) *pixelTestEnv {
 
 	quotaService := newTestQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 	pixelService := newTestPixelService(pixelRepo, quotaService)
-	h := NewPixelHandler(pixelService)
+	h := NewPixelHandler(pixelService, testLogger())
 
 	r := chi.NewRouter()
 	r.Use(middleware.JWTAuth(testJWTSecret))

@@ -52,6 +52,15 @@ type Config struct {
 
 	// Token encryption (32-byte hex-encoded key, optional)
 	TokenEncryptionKey string `env:"TOKEN_ENCRYPTION_KEY"`
+
+	// Database pool tuning (defaults optimized for Neon serverless)
+	DBMaxConns         int32         `env:"DB_MAX_CONNS" envDefault:"10"`
+	DBMinConns         int32         `env:"DB_MIN_CONNS" envDefault:"2"`
+	DBMaxConnLifetime  time.Duration `env:"DB_MAX_CONN_LIFETIME" envDefault:"30m"`
+	DBMaxConnIdleTime  time.Duration `env:"DB_MAX_CONN_IDLE_TIME" envDefault:"5m"`
+	DBHealthCheckPeriod time.Duration `env:"DB_HEALTH_CHECK_PERIOD" envDefault:"15s"`
+	DBConnectTimeout   time.Duration `env:"DB_CONNECT_TIMEOUT" envDefault:"5s"`
+	DBQueryTimeout     time.Duration `env:"DB_QUERY_TIMEOUT" envDefault:"10s"`
 }
 
 func Load() (*Config, error) {

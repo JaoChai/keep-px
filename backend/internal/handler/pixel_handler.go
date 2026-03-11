@@ -18,12 +18,14 @@ import (
 type PixelHandler struct {
 	pixelService *service.PixelService
 	validate     *validator.Validate
+	logger       *slog.Logger
 }
 
-func NewPixelHandler(pixelService *service.PixelService) *PixelHandler {
+func NewPixelHandler(pixelService *service.PixelService, logger *slog.Logger) *PixelHandler {
 	return &PixelHandler{
 		pixelService: pixelService,
 		validate:     validator.New(),
+		logger:       logger,
 	}
 }
 
@@ -31,7 +33,7 @@ func (h *PixelHandler) List(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	pixels, err := h.pixelService.List(r.Context(), customerID)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list pixels")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list pixels", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: pixels})
@@ -56,7 +58,7 @@ func (h *PixelHandler) Create(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusPaymentRequired, "pixel limit exceeded")
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to create pixel")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to create pixel", err)
 		return
 	}
 	JSON(w, http.StatusCreated, APIResponse{Data: pixel})
@@ -86,7 +88,7 @@ func (h *PixelHandler) Update(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusBadRequest, "cannot set pixel as its own backup")
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to update pixel")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to update pixel", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: pixel})
@@ -106,7 +108,7 @@ func (h *PixelHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusForbidden, "pixel not owned by you")
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to delete pixel")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to delete pixel", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Message: "pixel deleted"})
@@ -133,7 +135,7 @@ func (h *PixelHandler) Test(w http.ResponseWriter, r *http.Request) {
 		// Check for Facebook CAPI error — never expose raw FB response to client
 		var capiErr *facebook.CAPIError
 		if errors.As(err, &capiErr) {
-			slog.Error("pixel test connection CAPI error",
+			h.logger.Error("pixel test connection CAPI error",
 				"pixel_id", pixelID,
 				"fb_status", capiErr.StatusCode,
 				"fb_response", capiErr.Message,
@@ -141,7 +143,7 @@ func (h *PixelHandler) Test(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusBadGateway, sanitizeCAPIError(capiErr.StatusCode))
 			return
 		}
-		ErrorJSON(w, http.StatusBadGateway, "failed to test pixel connection")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusBadGateway, "failed to test pixel connection", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: resp})
