@@ -33,9 +33,13 @@ func ErrorJSON(w http.ResponseWriter, status int, message string) {
 }
 
 func ErrorJSONWithLog(w http.ResponseWriter, r *http.Request, logger *slog.Logger, status int, userMsg string, err error) {
-	if errors.Is(err, context.DeadlineExceeded) {
-		status = http.StatusServiceUnavailable
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		status = http.StatusGatewayTimeout
 		userMsg = "request timed out, please try again"
+	case errors.Is(err, context.Canceled):
+		status = http.StatusServiceUnavailable
+		userMsg = "request cancelled"
 	}
 	logger.Error(userMsg,
 		"error", err,
