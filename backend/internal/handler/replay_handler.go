@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -15,12 +16,14 @@ import (
 type ReplayHandler struct {
 	replayService *service.ReplayService
 	validate      *validator.Validate
+	logger        *slog.Logger
 }
 
-func NewReplayHandler(replayService *service.ReplayService) *ReplayHandler {
+func NewReplayHandler(replayService *service.ReplayService, logger *slog.Logger) *ReplayHandler {
 	return &ReplayHandler{
 		replayService: replayService,
 		validate:      validator.New(),
+		logger:        logger,
 	}
 }
 
@@ -66,7 +69,7 @@ func (h *ReplayHandler) Create(w http.ResponseWriter, r *http.Request) {
 	result, err := h.replayService.Create(r.Context(), customerID, input)
 	if err != nil {
 		if !mapReplayError(err, w) {
-			ErrorJSON(w, http.StatusInternalServerError, "failed to create replay session")
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to create replay session", err)
 		}
 		return
 	}
@@ -78,7 +81,7 @@ func (h *ReplayHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	sessions, err := h.replayService.List(r.Context(), customerID)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list replay sessions")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list replay sessions", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: sessions})
@@ -91,7 +94,7 @@ func (h *ReplayHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	session, err := h.replayService.GetByID(r.Context(), customerID, sessionID)
 	if err != nil {
 		if !mapReplayError(err, w) {
-			ErrorJSON(w, http.StatusInternalServerError, "failed to get replay session")
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get replay session", err)
 		}
 		return
 	}
@@ -105,7 +108,7 @@ func (h *ReplayHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 	session, err := h.replayService.Cancel(r.Context(), customerID, sessionID)
 	if err != nil {
 		if !mapReplayError(err, w) {
-			ErrorJSON(w, http.StatusInternalServerError, "failed to cancel replay session")
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to cancel replay session", err)
 		}
 		return
 	}
@@ -128,7 +131,7 @@ func (h *ReplayHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	result, err := h.replayService.Preview(r.Context(), customerID, input)
 	if err != nil {
 		if !mapReplayError(err, w) {
-			ErrorJSON(w, http.StatusInternalServerError, "failed to preview replay")
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to preview replay", err)
 		}
 		return
 	}
@@ -142,7 +145,7 @@ func (h *ReplayHandler) Retry(w http.ResponseWriter, r *http.Request) {
 	session, err := h.replayService.Retry(r.Context(), customerID, sessionID)
 	if err != nil {
 		if !mapReplayError(err, w) {
-			ErrorJSON(w, http.StatusInternalServerError, "failed to retry replay session")
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to retry replay session", err)
 		}
 		return
 	}
@@ -159,7 +162,7 @@ func (h *ReplayHandler) EventTypes(w http.ResponseWriter, r *http.Request) {
 	types, err := h.replayService.GetEventTypes(r.Context(), customerID, pixelID)
 	if err != nil {
 		if !mapReplayError(err, w) {
-			ErrorJSON(w, http.StatusInternalServerError, "failed to get event types")
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get event types", err)
 		}
 		return
 	}

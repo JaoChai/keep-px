@@ -24,13 +24,22 @@ func Logger(logger *slog.Logger) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(rw, r)
 
-			logger.Info("request",
+			attrs := []any{
 				"method", r.Method,
 				"path", r.URL.Path,
 				"status", rw.status,
 				"duration", time.Since(start).String(),
 				"remote_addr", r.RemoteAddr,
-			)
+			}
+
+			switch {
+			case rw.status >= 500:
+				logger.Error("request", attrs...)
+			case rw.status >= 400:
+				logger.Warn("request", attrs...)
+			default:
+				logger.Info("request", attrs...)
+			}
 		})
 	}
 }

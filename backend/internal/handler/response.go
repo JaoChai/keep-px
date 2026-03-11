@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"net/http"
 )
 
@@ -27,4 +30,18 @@ func JSON(w http.ResponseWriter, status int, data interface{}) {
 
 func ErrorJSON(w http.ResponseWriter, status int, message string) {
 	JSON(w, status, APIResponse{Error: message})
+}
+
+func ErrorJSONWithLog(w http.ResponseWriter, r *http.Request, logger *slog.Logger, status int, userMsg string, err error) {
+	if errors.Is(err, context.DeadlineExceeded) {
+		status = http.StatusServiceUnavailable
+		userMsg = "request timed out, please try again"
+	}
+	logger.Error(userMsg,
+		"error", err,
+		"status", status,
+		"method", r.Method,
+		"path", r.URL.Path,
+	)
+	JSON(w, status, APIResponse{Error: userMsg})
 }

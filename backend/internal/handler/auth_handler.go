@@ -43,8 +43,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusConflict, "email already exists")
 			return
 		}
-		h.logger.Error("registration failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "registration failed")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "registration failed", err)
 		return
 	}
 
@@ -73,7 +72,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusForbidden, "account suspended")
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "login failed")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "login failed", err)
 		return
 	}
 
@@ -102,8 +101,7 @@ func (h *AuthHandler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusForbidden, "account suspended")
 			return
 		}
-		h.logger.Error("google auth failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "google auth failed")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "google auth failed", err)
 		return
 	}
 
@@ -123,8 +121,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	if err := h.authService.Logout(r.Context(), customerID); err != nil {
-		h.logger.Error("logout failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "logout failed")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "logout failed", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Message: "logged out"})
@@ -134,8 +131,7 @@ func (h *AuthHandler) RegenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	customer, err := h.authService.RegenerateAPIKey(r.Context(), customerID)
 	if err != nil {
-		h.logger.Error("regenerate api key failed", "error", err)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to regenerate api key")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to regenerate api key", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: customer})
@@ -165,7 +161,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusForbidden, "account suspended")
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "token refresh failed")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "token refresh failed", err)
 		return
 	}
 

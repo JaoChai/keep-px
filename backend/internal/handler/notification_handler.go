@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -13,10 +14,11 @@ import (
 
 type NotificationHandler struct {
 	notifService *service.NotificationService
+	logger       *slog.Logger
 }
 
-func NewNotificationHandler(notifService *service.NotificationService) *NotificationHandler {
-	return &NotificationHandler{notifService: notifService}
+func NewNotificationHandler(notifService *service.NotificationService, logger *slog.Logger) *NotificationHandler {
+	return &NotificationHandler{notifService: notifService, logger: logger}
 }
 
 func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +28,7 @@ func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.notifService.List(r.Context(), customerID, limit)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list notifications")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list notifications", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: result})
@@ -37,7 +39,7 @@ func (h *NotificationHandler) UnreadCount(w http.ResponseWriter, r *http.Request
 
 	count, err := h.notifService.CountUnread(r.Context(), customerID)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to count unread notifications")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to count unread notifications", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: map[string]int{"unread_count": count}})
@@ -52,7 +54,7 @@ func (h *NotificationHandler) MarkRead(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusNotFound, "notification not found")
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "failed to mark notification as read")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to mark notification as read", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Message: "notification marked as read"})
@@ -62,7 +64,7 @@ func (h *NotificationHandler) MarkAllRead(w http.ResponseWriter, r *http.Request
 	customerID := middleware.GetCustomerID(r.Context())
 
 	if err := h.notifService.MarkAllRead(r.Context(), customerID); err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to mark all notifications as read")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to mark all notifications as read", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Message: "all notifications marked as read"})

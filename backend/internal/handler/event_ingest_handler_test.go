@@ -90,7 +90,7 @@ func TestEventHandler_Ingest(t *testing.T) {
 
 		quotaSvc := newTestQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 		eventSvc := newTestEventServiceWithCAPI(eventRepo, pixelRepo, quotaSvc)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		// Quota: allow events
 		subRepo.On("GetMaxEventsPerMonth", mock.Anything, eventTestCustomerID).Return(int64(100000), nil)
@@ -126,7 +126,7 @@ func TestEventHandler_Ingest(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		r := eventIngestRouter(h)
 
@@ -145,7 +145,7 @@ func TestEventHandler_Ingest(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		r := eventIngestRouter(h)
 		token := eventToken(eventTestCustomerID)
@@ -172,7 +172,7 @@ func TestEventHandler_Ingest(t *testing.T) {
 
 		quotaSvc := newTestQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 		eventSvc := newTestEventServiceWithCAPI(eventRepo, pixelRepo, quotaSvc)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		// Quota: exceeded
 		subRepo.On("GetMaxEventsPerMonth", mock.Anything, eventTestCustomerID).Return(int64(5000), nil)
@@ -206,7 +206,7 @@ func TestEventHandler_List(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		events := []*domain.PixelEvent{
 			{ID: "e1", PixelID: pixelID, EventName: "PageView", EventData: json.RawMessage(`{}`)},
@@ -233,7 +233,7 @@ func TestEventHandler_List(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		events := []*domain.PixelEvent{
 			{ID: "e1", PixelID: pixelID, EventName: "PageView", EventData: json.RawMessage(`{}`)},
@@ -254,7 +254,7 @@ func TestEventHandler_List(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		r := eventRouter(h)
 		token := eventToken(eventTestCustomerID)
@@ -274,7 +274,7 @@ func TestEventHandler_ListRecent(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		realtimeEvents := []*domain.RealtimeEvent{
 			{ID: "e1", PixelID: testPixelID, EventName: "PageView"},
@@ -297,7 +297,7 @@ func TestEventHandler_ListRecent(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		realtimeEvents := []*domain.RealtimeEvent{
 			{ID: "e2", PixelID: testPixelID, EventName: "Purchase"},
@@ -322,7 +322,7 @@ func TestEventHandler_ListRecent(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		r := eventRouter(h)
 		token := eventToken(eventTestCustomerID)
@@ -344,7 +344,7 @@ func TestEventHandler_GetByID(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		event := &domain.PixelEvent{
 			ID:        eventID,
@@ -373,7 +373,7 @@ func TestEventHandler_GetByID(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		eventRepo.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 
@@ -389,7 +389,7 @@ func TestEventHandler_GetByID(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
-		h := NewEventHandler(eventSvc)
+		h := NewEventHandler(eventSvc, testLogger())
 
 		event := &domain.PixelEvent{
 			ID:        eventID,

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"math"
 	"net"
 	"net/http"
@@ -21,12 +22,14 @@ import (
 type EventHandler struct {
 	eventService *service.EventService
 	validate     *validator.Validate
+	logger       *slog.Logger
 }
 
-func NewEventHandler(eventService *service.EventService) *EventHandler {
+func NewEventHandler(eventService *service.EventService, logger *slog.Logger) *EventHandler {
 	return &EventHandler{
 		eventService: eventService,
 		validate:     validator.New(),
+		logger:       logger,
 	}
 }
 
@@ -65,7 +68,7 @@ func (h *EventHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusPaymentRequired, "monthly event quota exceeded")
 			return
 		}
-		ErrorJSON(w, http.StatusInternalServerError, "ingestion failed")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "ingestion failed", err)
 		return
 	}
 
@@ -96,7 +99,7 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	events, total, err := h.eventService.ListByCustomerID(r.Context(), customerID, pixelID, page, perPage)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to list events")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list events", err)
 		return
 	}
 
@@ -127,7 +130,7 @@ func (h *EventHandler) ListRecent(w http.ResponseWriter, r *http.Request) {
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 		events, err := h.eventService.ListLatest(r.Context(), customerID, pixelID, limit)
 		if err != nil {
-			ErrorJSON(w, http.StatusInternalServerError, "failed to fetch latest events")
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to fetch latest events", err)
 			return
 		}
 		JSON(w, http.StatusOK, APIResponse{Data: events})
@@ -149,7 +152,7 @@ func (h *EventHandler) ListRecent(w http.ResponseWriter, r *http.Request) {
 
 	events, err := h.eventService.ListRecent(r.Context(), customerID, since, pixelID)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to fetch recent events")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to fetch recent events", err)
 		return
 	}
 
@@ -162,7 +165,7 @@ func (h *EventHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	event, err := h.eventService.GetByID(r.Context(), customerID, eventID)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get event")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get event", err)
 		return
 	}
 	if event == nil {

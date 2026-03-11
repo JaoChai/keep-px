@@ -33,6 +33,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	r.Use(middleware.CORS(cfg.CORSAllowedOrigins))
 	r.Use(chimiddleware.Compress(5))
 	r.Use(middleware.MaxBodySize(1 << 20)) // 1 MB request body limit
+	r.Use(middleware.DBTimeout(cfg.DBQueryTimeout))
 
 	// Token encryption (optional in dev, required in production)
 	var encryptor *crypto.TokenEncryptor
@@ -93,11 +94,11 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	// Handlers
 	healthHandler := handler.NewHealthHandler(pool)
 	authHandler := handler.NewAuthHandler(authService, logger)
-	pixelHandler := handler.NewPixelHandler(pixelService)
-	eventHandler := handler.NewEventHandler(eventService)
-	replayHandler := handler.NewReplayHandler(replayService)
-	analyticsHandler := handler.NewAnalyticsHandler(analyticsService)
-	notifHandler := handler.NewNotificationHandler(notifService)
+	pixelHandler := handler.NewPixelHandler(pixelService, logger)
+	eventHandler := handler.NewEventHandler(eventService, logger)
+	replayHandler := handler.NewReplayHandler(replayService, logger)
+	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, logger)
+	notifHandler := handler.NewNotificationHandler(notifService, logger)
 	salePageHandler := handler.NewSalePageHandler(salePageService, cfg.BaseURL, logger)
 	uploadHandler := handler.NewUploadHandler(storageService)
 	billingHandler := handler.NewBillingHandler(billingService, quotaService, cfg, logger)

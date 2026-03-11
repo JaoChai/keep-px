@@ -36,7 +36,7 @@ func (h *BillingHandler) GetBillingOverview(w http.ResponseWriter, r *http.Reque
 
 	overview, err := h.billingService.GetBillingOverview(r.Context(), customerID)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get billing overview")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get billing overview", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: overview})
@@ -47,7 +47,7 @@ func (h *BillingHandler) GetQuota(w http.ResponseWriter, r *http.Request) {
 
 	quota, err := h.quotaService.GetCustomerQuota(r.Context(), customerID)
 	if err != nil {
-		ErrorJSON(w, http.StatusInternalServerError, "failed to get quota")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get quota", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: quota})
@@ -98,8 +98,7 @@ func (h *BillingHandler) CreateCheckout(w http.ResponseWriter, r *http.Request) 
 		case errors.Is(err, service.ErrCustomerNotFound):
 			ErrorJSON(w, http.StatusNotFound, "customer not found")
 		default:
-			h.logger.Error("create checkout failed", "error", err, "customer_id", customerID)
-			ErrorJSON(w, http.StatusInternalServerError, "failed to create checkout session")
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to create checkout session", err)
 		}
 		return
 	}
@@ -116,8 +115,7 @@ func (h *BillingHandler) CreatePortalSession(w http.ResponseWriter, r *http.Requ
 			ErrorJSON(w, http.StatusServiceUnavailable, "billing is not configured")
 			return
 		}
-		h.logger.Error("create portal session failed", "error", err, "customer_id", customerID)
-		ErrorJSON(w, http.StatusInternalServerError, "failed to create portal session")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to create portal session", err)
 		return
 	}
 
@@ -174,8 +172,7 @@ func (h *BillingHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if processErr != nil {
-		h.logger.Error("webhook processing failed", "error", processErr, "event_type", event.Type)
-		ErrorJSON(w, http.StatusInternalServerError, "webhook processing failed")
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "webhook processing failed", processErr)
 		return
 	}
 
