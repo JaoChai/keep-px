@@ -8,7 +8,9 @@ export class SidebarPage {
   readonly salePagesLink: Locator
   readonly eventsLink: Locator
   readonly replayCenterLink: Locator
+  readonly billingLink: Locator
   readonly settingsLink: Locator
+  readonly guideLink: Locator
   readonly logoutButton: Locator
 
   constructor(page: Page) {
@@ -19,7 +21,9 @@ export class SidebarPage {
     this.salePagesLink = page.getByRole('link', { name: 'เซลเพจ' })
     this.eventsLink = page.getByRole('link', { name: 'อีเวนต์' })
     this.replayCenterLink = page.getByRole('link', { name: 'รีเพลย์' })
+    this.billingLink = page.getByRole('link', { name: 'การเงิน' })
     this.settingsLink = page.getByRole('link', { name: 'ตั้งค่า' })
+    this.guideLink = page.getByRole('link', { name: 'คู่มือ' })
     this.logoutButton = page.getByRole('button', { name: 'ออกจากระบบ' })
   }
 

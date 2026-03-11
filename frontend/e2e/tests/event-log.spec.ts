@@ -8,10 +8,11 @@ test.describe('Event Log', () => {
 
     await expect(eventLogPage.heading).toBeVisible()
 
+    // Wait for API data to load before checking content
+    await page.waitForLoadState('networkidle')
+
     // Either the table or empty state should be visible
-    const hasTable = await eventLogPage.eventTable.isVisible()
-    const hasEmptyState = await eventLogPage.emptyState.isVisible()
-    expect(hasTable || hasEmptyState).toBeTruthy()
+    await expect(eventLogPage.eventTable.or(eventLogPage.emptyState)).toBeVisible({ timeout: 10000 })
   })
 
   test('pagination controls visible when events exist', async ({ page }) => {
