@@ -50,7 +50,9 @@ async function globalSetup() {
   }
 
   const baseURL = process.env.E2E_BASE_URL || 'http://localhost:5173'
-  const apiBase = `${baseURL}/api/v1`
+  const apiBase = process.env.E2E_API_URL
+    ? `${process.env.E2E_API_URL}/api/v1`
+    : `${baseURL}/api/v1`
   const storagePath = path.resolve(authDir, 'user.json')
 
   let tokens: { access_token: string; refresh_token: string }
