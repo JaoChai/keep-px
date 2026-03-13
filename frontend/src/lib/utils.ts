@@ -32,20 +32,13 @@ export function daysUntil(date: string | Date): number {
 }
 
 export const PLAN_LABELS: Record<string, string> = {
-  sandbox: 'Sandbox',
-  launch: 'Launch',
-  shield: 'Shield',
-  vault: 'Vault',
+  sandbox: 'Free',
+  paid: 'Paid',
 }
 
 export const PACK_TYPE_NAMES: Record<string, string> = {
-  replay_1: 'Single (1 รีเพลย์)',
-  replay_3: 'Triple (3 รีเพลย์)',
-  replay_unlimited: 'Unlimited (ไม่จำกัด)',
-  plan_launch: PLAN_LABELS.launch!,
-  plan_shield: PLAN_LABELS.shield!,
-  plan_vault: PLAN_LABELS.vault!,
-  pixels_10: 'Pixels +10',
-  sale_pages_10: 'Sale Pages +10',
-  events_1m: 'Events +1M',
+  replay_single: 'Replay Single (1 ครั้ง)',
+  replay_monthly: 'Replay Unlimited (รายเดือน)',
+  pixel_slots: 'Pixel Slots',
+  plan_grant: 'Admin Grant',
 }

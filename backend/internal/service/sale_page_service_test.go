@@ -353,7 +353,7 @@ func TestSalePageService_Create_QuotaExceeded(t *testing.T) {
 		ID:   "cust-1",
 		Plan: domain.PlanSandbox,
 	}, nil)
-	m.subRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.Subscription{}, nil)
+	m.subRepo.On("GetPixelSlotQuantity", mock.Anything, "cust-1").Return(0, nil)
 	m.creditRepo.On("GetActiveByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplayCredit{}, nil)
 	m.salePageRepo.On("CountByCustomerID", mock.Anything, "cust-1").Return(1, nil)
 	m.usageRepo.On("GetCurrentMonth", mock.Anything, "cust-1").Return(nil, nil)

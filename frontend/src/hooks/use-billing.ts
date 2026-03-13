@@ -25,7 +25,7 @@ export function useQuota() {
 
 export function useCreateCheckout() {
   return useMutation({
-    mutationFn: async (params: { pack_type?: string; addon_type?: string; plan_type?: string }) => {
+    mutationFn: async (params: { type: string; quantity?: number }) => {
       const { data } = await api.post<{ data: { url: string } }>('/billing/checkout', params)
       return data.data
     },
@@ -34,6 +34,21 @@ export function useCreateCheckout() {
     },
     onError: () => {
       toast.error('สร้างลิงก์ชำระเงินไม่สำเร็จ')
+    },
+  })
+}
+
+export function useUpdateSlots() {
+  return useMutation({
+    mutationFn: async (quantity: number) => {
+      const { data } = await api.put<{ data: { url: string } }>('/billing/slots', { quantity })
+      return data.data
+    },
+    onSuccess: (data) => {
+      window.location.href = data.url
+    },
+    onError: () => {
+      toast.error('อัพเดทจำนวน Pixel Slots ไม่สำเร็จ')
     },
   })
 }

@@ -35,19 +35,9 @@ type Config struct {
 	StripeSecretKey            string `env:"STRIPE_SECRET_KEY"`
 	StripeWebhookSecret        string `env:"STRIPE_WEBHOOK_SECRET"`
 	StripePublishableKey       string `env:"STRIPE_PUBLISHABLE_KEY"`
-	StripePriceReplay1         string `env:"STRIPE_PRICE_REPLAY_1"`
-	StripePriceReplay3         string `env:"STRIPE_PRICE_REPLAY_3"`
-	StripePriceReplayUnlimited string `env:"STRIPE_PRICE_REPLAY_UNLIMITED"`
-	StripePriceRetention180    string `env:"STRIPE_PRICE_RETENTION_180"`
-	StripePriceRetention365    string `env:"STRIPE_PRICE_RETENTION_365"`
-	StripePriceEvents1M        string `env:"STRIPE_PRICE_EVENTS_1M"`
-	StripePriceSalePages25     string `env:"STRIPE_PRICE_SALE_PAGES_25"`
-	StripePricePixels40        string `env:"STRIPE_PRICE_PIXELS_40"`
-	StripePricePlanLaunch      string `env:"STRIPE_PRICE_PLAN_LAUNCH"`
-	StripePricePlanShield      string `env:"STRIPE_PRICE_PLAN_SHIELD"`
-	StripePricePlanVault       string `env:"STRIPE_PRICE_PLAN_VAULT"`
-	StripePriceSalePages10     string `env:"STRIPE_PRICE_SALE_PAGES_10"`
-	StripePricePixels10        string `env:"STRIPE_PRICE_PIXELS_10"`
+	StripePricePixelSlot     string `env:"STRIPE_PRICE_PIXEL_SLOT"`
+	StripePriceReplaySingle  string `env:"STRIPE_PRICE_REPLAY_SINGLE"`
+	StripePriceReplayMonthly string `env:"STRIPE_PRICE_REPLAY_MONTHLY"`
 	FrontendURL                string `env:"FRONTEND_URL" envDefault:"http://localhost:5173"`
 
 	// Token encryption (32-byte hex-encoded key, optional)

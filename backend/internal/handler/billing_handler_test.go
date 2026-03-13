@@ -170,7 +170,7 @@ func TestBillingHandler_GetQuota(t *testing.T) {
 			Plan: domain.PlanSandbox,
 		}
 		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
-		subRepo.On("GetActiveByCustomerID", mock.Anything, testCustomerID).Return([]*domain.Subscription{}, nil)
+		subRepo.On("GetPixelSlotQuantity", mock.Anything, testCustomerID).Return(0, nil)
 		creditRepo.On("GetActiveByCustomerID", mock.Anything, testCustomerID).Return([]*domain.ReplayCredit{}, nil)
 		usageRepo.On("GetCurrentMonth", mock.Anything, testCustomerID).Return((*domain.EventUsage)(nil), nil)
 
@@ -219,7 +219,7 @@ func TestBillingHandler_GetQuota(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBillingHandler_CreateCheckout(t *testing.T) {
-	t.Run("with pack_type returns 503 when Stripe not configured", func(t *testing.T) {
+	t.Run("with pixel_slots returns 503 when Stripe not configured", func(t *testing.T) {
 		purchaseRepo := &MockPurchaseRepo{}
 		creditRepo := &MockReplayCreditRepo{}
 		subRepo := &MockSubscriptionRepo{}
@@ -233,8 +233,6 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
-		// When Stripe is not configured, CreateReplayPackCheckout calls EnsureStripeCustomer
-		// which returns ErrStripeNotConfigured.
 		customer := &domain.Customer{ID: testCustomerID, Email: "test@example.com", Name: "Test"}
 		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
 
@@ -242,7 +240,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
-		body := map[string]string{"pack_type": domain.PackReplay1}
+		body := map[string]interface{}{"type": "pixel_slots", "quantity": 5}
 		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT(testCustomerID, false))
 
 		assert.Equal(t, 503, rec.Code)
@@ -253,7 +251,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		assert.Equal(t, "billing is not configured", resp.Error)
 	})
 
-	t.Run("with addon_type returns 503 when Stripe not configured", func(t *testing.T) {
+	t.Run("with replay_single returns 503 when Stripe not configured", func(t *testing.T) {
 		purchaseRepo := &MockPurchaseRepo{}
 		creditRepo := &MockReplayCreditRepo{}
 		subRepo := &MockSubscriptionRepo{}
@@ -267,9 +265,6 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
-		// addonPriceID returns error for unknown addon type when price ID is empty
-		// For a known addon type with no price, it still returns the empty string which fails.
-		// The addon type validation happens at the service level.
 		customer := &domain.Customer{ID: testCustomerID, Email: "test@example.com", Name: "Test"}
 		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
 
@@ -277,18 +272,18 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
-		body := map[string]string{"addon_type": domain.AddonEvents1M}
+		body := map[string]string{"type": "replay_single"}
 		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT(testCustomerID, false))
 
-		// Should be 503 (Stripe not configured) because EnsureStripeCustomer is called
-		// OR 400 (invalid addon type) if the price ID is empty.
-		// With empty config, the addon price ID will be empty string, which means
-		// addonPriceID returns the empty price ID (not an error) since the key exists.
-		// Then EnsureStripeCustomer returns ErrStripeNotConfigured.
 		assert.Equal(t, 503, rec.Code)
+
+		var resp APIResponse
+		err := json.Unmarshal(rec.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "billing is not configured", resp.Error)
 	})
 
-	t.Run("with plan_type returns 400 for invalid plan when price ID empty", func(t *testing.T) {
+	t.Run("with replay_monthly returns 503 when Stripe not configured", func(t *testing.T) {
 		purchaseRepo := &MockPurchaseRepo{}
 		creditRepo := &MockReplayCreditRepo{}
 		subRepo := &MockSubscriptionRepo{}
@@ -302,23 +297,46 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
+		customer := &domain.Customer{ID: testCustomerID, Email: "test@example.com", Name: "Test"}
+		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
+
 		r := chi.NewRouter()
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
-		// plan_type with empty price ID in config returns ErrInvalidPlanType (400)
-		body := map[string]string{"plan_type": domain.SubTypePlanLaunch}
+		body := map[string]string{"type": "replay_monthly"}
 		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT(testCustomerID, false))
 
-		assert.Equal(t, 400, rec.Code)
+		assert.Equal(t, 503, rec.Code)
 
 		var resp APIResponse
 		err := json.Unmarshal(rec.Body.Bytes(), &resp)
 		require.NoError(t, err)
-		assert.Equal(t, "invalid plan type", resp.Error)
+		assert.Equal(t, "billing is not configured", resp.Error)
 	})
 
-	t.Run("missing all types returns 400", func(t *testing.T) {
+	t.Run("with invalid type returns 400", func(t *testing.T) {
+		billingSvc := nbNewTestBillingService(
+			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
+			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+		)
+		quotaSvc := nbNewTestQuotaService(
+			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
+			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+		)
+		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
+
+		r := chi.NewRouter()
+		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Post("/billing/checkout", h.CreateCheckout)
+
+		body := map[string]string{"type": "invalid_type"}
+		rec := doRequest(r, "POST", "/billing/checkout", body, testJWT(testCustomerID, false))
+
+		assert.Equal(t, 400, rec.Code)
+	})
+
+	t.Run("missing type returns 400", func(t *testing.T) {
 		billingSvc := nbNewTestBillingService(
 			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
 			&MockCustomerRepo{}, &MockWebhookEventRepo{},
@@ -341,7 +359,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		var resp APIResponse
 		err := json.Unmarshal(rec.Body.Bytes(), &resp)
 		require.NoError(t, err)
-		assert.Equal(t, "plan_type, pack_type, or addon_type is required", resp.Error)
+		assert.Equal(t, "type is required", resp.Error)
 	})
 
 	t.Run("no auth returns 401", func(t *testing.T) {
@@ -359,8 +377,93 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		r.Use(middleware.JWTAuth(testJWTSecret))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
-		body := map[string]string{"pack_type": domain.PackReplay1}
+		body := map[string]string{"type": "pixel_slots"}
 		rec := doRequest(r, "POST", "/billing/checkout", body, "")
+
+		assert.Equal(t, 401, rec.Code)
+	})
+}
+
+// ---------------------------------------------------------------------------
+// UpdateSlots tests
+// ---------------------------------------------------------------------------
+
+func TestBillingHandler_UpdateSlots(t *testing.T) {
+	t.Run("returns 503 when Stripe not configured", func(t *testing.T) {
+		purchaseRepo := &MockPurchaseRepo{}
+		creditRepo := &MockReplayCreditRepo{}
+		subRepo := &MockSubscriptionRepo{}
+		customerRepo := &MockCustomerRepo{}
+		webhookRepo := &MockWebhookEventRepo{}
+
+		billingSvc := nbNewTestBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo)
+		quotaSvc := nbNewTestQuotaService(
+			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
+			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+		)
+		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
+
+		customer := &domain.Customer{ID: testCustomerID, Email: "test@example.com", Name: "Test"}
+		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
+
+		r := chi.NewRouter()
+		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Put("/billing/slots", h.UpdateSlots)
+
+		body := map[string]int{"quantity": 3}
+		rec := doRequest(r, "PUT", "/billing/slots", body, testJWT(testCustomerID, false))
+
+		assert.Equal(t, 503, rec.Code)
+
+		var resp APIResponse
+		err := json.Unmarshal(rec.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "billing is not configured", resp.Error)
+	})
+
+	t.Run("invalid quantity returns 400", func(t *testing.T) {
+		billingSvc := nbNewTestBillingService(
+			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
+			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+		)
+		quotaSvc := nbNewTestQuotaService(
+			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
+			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+		)
+		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
+
+		r := chi.NewRouter()
+		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Put("/billing/slots", h.UpdateSlots)
+
+		body := map[string]int{"quantity": 0}
+		rec := doRequest(r, "PUT", "/billing/slots", body, testJWT(testCustomerID, false))
+
+		assert.Equal(t, 400, rec.Code)
+
+		var resp APIResponse
+		err := json.Unmarshal(rec.Body.Bytes(), &resp)
+		require.NoError(t, err)
+		assert.Equal(t, "quantity must be at least 1", resp.Error)
+	})
+
+	t.Run("no auth returns 401", func(t *testing.T) {
+		billingSvc := nbNewTestBillingService(
+			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
+			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+		)
+		quotaSvc := nbNewTestQuotaService(
+			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
+			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+		)
+		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
+
+		r := chi.NewRouter()
+		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Put("/billing/slots", h.UpdateSlots)
+
+		body := map[string]int{"quantity": 3}
+		rec := doRequest(r, "PUT", "/billing/slots", body, "")
 
 		assert.Equal(t, 401, rec.Code)
 	})

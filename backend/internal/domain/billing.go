@@ -2,26 +2,16 @@ package domain
 
 import "time"
 
-// Pack types
+// Subscription types — per-pixel pricing model
 const (
-	PackReplay1         = "replay_1"
-	PackReplay3         = "replay_3"
-	PackReplayUnlimited = "replay_unlimited"
-	PackPlanGrant       = "plan_grant"
+	SubTypePixelSlots    = "pixel_slots"
+	SubTypeReplayMonthly = "replay_monthly"
 )
 
-// Plan subscription types
+// One-time purchase types
 const (
-	SubTypePlanLaunch = "plan_launch"
-	SubTypePlanShield = "plan_shield"
-	SubTypePlanVault  = "plan_vault"
-)
-
-// Add-on types
-const (
-	AddonEvents1M    = "events_1m"
-	AddonSalePages10 = "sale_pages_10"
-	AddonPixels10    = "pixels_10"
+	PackReplaySingle = "replay_single"
+	PackPlanGrant    = "plan_grant" // admin-granted credits
 )
 
 // Purchase statuses
@@ -90,6 +80,7 @@ type Subscription struct {
 	StripeSubscriptionID string     `json:"stripe_subscription_id"`
 	StripePriceID        string     `json:"stripe_price_id"`
 	AddonType            string     `json:"addon_type"`
+	Quantity             int        `json:"quantity"`
 	Status               string     `json:"status"`
 	CurrentPeriodStart   *time.Time `json:"current_period_start,omitempty"`
 	CurrentPeriodEnd     *time.Time `json:"current_period_end,omitempty"`

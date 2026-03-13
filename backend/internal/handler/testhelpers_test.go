@@ -139,6 +139,10 @@ func (m *MockCustomerRepo) UpdatePlan(ctx context.Context, customerID string, pl
 	args := m.Called(ctx, customerID, plan)
 	return args.Error(0)
 }
+func (m *MockCustomerRepo) UpdateRetentionDays(ctx context.Context, customerID string, days int) error {
+	args := m.Called(ctx, customerID, days)
+	return args.Error(0)
+}
 func (m *MockCustomerRepo) RegenerateAPIKey(ctx context.Context, customerID, newKey string) (*domain.Customer, error) {
 	args := m.Called(ctx, customerID, newKey)
 	if args.Get(0) == nil {
@@ -511,6 +515,10 @@ func (m *MockSubscriptionRepo) GetMaxEventsPerMonth(ctx context.Context, custome
 func (m *MockSubscriptionRepo) Update(ctx context.Context, sub *domain.Subscription) error {
 	args := m.Called(ctx, sub)
 	return args.Error(0)
+}
+func (m *MockSubscriptionRepo) GetPixelSlotQuantity(ctx context.Context, customerID string) (int, error) {
+	args := m.Called(ctx, customerID)
+	return args.Int(0), args.Error(1)
 }
 func (m *MockSubscriptionRepo) ListByCustomerID(ctx context.Context, customerID string) ([]*domain.Subscription, error) {
 	args := m.Called(ctx, customerID)

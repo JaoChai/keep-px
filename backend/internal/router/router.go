@@ -200,6 +200,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 				r.Get("/", billingHandler.GetBillingOverview)
 				r.Get("/quota", billingHandler.GetQuota)
 				r.Post("/checkout", billingHandler.CreateCheckout)
+				r.Put("/slots", billingHandler.UpdateSlots)
 				r.Post("/portal", billingHandler.CreatePortalSession)
 			})
 

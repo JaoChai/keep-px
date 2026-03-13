@@ -165,10 +165,10 @@ func TestAdminService_ChangePlan(t *testing.T) {
 		{
 			name:    "success",
 			custID:  "c1",
-			newPlan: domain.PlanLaunch,
+			newPlan: domain.PlanPaid,
 			setupCust: func(cr *MockCustomerRepo) {
 				cr.On("GetByID", mock.Anything, "c1").Return(&domain.Customer{ID: "c1"}, nil)
-				cr.On("UpdatePlan", mock.Anything, "c1", domain.PlanLaunch).Return(nil)
+				cr.On("UpdatePlan", mock.Anything, "c1", domain.PlanPaid).Return(nil)
 			},
 			setupAdm: func(ar *MockAdminRepo) {
 				ar.On("CreateAuditLog", mock.Anything, mock.Anything).Return(nil)
@@ -185,7 +185,7 @@ func TestAdminService_ChangePlan(t *testing.T) {
 		{
 			name:    "customer not found",
 			custID:  "missing",
-			newPlan: domain.PlanShield,
+			newPlan: domain.PlanPaid,
 			setupCust: func(cr *MockCustomerRepo) {
 				cr.On("GetByID", mock.Anything, "missing").Return(nil, nil)
 			},
