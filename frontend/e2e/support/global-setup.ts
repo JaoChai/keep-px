@@ -5,6 +5,44 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 5
+): Promise<Response> {
+  const backoffMs = [3000, 6000, 12000, 24000, 48000]
+  let lastError: Error | null = null
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options)
+
+      // Only retry on 5xx server errors
+      if (res.status >= 500 && attempt < retries) {
+        const delay = backoffMs[attempt] ?? 48000
+        console.log(
+          `[global-setup] ${url} returned ${res.status}, retrying in ${delay / 1000}s (attempt ${attempt + 1}/${retries})`
+        )
+        await new Promise((r) => setTimeout(r, delay))
+        continue
+      }
+
+      return res
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+      if (attempt < retries) {
+        const delay = backoffMs[attempt] ?? 48000
+        console.log(
+          `[global-setup] ${url} fetch error: ${lastError.message}, retrying in ${delay / 1000}s (attempt ${attempt + 1}/${retries})`
+        )
+        await new Promise((r) => setTimeout(r, delay))
+      }
+    }
+  }
+
+  throw lastError ?? new Error(`fetchWithRetry failed after ${retries} retries`)
+}
+
 async function globalSetup() {
   const authDir = path.resolve(__dirname, '../.auth')
   if (!fs.existsSync(authDir)) {
@@ -19,7 +57,7 @@ async function globalSetup() {
 
   // Try to register via API (may fail if user already exists)
   try {
-    const res = await fetch(`${apiBase}/auth/register`, {
+    const res = await fetchWithRetry(`${apiBase}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -33,7 +71,7 @@ async function globalSetup() {
     tokens = body.data
   } catch {
     // Registration failed (user exists) — login instead
-    const res = await fetch(`${apiBase}/auth/login`, {
+    const res = await fetchWithRetry(`${apiBase}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

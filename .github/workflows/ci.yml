@@ -249,6 +249,21 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Verify backend before smoke tests
+        run: |
+          URL="${{ vars.BACKEND_PROD_URL }}/health"
+          echo "Re-checking backend health before E2E..."
+          for i in $(seq 1 5); do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend healthy (HTTP 200)"
+              exit 0
+            fi
+            echo "Attempt $i/5: HTTP $STATUS — retrying in 10s..."
+            sleep 10
+          done
+          echo "::warning::Backend health check failed — global-setup retry will handle it"
+
       - name: Run smoke tests against production
         run: npx playwright test --grep @smoke
         env:
