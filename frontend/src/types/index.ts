@@ -223,6 +223,7 @@ export interface Subscription {
   id: string
   customer_id: string
   addon_type: string
+  quantity: number
   status: string
   current_period_start?: string
   current_period_end?: string
@@ -237,6 +238,7 @@ export interface BillingOverview {
 }
 
 export interface CustomerQuota {
+  pixel_slots: number
   plan: string
   max_pixels: number
   max_events_per_month: number

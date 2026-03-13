@@ -54,9 +54,8 @@ func (h *BillingHandler) GetQuota(w http.ResponseWriter, r *http.Request) {
 }
 
 type createCheckoutInput struct {
-	PackType  string `json:"pack_type,omitempty"`
-	AddonType string `json:"addon_type,omitempty"`
-	PlanType  string `json:"plan_type,omitempty"`
+	Type     string `json:"type" validate:"required,oneof=pixel_slots replay_single replay_monthly"`
+	Quantity int    `json:"quantity,omitempty"`
 }
 
 func (h *BillingHandler) CreateCheckout(w http.ResponseWriter, r *http.Request) {
@@ -68,31 +67,31 @@ func (h *BillingHandler) CreateCheckout(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if input.Type == "" {
+		ErrorJSON(w, http.StatusBadRequest, "type is required")
+		return
+	}
+
 	var checkoutURL string
 	var err error
 
-	switch {
-	case input.PlanType != "":
-		checkoutURL, err = h.billingService.CreatePlanSubscriptionCheckout(r.Context(), customerID, input.PlanType)
-	case input.PackType != "":
-		checkoutURL, err = h.billingService.CreateReplayPackCheckout(r.Context(), customerID, input.PackType)
-	case input.AddonType != "":
-		checkoutURL, err = h.billingService.CreateAddonSubscriptionCheckout(r.Context(), customerID, input.AddonType)
+	switch input.Type {
+	case "pixel_slots":
+		if input.Quantity < 1 {
+			input.Quantity = 1
+		}
+		checkoutURL, err = h.billingService.CreatePixelSlotCheckout(r.Context(), customerID, input.Quantity)
+	case "replay_single", "replay_monthly":
+		checkoutURL, err = h.billingService.CreateReplayCheckout(r.Context(), customerID, input.Type)
 	default:
-		ErrorJSON(w, http.StatusBadRequest, "plan_type, pack_type, or addon_type is required")
+		ErrorJSON(w, http.StatusBadRequest, "invalid type: must be pixel_slots, replay_single, or replay_monthly")
 		return
 	}
 
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrInvalidPackType):
-			ErrorJSON(w, http.StatusBadRequest, "invalid pack type")
-		case errors.Is(err, service.ErrInvalidAddonType):
-			ErrorJSON(w, http.StatusBadRequest, "invalid addon type")
-		case errors.Is(err, service.ErrInvalidPlanType):
-			ErrorJSON(w, http.StatusBadRequest, "invalid plan type")
-		case errors.Is(err, service.ErrAlreadyOnPlan):
-			ErrorJSON(w, http.StatusConflict, "already subscribed to a plan")
+		case errors.Is(err, service.ErrInvalidCheckoutType):
+			ErrorJSON(w, http.StatusBadRequest, "invalid checkout type")
 		case errors.Is(err, service.ErrStripeNotConfigured):
 			ErrorJSON(w, http.StatusServiceUnavailable, "billing is not configured")
 		case errors.Is(err, service.ErrCustomerNotFound):
@@ -104,6 +103,40 @@ func (h *BillingHandler) CreateCheckout(w http.ResponseWriter, r *http.Request) 
 	}
 
 	JSON(w, http.StatusOK, APIResponse{Data: map[string]string{"url": checkoutURL}})
+}
+
+type updateSlotsInput struct {
+	Quantity int `json:"quantity" validate:"required,min=1"`
+}
+
+func (h *BillingHandler) UpdateSlots(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
+
+	var input updateSlotsInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if input.Quantity < 1 {
+		ErrorJSON(w, http.StatusBadRequest, "quantity must be at least 1")
+		return
+	}
+
+	url, err := h.billingService.UpdatePixelSlotQuantity(r.Context(), customerID, input.Quantity)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrStripeNotConfigured):
+			ErrorJSON(w, http.StatusServiceUnavailable, "billing is not configured")
+		case errors.Is(err, service.ErrCustomerNotFound):
+			ErrorJSON(w, http.StatusNotFound, "customer not found")
+		default:
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to update slots", err)
+		}
+		return
+	}
+
+	JSON(w, http.StatusOK, APIResponse{Data: map[string]string{"url": url}})
 }
 
 func (h *BillingHandler) CreatePortalSession(w http.ResponseWriter, r *http.Request) {

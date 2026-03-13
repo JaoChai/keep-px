@@ -44,9 +44,10 @@ func NewQuotaService(
 	}
 }
 
-// GetCustomerQuota resolves the effective quota limits for a customer.
+// GetCustomerQuota resolves the effective quota limits for a customer
+// based on their pixel slot subscription quantity.
 func (s *QuotaService) GetCustomerQuota(ctx context.Context, customerID string) (*domain.CustomerQuota, error) {
-	// Fetch customer to determine plan
+	// 1. Fetch customer to get plan and retention_days
 	customer, err := s.customerRepo.GetByID(ctx, customerID)
 	if err != nil {
 		return nil, fmt.Errorf("get customer: %w", err)
@@ -55,41 +56,37 @@ func (s *QuotaService) GetCustomerQuota(ctx context.Context, customerID string) 
 		return nil, fmt.Errorf("customer not found: %s", customerID)
 	}
 
-	// Look up plan limits (fallback to sandbox)
-	planLimits, ok := domain.PlanLimitsMap[customer.Plan]
-	if !ok {
-		planLimits = domain.PlanLimitsMap[domain.PlanSandbox]
+	// 2. Get pixel slot quantity from active subscriptions
+	slots, err := s.subRepo.GetPixelSlotQuantity(ctx, customerID)
+	if err != nil {
+		return nil, fmt.Errorf("get pixel slot quantity: %w", err)
 	}
 
+	// 3. Build quota based on slot count
 	quota := &domain.CustomerQuota{
+		PixelSlots:         slots,
 		Plan:               customer.Plan,
-		MaxPixels:          planLimits.MaxPixels,
-		MaxEventsPerMonth:  planLimits.MaxEventsPerMonth,
-		RetentionDays:      planLimits.RetentionDays,
-		MaxSalePages:       planLimits.MaxSalePages,
 		MaxEventsPerReplay: domain.DefaultMaxEventsPerReplay,
 	}
 
-	// Stack active add-on subscriptions (skip plan_ subscriptions)
-	subs, err := s.subRepo.GetActiveByCustomerID(ctx, customerID)
-	if err != nil {
-		return nil, fmt.Errorf("get active subscriptions: %w", err)
-	}
-	for _, sub := range subs {
-		if isPlanType(sub.AddonType) {
-			continue
+	if slots == 0 {
+		// Free tier limits
+		quota.MaxPixels = domain.FreeMaxPixels
+		quota.MaxSalePages = domain.FreeMaxSalePages
+		quota.MaxEventsPerMonth = domain.FreeMaxEventsPerMonth
+		quota.RetentionDays = customer.RetentionDays
+		if quota.RetentionDays == 0 {
+			quota.RetentionDays = domain.FreeRetentionDays
 		}
-		switch sub.AddonType {
-		case domain.AddonEvents1M:
-			quota.MaxEventsPerMonth += int64(domain.Addon1MEventsPerMonth)
-		case domain.AddonSalePages10:
-			quota.MaxSalePages += domain.AddonSalePages10Extra
-		case domain.AddonPixels10:
-			quota.MaxPixels += domain.AddonPixels10Extra
-		}
+	} else {
+		// Paid tier: limits scale with slot count
+		quota.MaxPixels = slots
+		quota.MaxSalePages = slots
+		quota.MaxEventsPerMonth = int64(slots) * domain.PaidEventsPerSlot
+		quota.RetentionDays = domain.PaidRetentionDays
 	}
 
-	// Check active replay credits
+	// 4. Check active replay credits
 	credits, err := s.creditRepo.GetActiveByCustomerID(ctx, customerID)
 	if err != nil {
 		return nil, fmt.Errorf("get active credits: %w", err)
@@ -108,7 +105,7 @@ func (s *QuotaService) GetCustomerQuota(ctx context.Context, customerID string) 
 		quota.RemainingReplays = totalRemaining
 	}
 
-	// Get current month usage
+	// 5. Get current month usage
 	usage, err := s.usageRepo.GetCurrentMonth(ctx, customerID)
 	if err != nil {
 		return nil, fmt.Errorf("get current month usage: %w", err)

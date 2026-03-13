@@ -1,35 +1,23 @@
 package domain
 
-// Plan constants
+// Plan constants — simplified to free vs paid
 const (
 	PlanSandbox = "sandbox"
-	PlanLaunch  = "launch"
-	PlanShield  = "shield"
-	PlanVault   = "vault"
+	PlanPaid    = "paid"
 )
 
-// PlanLimits defines the base limits for a subscription plan.
-type PlanLimits struct {
-	MaxPixels         int
-	MaxSalePages      int
-	MaxEventsPerMonth int64
-	RetentionDays     int
-	IncludedReplays   int // -1 = unlimited, 0 = none (buy packs)
-}
-
-// PlanLimitsMap maps plan names to their base limits.
-var PlanLimitsMap = map[string]PlanLimits{
-	PlanSandbox: {MaxPixels: 2, MaxSalePages: 1, MaxEventsPerMonth: 5_000, RetentionDays: 7, IncludedReplays: 0},
-	PlanLaunch:  {MaxPixels: 10, MaxSalePages: 5, MaxEventsPerMonth: 200_000, RetentionDays: 60, IncludedReplays: 0},
-	PlanShield:  {MaxPixels: 25, MaxSalePages: 15, MaxEventsPerMonth: 1_000_000, RetentionDays: 180, IncludedReplays: 3},
-	PlanVault:   {MaxPixels: 50, MaxSalePages: 30, MaxEventsPerMonth: 5_000_000, RetentionDays: 365, IncludedReplays: -1},
-}
-
-// Add-on values
+// Free tier limits (no pixel slot subscription)
 const (
-	Addon1MEventsPerMonth = 1_000_000
-	AddonPixels10Extra    = 10
-	AddonSalePages10Extra = 10
+	FreeMaxPixels         = 1
+	FreeMaxSalePages      = 1
+	FreeMaxEventsPerMonth = 5_000
+	FreeRetentionDays     = 7
+)
+
+// Paid tier: per-slot values
+const (
+	PaidEventsPerSlot = 100_000
+	PaidRetentionDays = 180
 )
 
 // DefaultMaxEventsPerReplay is used for all replay credits.
@@ -37,6 +25,7 @@ const DefaultMaxEventsPerReplay = 100_000
 
 // CustomerQuota represents the resolved effective limits for a customer.
 type CustomerQuota struct {
+	PixelSlots          int    `json:"pixel_slots"`
 	Plan                string `json:"plan"`
 	MaxPixels           int    `json:"max_pixels"`
 	MaxEventsPerMonth   int64  `json:"max_events_per_month"`

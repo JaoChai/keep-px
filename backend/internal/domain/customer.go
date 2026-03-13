@@ -10,6 +10,7 @@ type Customer struct {
 	Name             string     `json:"name"`
 	APIKey           string     `json:"api_key"`
 	Plan             string     `json:"plan"`
+	RetentionDays    int        `json:"retention_days"`
 	StripeCustomerID *string    `json:"stripe_customer_id,omitempty"`
 	IsAdmin          bool       `json:"is_admin"`
 	SuspendedAt      *time.Time `json:"suspended_at,omitempty"`

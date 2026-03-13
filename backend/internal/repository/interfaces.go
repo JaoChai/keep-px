@@ -27,6 +27,7 @@ type CustomerRepository interface {
 	UpdatePlan(ctx context.Context, customerID string, plan string) error
 	UpdateStripeCustomerID(ctx context.Context, customerID string, stripeCustomerID string) error
 	RegenerateAPIKey(ctx context.Context, customerID, newKey string) (*domain.Customer, error)
+	UpdateRetentionDays(ctx context.Context, customerID string, days int) error
 }
 
 type PixelRepository interface {
@@ -118,6 +119,7 @@ type SubscriptionRepository interface {
 	GetMaxEventsPerMonth(ctx context.Context, customerID string) (int64, error)
 	Update(ctx context.Context, sub *domain.Subscription) error
 	ListByCustomerID(ctx context.Context, customerID string) ([]*domain.Subscription, error)
+	GetPixelSlotQuantity(ctx context.Context, customerID string) (int, error)
 }
 
 type EventUsageRepository interface {

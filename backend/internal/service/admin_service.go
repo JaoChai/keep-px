@@ -55,10 +55,8 @@ func (s *AdminService) ListCustomers(ctx context.Context, search, plan, status s
 	offset := (page - 1) * perPage
 
 	// Validate plan against allow-list
-	if plan != "" {
-		if _, ok := domain.PlanLimitsMap[plan]; !ok {
-			return nil, 0, ErrInvalidPlan
-		}
+	if plan != "" && plan != domain.PlanSandbox && plan != domain.PlanPaid {
+		return nil, 0, ErrInvalidPlan
 	}
 
 	// Validate status against allow-list
@@ -81,7 +79,7 @@ func (s *AdminService) GetCustomerDetail(ctx context.Context, customerID string)
 }
 
 func (s *AdminService) ChangePlan(ctx context.Context, adminID, customerID, newPlan string) error {
-	if _, ok := domain.PlanLimitsMap[newPlan]; !ok {
+	if newPlan != domain.PlanSandbox && newPlan != domain.PlanPaid {
 		return ErrInvalidPlan
 	}
 

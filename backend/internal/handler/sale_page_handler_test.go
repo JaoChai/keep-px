@@ -66,8 +66,8 @@ func setupSalePageTest(t *testing.T) *salePageTestEnv {
 func (env *salePageTestEnv) setupQuotaAllowed(customerID string, currentSalePageCount int) {
 	env.customerRepo.On("GetByID", mock.Anything, customerID).
 		Return(&domain.Customer{ID: customerID, Plan: domain.PlanSandbox}, nil)
-	env.subRepo.On("GetActiveByCustomerID", mock.Anything, customerID).
-		Return([]*domain.Subscription{}, nil)
+	env.subRepo.On("GetPixelSlotQuantity", mock.Anything, customerID).
+		Return(0, nil)
 	env.creditRepo.On("GetActiveByCustomerID", mock.Anything, customerID).
 		Return([]*domain.ReplayCredit{}, nil)
 	env.usageRepo.On("GetCurrentMonth", mock.Anything, customerID).
