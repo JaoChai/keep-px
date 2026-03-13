@@ -10,7 +10,9 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { usePixels, useCreatePixel, useUpdatePixel, useDeletePixel, useTestPixel } from '@/hooks/use-pixels'
+import { useQuota } from '@/hooks/use-billing'
 import { QueryErrorAlert } from '@/components/shared/QueryErrorAlert'
+import { Link } from 'react-router'
 import type { Pixel } from '@/types'
 
 const pixelSchema = z.object({
@@ -24,6 +26,7 @@ type PixelForm = z.infer<typeof pixelSchema>
 
 export function PixelsPage() {
   const { data: pixels, isLoading, isError, error, refetch } = usePixels()
+  const { data: quota } = useQuota()
   const createPixel = useCreatePixel()
   const updatePixel = useUpdatePixel()
   const deletePixel = useDeletePixel()
@@ -31,6 +34,8 @@ export function PixelsPage() {
   const [showDialog, setShowDialog] = useState(false)
   const [editingPixel, setEditingPixel] = useState<Pixel | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+
+  const isAtPixelLimit = !!quota && !!pixels && pixels.length >= quota.max_pixels
 
   const {
     register,
@@ -98,9 +103,16 @@ export function PixelsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">พิกเซล</h1>
-          <p className="text-sm text-muted-foreground mt-1">จัดการ Facebook Pixel ของคุณ</p>
+          {quota && pixels && (
+            <p className="text-sm text-muted-foreground mt-1">
+              จัดการ Facebook Pixel ของคุณ ({pixels.length}/{quota.max_pixels} สล็อต)
+            </p>
+          )}
+          {!quota && (
+            <p className="text-sm text-muted-foreground mt-1">จัดการ Facebook Pixel ของคุณ</p>
+          )}
         </div>
-        <Button onClick={openCreate}>
+        <Button onClick={openCreate} disabled={isAtPixelLimit} title={isAtPixelLimit ? 'ถึงขีดจำกัด Pixel Slots แล้ว' : undefined}>
           <Plus className="h-4 w-4" />
           เพิ่มพิกเซล
         </Button>
@@ -111,13 +123,22 @@ export function PixelsPage() {
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>
       ) : !pixels || pixels.length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-border rounded-lg">
-          <p className="text-muted-foreground mb-4">ยังไม่มีพิกเซล</p>
-          <Button variant="outline" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            เพิ่มพิกเซลแรกของคุณ
-          </Button>
-        </div>
+        isAtPixelLimit ? (
+          <div className="text-center py-12 border border-dashed border-border rounded-lg">
+            <p className="text-muted-foreground mb-4">ถึงขีดจำกัด Pixel Slots แล้ว</p>
+            <Link to="/billing">
+              <Button variant="outline">อัปเกรด</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="text-center py-12 border border-dashed border-border rounded-lg">
+            <p className="text-muted-foreground mb-4">ยังไม่มีพิกเซล</p>
+            <Button variant="outline" onClick={openCreate}>
+              <Plus className="h-4 w-4" />
+              เพิ่มพิกเซลแรกของคุณ
+            </Button>
+          </div>
+        )
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full">

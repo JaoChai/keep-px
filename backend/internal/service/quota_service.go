@@ -198,3 +198,9 @@ func (s *QuotaService) ConsumeReplayCredit(ctx context.Context, customerID strin
 
 	return credit, nil
 }
+
+// RefundReplayCredit decrements used_replays for the given credit.
+// Used when a pending replay session is cancelled before any events are sent.
+func (s *QuotaService) RefundReplayCredit(ctx context.Context, creditID string) error {
+	return s.creditRepo.RefundCredit(ctx, creditID)
+}

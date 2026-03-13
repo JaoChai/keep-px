@@ -53,7 +53,7 @@ type EventRepository interface {
 	ListLatestByCustomerID(ctx context.Context, customerID string, pixelID string, limit int) ([]*domain.RealtimeEvent, error)
 	ListRecentByCustomerID(ctx context.Context, customerID string, since time.Time, pixelID string, limit int) ([]*domain.RealtimeEvent, error)
 	DeleteOlderThan(ctx context.Context, before time.Time, batchSize int) (int64, error)
-	DeleteExpiredByPlan(ctx context.Context, batchSize int) (int64, error)
+	DeleteExpiredByRetention(ctx context.Context, batchSize int) (int64, error)
 }
 
 type ReplaySessionRepository interface {
@@ -110,6 +110,7 @@ type ReplayCreditRepository interface {
 	GetActiveByCustomerID(ctx context.Context, customerID string) ([]*domain.ReplayCredit, error)
 	IncrementUsed(ctx context.Context, id string) error
 	ConsumeOneCredit(ctx context.Context, customerID string, maxEventCount int) (*domain.ReplayCredit, error)
+	RefundCredit(ctx context.Context, id string) error
 }
 
 type SubscriptionRepository interface {

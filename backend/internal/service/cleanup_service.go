@@ -71,10 +71,15 @@ func (s *CleanupService) run(ctx context.Context) {
 	}
 }
 
+// RunOnce runs a single cleanup cycle. Exported for testing.
+func (s *CleanupService) RunOnce(ctx context.Context) {
+	s.cleanup(ctx)
+}
+
 func (s *CleanupService) cleanup(ctx context.Context) {
 	var totalDeleted int64
 
-	s.logger.Info("per-plan event cleanup started")
+	s.logger.Info("per-retention event cleanup started")
 
 	for {
 		if ctx.Err() != nil {
@@ -82,7 +87,7 @@ func (s *CleanupService) cleanup(ctx context.Context) {
 			return
 		}
 
-		deleted, err := s.eventRepo.DeleteExpiredByPlan(ctx, cleanupBatchSize)
+		deleted, err := s.eventRepo.DeleteExpiredByRetention(ctx, cleanupBatchSize)
 		if err != nil {
 			s.logger.Error("event cleanup batch failed", "error", err, "deleted_so_far", totalDeleted)
 			return
@@ -106,5 +111,5 @@ func (s *CleanupService) cleanup(ctx context.Context) {
 		}
 	}
 
-	s.logger.Info("per-plan event cleanup completed", "total_deleted", totalDeleted)
+	s.logger.Info("per-retention event cleanup completed", "total_deleted", totalDeleted)
 }

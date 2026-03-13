@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { SalePagePreview } from '@/components/sale-pages/SalePagePreview'
 import { StyleEditor } from '@/components/sale-pages/StyleEditor'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
+import { useQuota } from '@/hooks/use-billing'
 import { usePixels } from '@/hooks/use-pixels'
 import { useUploadImage, useUploadImages } from '@/hooks/use-upload'
 import type { SalePageContent, SalePageContentV2, PageStyle } from '@/types'
@@ -54,9 +55,12 @@ export function SalePageEditorPage() {
   const isEditing = !!id
 
   const { data: salePages } = useSalePages()
+  const { data: quota } = useQuota()
   const { data: pixels } = usePixels()
   const createSalePage = useCreateSalePage()
   const updateSalePage = useUpdateSalePage()
+
+  const isAtSalePageLimit = !isEditing && !!quota && !!salePages && salePages.length >= quota.max_sale_pages
 
   const [features, setFeatures] = useState<string[]>([''])
   const [bodyImages, setBodyImages] = useState<string[]>([])
@@ -320,369 +324,383 @@ export function SalePageEditorPage() {
         </div>
       </div>
 
-      {/* 2-Column Layout */}
-      <div className="flex gap-8">
-        {/* Left Column - Form */}
-        <div className="flex-1 lg:w-2/3 space-y-6">
-          {/* Basic Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>ข้อมูลพื้นฐาน</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">ชื่อเพจ</Label>
-                <Input id="name" placeholder="เซลเพจของฉัน" {...register('name')} />
-                {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => setShowCustomSlug(!showCustomSlug)}
-                >
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showCustomSlug ? 'rotate-0' : '-rotate-90'}`} />
-                  ตั้ง URL เอง (ไม่บังคับ)
-                </button>
-                {showCustomSlug && (
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-border bg-muted text-sm text-muted-foreground">
-                      /p/
-                    </span>
-                    <Input
-                      id="slug"
-                      className="rounded-l-none"
-                      placeholder="my-sale-page"
-                      {...register('slug')}
-                    />
+      {isAtSalePageLimit ? (
+        <div className="text-center py-12 border border-dashed border-border rounded-lg">
+          <p className="text-lg font-medium text-foreground mb-2">ถึงขีดจำกัดเซลเพจแล้ว</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            คุณมีเซลเพจ {salePages?.length}/{quota?.max_sale_pages} หน้าแล้ว
+          </p>
+          <Link to="/billing">
+            <Button variant="outline">อัปเกรดแพ็คเกจ</Button>
+          </Link>
+        </div>
+      ) : (
+        <>
+          {/* 2-Column Layout */}
+          <div className="flex gap-8">
+            {/* Left Column - Form */}
+            <div className="flex-1 lg:w-2/3 space-y-6">
+              {/* Basic Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>ข้อมูลพื้นฐาน</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">ชื่อเพจ</Label>
+                    <Input id="name" placeholder="เซลเพจของฉัน" {...register('name')} />
+                    {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
                   </div>
-                )}
-                {!showCustomSlug && (
-                  <p className="text-xs text-muted-foreground">ระบบจะสร้าง URL ให้อัตโนมัติ</p>
-                )}
-                {errors.slug && <p className="text-sm text-red-500">{errors.slug.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>พิกเซล (ไม่บังคับ)</Label>
-                <div className="max-h-40 overflow-y-auto border border-border rounded-md p-2 space-y-1">
-                  {(!pixels || pixels.length === 0) && (
-                    <p className="text-xs text-muted-foreground">ไม่มีพิกเซลที่ใช้ได้</p>
-                  )}
-                  {pixels?.map((pixel) => (
-                    <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-accent cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedPixelIds.includes(pixel.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedPixelIds(prev => [...prev, pixel.id])
-                          } else {
-                            setSelectedPixelIds(prev => prev.filter(id => id !== pixel.id))
-                          }
-                        }}
-                        className="rounded border-border"
-                      />
-                      {pixel.name} ({pixel.fb_pixel_id})
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Hero Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>ส่วน Hero</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="hero_title">หัวข้อ</Label>
-                <Input id="hero_title" placeholder="ชื่อสินค้าของคุณ" {...register('hero_title')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hero_subtitle">คำบรรยาย</Label>
-                <Input id="hero_subtitle" placeholder="คำอธิบายสั้นๆ..." {...register('hero_subtitle')} />
-              </div>
-              <div className="space-y-2">
-                <Label>รูปภาพ Hero</Label>
-                {heroImageUrl && (
-                  <div className="relative w-full max-w-[200px]">
-                    <img src={heroImageUrl} alt="" className="w-full h-auto rounded-lg border border-border" />
+                  <div className="space-y-2">
                     <button
                       type="button"
-                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
-                      onClick={() => setValue('hero_image_url', '')}
+                      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setShowCustomSlug(!showCustomSlug)}
                     >
-                      <X className="h-3 w-3" />
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showCustomSlug ? 'rotate-0' : '-rotate-90'}`} />
+                      ตั้ง URL เอง (ไม่บังคับ)
                     </button>
+                    {showCustomSlug && (
+                      <div className="flex">
+                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-border bg-muted text-sm text-muted-foreground">
+                          /p/
+                        </span>
+                        <Input
+                          id="slug"
+                          className="rounded-l-none"
+                          placeholder="my-sale-page"
+                          {...register('slug')}
+                        />
+                      </div>
+                    )}
+                    {!showCustomSlug && (
+                      <p className="text-xs text-muted-foreground">ระบบจะสร้าง URL ให้อัตโนมัติ</p>
+                    )}
+                    {errors.slug && <p className="text-sm text-red-500">{errors.slug.message}</p>}
                   </div>
-                )}
-                <div className="flex gap-2">
-                  <input ref={heroFileRef} type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadImage.isPending}
-                    onClick={() => heroFileRef.current?.click()}
-                  >
-                    {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                    อัพโหลดรูป
-                  </Button>
-                </div>
-                <Input id="hero_image_url" placeholder="หรือวาง URL รูปภาพ" {...register('hero_image_url')} className="text-xs" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Description */}
-          <Card>
-            <CardHeader>
-              <CardTitle>คำอธิบาย</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="description">รายละเอียด</Label>
-                <Textarea
-                  id="description"
-                  placeholder="อธิบายสินค้าหรือบริการของคุณ..."
-                  rows={4}
-                  {...register('description')}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>จุดเด่น</Label>
-                <div className="space-y-2">
-                  {features.map((feature, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Input
-                        placeholder={`จุดเด่นที่ ${index + 1}`}
-                        value={feature}
-                        onChange={(e) => updateFeature(index, e.target.value)}
-                      />
-                      {features.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          type="button"
-                          onClick={() => removeFeature(index)}
-                        >
-                          <X className="h-4 w-4 text-muted-foreground" />
-                        </Button>
+                  <div className="space-y-2">
+                    <Label>พิกเซล (ไม่บังคับ)</Label>
+                    <div className="max-h-40 overflow-y-auto border border-border rounded-md p-2 space-y-1">
+                      {(!pixels || pixels.length === 0) && (
+                        <p className="text-xs text-muted-foreground">ไม่มีพิกเซลที่ใช้ได้</p>
                       )}
+                      {pixels?.map((pixel) => (
+                        <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-accent cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedPixelIds.includes(pixel.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedPixelIds(prev => [...prev, pixel.id])
+                              } else {
+                                setSelectedPixelIds(prev => prev.filter(id => id !== pixel.id))
+                              }
+                            }}
+                            className="rounded border-border"
+                          />
+                          {pixel.name} ({pixel.fb_pixel_id})
+                        </label>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                {features.length < 10 && (
-                  <Button variant="outline" size="sm" type="button" onClick={addFeature}>
-                    <Plus className="h-3.5 w-3.5" />
-                    เพิ่มจุดเด่น
-                  </Button>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>รูปภาพเนื้อหา</Label>
-                {bodyImages.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {bodyImages.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <img src={url} alt="" className="w-full h-24 object-cover rounded-lg border border-border" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Hero Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>ส่วน Hero</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="hero_title">หัวข้อ</Label>
+                    <Input id="hero_title" placeholder="ชื่อสินค้าของคุณ" {...register('hero_title')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hero_subtitle">คำบรรยาย</Label>
+                    <Input id="hero_subtitle" placeholder="คำอธิบายสั้นๆ..." {...register('hero_subtitle')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>รูปภาพ Hero</Label>
+                    {heroImageUrl && (
+                      <div className="relative w-full max-w-[200px]">
+                        <img src={heroImageUrl} alt="" className="w-full h-auto rounded-lg border border-border" />
                         <button
                           type="button"
-                          className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                          onClick={() => removeBodyImage(index)}
+                          className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                          onClick={() => setValue('hero_image_url', '')}
                         >
                           <X className="h-3 w-3" />
                         </button>
                       </div>
-                    ))}
+                    )}
+                    <div className="flex gap-2">
+                      <input ref={heroFileRef} type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadImage.isPending}
+                        onClick={() => heroFileRef.current?.click()}
+                      >
+                        {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        อัพโหลดรูป
+                      </Button>
+                    </div>
+                    <Input id="hero_image_url" placeholder="หรือวาง URL รูปภาพ" {...register('hero_image_url')} className="text-xs" />
                   </div>
-                )}
-                <div>
-                  <input ref={bodyFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleBodyImageUpload} />
+                </CardContent>
+              </Card>
+
+              {/* Description */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>คำอธิบาย</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="description">รายละเอียด</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="อธิบายสินค้าหรือบริการของคุณ..."
+                      rows={4}
+                      {...register('description')}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>จุดเด่น</Label>
+                    <div className="space-y-2">
+                      {features.map((feature, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            placeholder={`จุดเด่นที่ ${index + 1}`}
+                            value={feature}
+                            onChange={(e) => updateFeature(index, e.target.value)}
+                          />
+                          {features.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              type="button"
+                              onClick={() => removeFeature(index)}
+                            >
+                              <X className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {features.length < 10 && (
+                      <Button variant="outline" size="sm" type="button" onClick={addFeature}>
+                        <Plus className="h-3.5 w-3.5" />
+                        เพิ่มจุดเด่น
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>รูปภาพเนื้อหา</Label>
+                    {bodyImages.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2">
+                        {bodyImages.map((url, index) => (
+                          <div key={index} className="relative group">
+                            <img src={url} alt="" className="w-full h-24 object-cover rounded-lg border border-border" />
+                            <button
+                              type="button"
+                              className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                              onClick={() => removeBodyImage(index)}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div>
+                      <input ref={bodyFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleBodyImageUpload} />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadImages.isPending}
+                        onClick={() => bodyFileRef.current?.click()}
+                      >
+                        {uploadImages.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        เพิ่มรูปภาพ
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Call to Action */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>ปุ่มกดดำเนินการ</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cta_button_text">ข้อความปุ่ม</Label>
+                    <Input id="cta_button_text" placeholder="ซื้อเลย" {...register('cta_button_text')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cta_button_link">ลิงก์ปุ่ม</Label>
+                    <Input id="cta_button_link" placeholder="https://example.com/buy" {...register('cta_button_link')} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tracking Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>ตั้งค่าการติดตาม</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cta_event_name">เมื่อกดปุ่ม CTA ให้ยิงอีเวนต์</Label>
+                    <select
+                      id="cta_event_name"
+                      className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      {...register('cta_event_name')}
+                    >
+                      {CTA_EVENT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tracking_content_name">ชื่อสินค้า (ไม่บังคับ)</Label>
+                    <Input
+                      id="tracking_content_name"
+                      placeholder="เช่น ครีมหน้าใส, คอร์สออนไลน์"
+                      {...register('tracking_content_name')}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="tracking_content_value">ราคาสินค้า (ไม่บังคับ)</Label>
+                      <Input
+                        id="tracking_content_value"
+                        type="number"
+                        placeholder="0"
+                        {...register('tracking_content_value', { valueAsNumber: true })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tracking_currency">สกุลเงิน</Label>
+                      <select
+                        id="tracking_currency"
+                        className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        {...register('tracking_currency')}
+                      >
+                        <option value="THB">THB (บาท)</option>
+                        <option value="USD">USD (ดอลลาร์)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
+                    <div className="flex items-start gap-2">
+                      <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                      <div className="text-xs text-blue-700 space-y-1">
+                        <p className="font-medium">อีเวนต์ที่ยิงอัตโนมัติ:</p>
+                        <ul className="space-y-0.5 ml-1">
+                          <li><code className="bg-blue-100 px-1 rounded">PageView</code> — ยิงเมื่อเปิดหน้าเพจ</li>
+                          <li><code className="bg-blue-100 px-1 rounded">ViewContent</code> — ยิงเมื่อเปิดหน้าเพจ</li>
+                          <li><code className="bg-blue-100 px-1 rounded">Contact</code> — ยิงเมื่อกด LINE หรือเบอร์โทร</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Page Style */}
+              <StyleEditor style={pageStyle} onChange={setPageStyle} />
+
+              {/* Contact Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>ข้อมูลติดต่อ</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="contact_line_id">LINE ID</Label>
+                    <Input id="contact_line_id" placeholder="@yourlineid" {...register('contact_line_id')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contact_phone">เบอร์โทรศัพท์</Label>
+                    <Input id="contact_phone" placeholder="08x-xxx-xxxx" {...register('contact_phone')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contact_website_url">URL เว็บไซต์</Label>
+                    <Input
+                      id="contact_website_url"
+                      placeholder="https://yourwebsite.com"
+                      {...register('contact_website_url')}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column - Preview */}
+            <div className="hidden lg:block lg:w-1/3">
+              <div className="sticky top-8">
+                <p className="text-sm font-medium text-muted-foreground mb-3">ตัวอย่าง</p>
+                <SalePagePreview
+                  hero={previewHero}
+                  body={previewBody}
+                  cta={previewCta}
+                  contact={previewContact}
+                  ctaEventName={ctaEventName || 'Lead'}
+                  style={pageStyle}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Published Success Dialog */}
+          <Dialog open={!!publishedDialog} onOpenChange={() => setPublishedDialog(null)}>
+            <DialogContent onClose={() => setPublishedDialog(null)}>
+              <DialogHeader>
+                <DialogTitle>เผยแพร่เซลเพจสำเร็จ!</DialogTitle>
+              </DialogHeader>
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-muted-foreground">เพจของคุณเปิดให้ใช้งานที่:</p>
+                <div className="flex items-center gap-2 p-2 bg-muted rounded-md border border-border">
+                  <code className="text-sm text-foreground flex-1 truncate">
+                    {publishedDialog && `${window.location.origin}/p/${publishedDialog.slug}`}
+                  </code>
                   <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadImages.isPending}
-                    onClick={() => bodyFileRef.current?.click()}
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => publishedDialog && copyUrl(publishedDialog.slug)}
                   >
-                    {uploadImages.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                    เพิ่มรูปภาพ
+                    {copiedUrl ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  แชร์ลิงก์นี้ใน bio link, LINE หรือ Facebook เพื่อเริ่มติดตาม
+                </p>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Call to Action */}
-          <Card>
-            <CardHeader>
-              <CardTitle>ปุ่มกดดำเนินการ</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="cta_button_text">ข้อความปุ่ม</Label>
-                <Input id="cta_button_text" placeholder="ซื้อเลย" {...register('cta_button_text')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cta_button_link">ลิงก์ปุ่ม</Label>
-                <Input id="cta_button_link" placeholder="https://example.com/buy" {...register('cta_button_link')} />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Tracking Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>ตั้งค่าการติดตาม</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="cta_event_name">เมื่อกดปุ่ม CTA ให้ยิงอีเวนต์</Label>
-                <select
-                  id="cta_event_name"
-                  className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  {...register('cta_event_name')}
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => publishedDialog && window.open(`/p/${publishedDialog.slug}`, '_blank')}
                 >
-                  {CTA_EVENT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tracking_content_name">ชื่อสินค้า (ไม่บังคับ)</Label>
-                <Input
-                  id="tracking_content_name"
-                  placeholder="เช่น ครีมหน้าใส, คอร์สออนไลน์"
-                  {...register('tracking_content_name')}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="tracking_content_value">ราคาสินค้า (ไม่บังคับ)</Label>
-                  <Input
-                    id="tracking_content_value"
-                    type="number"
-                    placeholder="0"
-                    {...register('tracking_content_value', { valueAsNumber: true })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tracking_currency">สกุลเงิน</Label>
-                  <select
-                    id="tracking_currency"
-                    className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    {...register('tracking_currency')}
-                  >
-                    <option value="THB">THB (บาท)</option>
-                    <option value="USD">USD (ดอลลาร์)</option>
-                  </select>
-                </div>
-              </div>
-              <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
-                <div className="flex items-start gap-2">
-                  <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                  <div className="text-xs text-blue-700 space-y-1">
-                    <p className="font-medium">อีเวนต์ที่ยิงอัตโนมัติ:</p>
-                    <ul className="space-y-0.5 ml-1">
-                      <li><code className="bg-blue-100 px-1 rounded">PageView</code> — ยิงเมื่อเปิดหน้าเพจ</li>
-                      <li><code className="bg-blue-100 px-1 rounded">ViewContent</code> — ยิงเมื่อเปิดหน้าเพจ</li>
-                      <li><code className="bg-blue-100 px-1 rounded">Contact</code> — ยิงเมื่อกด LINE หรือเบอร์โทร</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Page Style */}
-          <StyleEditor style={pageStyle} onChange={setPageStyle} />
-
-          {/* Contact Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>ข้อมูลติดต่อ</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="contact_line_id">LINE ID</Label>
-                <Input id="contact_line_id" placeholder="@yourlineid" {...register('contact_line_id')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contact_phone">เบอร์โทรศัพท์</Label>
-                <Input id="contact_phone" placeholder="08x-xxx-xxxx" {...register('contact_phone')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="contact_website_url">URL เว็บไซต์</Label>
-                <Input
-                  id="contact_website_url"
-                  placeholder="https://yourwebsite.com"
-                  {...register('contact_website_url')}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column - Preview */}
-        <div className="hidden lg:block lg:w-1/3">
-          <div className="sticky top-8">
-            <p className="text-sm font-medium text-muted-foreground mb-3">ตัวอย่าง</p>
-            <SalePagePreview
-              hero={previewHero}
-              body={previewBody}
-              cta={previewCta}
-              contact={previewContact}
-              ctaEventName={ctaEventName || 'Lead'}
-              style={pageStyle}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Published Success Dialog */}
-      <Dialog open={!!publishedDialog} onOpenChange={() => setPublishedDialog(null)}>
-        <DialogContent onClose={() => setPublishedDialog(null)}>
-          <DialogHeader>
-            <DialogTitle>เผยแพร่เซลเพจสำเร็จ!</DialogTitle>
-          </DialogHeader>
-          <div className="mt-4 space-y-3">
-            <p className="text-sm text-muted-foreground">เพจของคุณเปิดให้ใช้งานที่:</p>
-            <div className="flex items-center gap-2 p-2 bg-muted rounded-md border border-border">
-              <code className="text-sm text-foreground flex-1 truncate">
-                {publishedDialog && `${window.location.origin}/p/${publishedDialog.slug}`}
-              </code>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => publishedDialog && copyUrl(publishedDialog.slug)}
-              >
-                {copiedUrl ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              แชร์ลิงก์นี้ใน bio link, LINE หรือ Facebook เพื่อเริ่มติดตาม
-            </p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => publishedDialog && window.open(`/p/${publishedDialog.slug}`, '_blank')}
-            >
-              <ExternalLink className="h-4 w-4" />
-              เปิดเพจ
-            </Button>
-            <Button onClick={() => { setPublishedDialog(null); navigate('/sale-pages') }}>
-              กลับไปเซลเพจ
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                  <ExternalLink className="h-4 w-4" />
+                  เปิดเพจ
+                </Button>
+                <Button onClick={() => { setPublishedDialog(null); navigate('/sale-pages') }}>
+                  กลับไปเซลเพจ
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </div>
   )
 }

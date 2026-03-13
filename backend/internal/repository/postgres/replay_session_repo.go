@@ -16,11 +16,11 @@ func NewReplaySessionRepo(pool *pgxpool.Pool) *ReplaySessionRepo {
 	return &ReplaySessionRepo{pool: pool}
 }
 
-const replaySessionColumns = `id, customer_id, source_pixel_id, target_pixel_id, status, total_events, replayed_events, failed_events, event_types, date_from, date_to, time_mode, batch_delay_ms, error_message, started_at, completed_at, cancelled_at, failed_batch_ranges, created_at`
+const replaySessionColumns = `id, customer_id, source_pixel_id, target_pixel_id, status, total_events, replayed_events, failed_events, event_types, date_from, date_to, time_mode, batch_delay_ms, error_message, started_at, completed_at, cancelled_at, failed_batch_ranges, credit_id, created_at`
 
 func scanReplaySession(row pgx.Row) (*domain.ReplaySession, error) {
 	s := &domain.ReplaySession{}
-	err := row.Scan(&s.ID, &s.CustomerID, &s.SourcePixelID, &s.TargetPixelID, &s.Status, &s.TotalEvents, &s.ReplayedEvents, &s.FailedEvents, &s.EventTypes, &s.DateFrom, &s.DateTo, &s.TimeMode, &s.BatchDelayMs, &s.ErrorMessage, &s.StartedAt, &s.CompletedAt, &s.CancelledAt, &s.FailedBatchRanges, &s.CreatedAt)
+	err := row.Scan(&s.ID, &s.CustomerID, &s.SourcePixelID, &s.TargetPixelID, &s.Status, &s.TotalEvents, &s.ReplayedEvents, &s.FailedEvents, &s.EventTypes, &s.DateFrom, &s.DateTo, &s.TimeMode, &s.BatchDelayMs, &s.ErrorMessage, &s.StartedAt, &s.CompletedAt, &s.CancelledAt, &s.FailedBatchRanges, &s.CreditID, &s.CreatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, nil
 	}
@@ -29,10 +29,10 @@ func scanReplaySession(row pgx.Row) (*domain.ReplaySession, error) {
 
 func (r *ReplaySessionRepo) Create(ctx context.Context, session *domain.ReplaySession) error {
 	return r.pool.QueryRow(ctx,
-		`INSERT INTO replay_sessions (customer_id, source_pixel_id, target_pixel_id, total_events, event_types, date_from, date_to, time_mode, batch_delay_ms)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		`INSERT INTO replay_sessions (customer_id, source_pixel_id, target_pixel_id, total_events, event_types, date_from, date_to, time_mode, batch_delay_ms, credit_id)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		 RETURNING id, status, replayed_events, failed_events, created_at`,
-		session.CustomerID, session.SourcePixelID, session.TargetPixelID, session.TotalEvents, session.EventTypes, session.DateFrom, session.DateTo, session.TimeMode, session.BatchDelayMs,
+		session.CustomerID, session.SourcePixelID, session.TargetPixelID, session.TotalEvents, session.EventTypes, session.DateFrom, session.DateTo, session.TimeMode, session.BatchDelayMs, session.CreditID,
 	).Scan(&session.ID, &session.Status, &session.ReplayedEvents, &session.FailedEvents, &session.CreatedAt)
 }
 
@@ -54,7 +54,7 @@ func (r *ReplaySessionRepo) ListByCustomerID(ctx context.Context, customerID str
 	var sessions []*domain.ReplaySession
 	for rows.Next() {
 		s := &domain.ReplaySession{}
-		if err := rows.Scan(&s.ID, &s.CustomerID, &s.SourcePixelID, &s.TargetPixelID, &s.Status, &s.TotalEvents, &s.ReplayedEvents, &s.FailedEvents, &s.EventTypes, &s.DateFrom, &s.DateTo, &s.TimeMode, &s.BatchDelayMs, &s.ErrorMessage, &s.StartedAt, &s.CompletedAt, &s.CancelledAt, &s.FailedBatchRanges, &s.CreatedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.CustomerID, &s.SourcePixelID, &s.TargetPixelID, &s.Status, &s.TotalEvents, &s.ReplayedEvents, &s.FailedEvents, &s.EventTypes, &s.DateFrom, &s.DateTo, &s.TimeMode, &s.BatchDelayMs, &s.ErrorMessage, &s.StartedAt, &s.CompletedAt, &s.CancelledAt, &s.FailedBatchRanges, &s.CreditID, &s.CreatedAt); err != nil {
 			return nil, err
 		}
 		sessions = append(sessions, s)
