@@ -240,6 +240,9 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 		TimeMode:      timeMode,
 		BatchDelayMs:  input.BatchDelayMs,
 	}
+	if credit != nil {
+		session.CreditID = &credit.ID
+	}
 
 	if err := s.replayRepo.Create(ctx, session); err != nil {
 		return nil, fmt.Errorf("create replay session: %w", err)
@@ -477,6 +480,10 @@ func (s *ReplayService) Cancel(ctx context.Context, customerID, sessionID string
 		return nil, ErrReplayNotFound
 	}
 
+	// Check if eligible for credit refund BEFORE cancelling
+	// Only refund if still pending (no events sent yet)
+	eligibleForRefund := session.Status == "pending" && session.CreditID != nil
+
 	// Atomic cancel: only transitions pending/running -> cancelled
 	cancelled, err := s.replayRepo.CancelSession(ctx, sessionID)
 	if err != nil {
@@ -485,6 +492,15 @@ func (s *ReplayService) Cancel(ctx context.Context, customerID, sessionID string
 	if cancelled == nil {
 		return nil, ErrReplayNotCancellable
 	}
+
+	// Refund credit if session was pending (no events were sent)
+	if eligibleForRefund && s.quotaService != nil {
+		if err := s.quotaService.RefundReplayCredit(ctx, *session.CreditID); err != nil {
+			s.logger.Error("failed to refund replay credit on cancel", "error", err, "session_id", sessionID, "credit_id", *session.CreditID)
+			// Don't fail the cancel — the session is already cancelled
+		}
+	}
+
 	return cancelled, nil
 }
 
@@ -634,14 +650,16 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 
 	// Atomically consume a replay credit BEFORE creating the session to prevent
 	// TOCTOU race conditions where concurrent requests over-consume credits.
+	var retryCredit *domain.ReplayCredit
 	if s.quotaService != nil {
-		credit, err := s.quotaService.ConsumeReplayCredit(ctx, customerID, len(retryEvents))
+		var err error
+		retryCredit, err = s.quotaService.ConsumeReplayCredit(ctx, customerID, len(retryEvents))
 		if err != nil {
 			return nil, err
 		}
 		// Cap events to the credit's limit if applicable
-		if credit.MaxEventsPerReplay > 0 && len(retryEvents) > credit.MaxEventsPerReplay {
-			retryEvents = retryEvents[:credit.MaxEventsPerReplay]
+		if retryCredit.MaxEventsPerReplay > 0 && len(retryEvents) > retryCredit.MaxEventsPerReplay {
+			retryEvents = retryEvents[:retryCredit.MaxEventsPerReplay]
 		}
 	}
 
@@ -656,6 +674,9 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 		DateTo:        session.DateTo,
 		TimeMode:      session.TimeMode,
 		BatchDelayMs:  session.BatchDelayMs,
+	}
+	if retryCredit != nil {
+		newSession.CreditID = &retryCredit.ID
 	}
 
 	if err := s.replayRepo.Create(ctx, newSession); err != nil {

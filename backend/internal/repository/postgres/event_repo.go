@@ -314,16 +314,13 @@ func (r *EventRepo) DeleteOlderThan(ctx context.Context, before time.Time, batch
 	return tag.RowsAffected(), nil
 }
 
-func (r *EventRepo) DeleteExpiredByPlan(ctx context.Context, batchSize int) (int64, error) {
+func (r *EventRepo) DeleteExpiredByRetention(ctx context.Context, batchSize int) (int64, error) {
 	tag, err := r.pool.Exec(ctx,
 		`DELETE FROM pixel_events WHERE id IN (
 			SELECT pe.id FROM pixel_events pe
 			JOIN pixels p ON p.id = pe.pixel_id
 			JOIN customers c ON c.id = p.customer_id
-			WHERE (c.plan = 'sandbox' AND pe.created_at < NOW() - INTERVAL '7 days')
-			   OR (c.plan = 'launch'  AND pe.created_at < NOW() - INTERVAL '60 days')
-			   OR (c.plan = 'shield'  AND pe.created_at < NOW() - INTERVAL '180 days')
-			   OR (c.plan = 'vault'   AND pe.created_at < NOW() - INTERVAL '365 days')
+			WHERE pe.created_at < NOW() - (c.retention_days || ' days')::INTERVAL
 			LIMIT $1
 		)`,
 		batchSize,

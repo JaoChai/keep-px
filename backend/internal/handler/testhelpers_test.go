@@ -287,7 +287,7 @@ func (m *MockEventRepo) DeleteOlderThan(ctx context.Context, before time.Time, b
 	args := m.Called(ctx, before, batchSize)
 	return args.Get(0).(int64), args.Error(1)
 }
-func (m *MockEventRepo) DeleteExpiredByPlan(ctx context.Context, batchSize int) (int64, error) {
+func (m *MockEventRepo) DeleteExpiredByRetention(ctx context.Context, batchSize int) (int64, error) {
 	args := m.Called(ctx, batchSize)
 	return args.Get(0).(int64), args.Error(1)
 }
@@ -485,6 +485,10 @@ func (m *MockReplayCreditRepo) ConsumeOneCredit(ctx context.Context, customerID 
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.ReplayCredit), args.Error(1)
+}
+func (m *MockReplayCreditRepo) RefundCredit(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
 }
 
 // MockSubscriptionRepo implements repository.SubscriptionRepository.

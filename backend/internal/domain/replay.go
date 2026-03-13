@@ -24,6 +24,7 @@ type ReplaySession struct {
 	CompletedAt       *time.Time      `json:"completed_at,omitempty"`
 	CancelledAt       *time.Time      `json:"cancelled_at,omitempty"`
 	FailedBatchRanges json.RawMessage `json:"failed_batch_ranges,omitempty"`
+	CreditID          *string         `json:"credit_id,omitempty"`
 	CreatedAt         time.Time       `json:"created_at"`
 }
 

@@ -97,6 +97,20 @@ func (r *ReplayCreditRepo) IncrementUsed(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r *ReplayCreditRepo) RefundCredit(ctx context.Context, id string) error {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE replay_credits SET used_replays = GREATEST(0, used_replays - 1) WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+
 // ConsumeOneCredit atomically selects the earliest-expiring active credit for a
 // customer and increments its used_replays counter. It uses SELECT ... FOR UPDATE
 // SKIP LOCKED to prevent race conditions when multiple concurrent requests try
