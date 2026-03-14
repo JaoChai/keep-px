@@ -1,7 +1,9 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { useBlocker } from 'react-router'
 
 export function useUnsavedChanges(isDirty: boolean) {
+  const allowNextRef = useRef(false)
+
   // Browser close/refresh
   useEffect(() => {
     if (!isDirty) return
@@ -12,8 +14,11 @@ export function useUnsavedChanges(isDirty: boolean) {
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
 
-  // In-app navigation
-  const blocker = useBlocker(isDirty)
+  // In-app navigation — function form reads ref inside callback, not during render
+  const blocker = useBlocker(() => {
+    if (allowNextRef.current) return false
+    return isDirty
+  })
 
   const confirmLeave = useCallback(() => {
     if (blocker.state === 'blocked') {
@@ -27,9 +32,15 @@ export function useUnsavedChanges(isDirty: boolean) {
     }
   }, [blocker])
 
+  // Call before programmatic navigate() to bypass the blocker
+  const allowNavigation = useCallback(() => {
+    allowNextRef.current = true
+  }, [])
+
   return {
     isBlocked: blocker.state === 'blocked',
     confirmLeave,
     cancelLeave,
+    allowNavigation,
   }
 }

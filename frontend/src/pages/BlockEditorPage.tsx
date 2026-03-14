@@ -160,6 +160,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
 
       clearDraft()
       setHasChanges(false)
+      unsaved.allowNavigation()
 
       if (isPublished) {
         setPublishedDialog({ slug: resultSlug })

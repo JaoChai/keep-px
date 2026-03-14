@@ -330,6 +330,7 @@ export function SalePageEditorPage() {
       const result = await updateSalePage.mutateAsync({ id, ...payload })
       clearDraft()
       setHasUserEdited(false)
+      unsaved.allowNavigation()
       if (isPublished) {
         setPublishedDialog({ slug: result.slug })
       } else {
@@ -339,6 +340,7 @@ export function SalePageEditorPage() {
       const result = await createSalePage.mutateAsync(payload)
       clearDraft()
       setHasUserEdited(false)
+      unsaved.allowNavigation()
       if (isPublished) {
         setPublishedDialog({ slug: result.slug })
       } else {
