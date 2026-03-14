@@ -370,12 +370,12 @@ func (m *MockSalePageRepo) GetBySlug(ctx context.Context, slug string) (*domain.
 	}
 	return args.Get(0).(*domain.SalePage), args.Error(1)
 }
-func (m *MockSalePageRepo) ListByCustomerID(ctx context.Context, customerID string) ([]*domain.SalePage, error) {
-	args := m.Called(ctx, customerID)
+func (m *MockSalePageRepo) ListByCustomerID(ctx context.Context, customerID string, limit, offset int) ([]*domain.SalePage, int, error) {
+	args := m.Called(ctx, customerID, limit, offset)
 	if args.Get(0) == nil {
-		return nil, args.Error(1)
+		return nil, args.Int(1), args.Error(2)
 	}
-	return args.Get(0).([]*domain.SalePage), args.Error(1)
+	return args.Get(0).([]*domain.SalePage), args.Int(1), args.Error(2)
 }
 func (m *MockSalePageRepo) CountByCustomerID(ctx context.Context, customerID string) (int, error) {
 	args := m.Called(ctx, customerID)
@@ -757,7 +757,7 @@ func newTestSalePageService(
 	pixelRepo *MockPixelRepo,
 	quotaService *service.QuotaService,
 ) *service.SalePageService {
-	return service.NewSalePageService(context.Background(), salePageRepo, customerRepo, pixelRepo, quotaService)
+	return service.NewSalePageService(context.Background(), salePageRepo, customerRepo, pixelRepo, quotaService, 60*time.Second)
 }
 
 // newTestReplayService creates a ReplayService with mock repos.
