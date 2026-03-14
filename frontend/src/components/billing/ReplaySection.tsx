@@ -18,7 +18,6 @@ const REPLAY_OPTIONS = [
     price: 299,
     description: '1 รีเพลย์ · 90 วัน · สูงสุด 100K events',
     icon: Zap,
-    mode: 'ซื้อขาด',
     popular: false,
   },
   {
@@ -27,7 +26,6 @@ const REPLAY_OPTIONS = [
     price: 1990,
     description: 'รีเพลย์ไม่จำกัดตลอดรอบบิล',
     icon: Crown,
-    mode: 'รายเดือน',
     popular: true,
   },
 ] as const

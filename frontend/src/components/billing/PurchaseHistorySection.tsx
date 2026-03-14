@@ -9,12 +9,13 @@ interface PurchaseHistorySectionProps {
   isLoading: boolean
 }
 
+const STATUS_CONFIG = {
+  completed: { variant: 'success' as const, label: 'สำเร็จ' },
+  pending: { variant: 'secondary' as const, label: 'รอดำเนินการ' },
+} as const
+
 function StatusBadge({ status }: { status: string }) {
-  const config = {
-    completed: { variant: 'success' as const, label: 'สำเร็จ' },
-    pending: { variant: 'secondary' as const, label: 'รอดำเนินการ' },
-  }
-  const { variant, label } = config[status as keyof typeof config] ?? { variant: 'destructive' as const, label: 'ล้มเหลว' }
+  const { variant, label } = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ?? { variant: 'destructive' as const, label: 'ล้มเหลว' }
   return <Badge variant={variant}>{label}</Badge>
 }
 

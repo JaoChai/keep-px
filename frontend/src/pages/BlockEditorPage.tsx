@@ -11,14 +11,8 @@ import { BlockPreview } from '@/components/sale-pages/BlockPreview'
 import { StyleEditor } from '@/components/sale-pages/StyleEditor'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
+import { CTA_EVENT_OPTIONS } from '@/lib/utils'
 import type { Block, SalePage, SalePageContentV2, PageStyle } from '@/types'
-
-const CTA_EVENT_OPTIONS = [
-  { value: 'Lead', label: 'ลูกค้าสนใจ — แอด LINE / ทักแชท (Lead)' },
-  { value: 'Purchase', label: 'ลูกค้าสั่งซื้อ — โอนเงิน / จ่ายเงิน (Purchase)' },
-  { value: 'Contact', label: 'ลูกค้าติดต่อ — กดโทร / กดแชท (Contact)' },
-  { value: 'CompleteRegistration', label: 'ลูกค้าสมัคร — ลงทะเบียน / สมัครสมาชิก (CompleteRegistration)' },
-] as const
 
 
 // Wrapper: handles data loading and v1→v2 redirect
@@ -84,9 +78,6 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
   const [publishedDialog, setPublishedDialog] = useState<{ slug: string } | null>(null)
   const [copiedUrl, setCopiedUrl] = useState(false)
 
-  const handleNameChange = (value: string) => {
-    setName(value)
-  }
 
   const buildContent = (): SalePageContentV2 => ({
     version: 2,
@@ -215,7 +206,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                   id="page-name"
                   placeholder="เช่น โปรโมชั่นครีมหน้าใส"
                   value={name}
-                  onChange={(e) => handleNameChange(e.target.value)}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">

@@ -433,7 +433,7 @@ function RecentReplays() {
 
 export function DashboardPage() {
   const { data: stats, isError: statsError, error: statsErr, refetch: refetchStats } = useOverviewStats()
-  const { data: recentEvents = [], isError: eventsError, error: eventsErr, refetch: refetchEvents } = useDashboardRecentEvents(100)
+  const { data: recentEvents = [], isError: eventsError, error: eventsErr, refetch: refetchEvents } = useDashboardRecentEvents(15)
   const { data: quota } = useQuota()
 
   const capiRate = stats && stats.total_events > 0

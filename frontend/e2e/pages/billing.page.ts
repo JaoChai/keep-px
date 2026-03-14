@@ -41,8 +41,8 @@ export class BillingPage {
 
     // Pixel Slots
     this.pixelSlotsHeading = page.getByRole('heading', { name: 'Pixel Slots' })
-    this.quantityDisplay = page.getByText('pixel slots', { exact: true })
-    this.slotPriceDisplay = page.getByText('฿199/pixel/เดือน')
+    this.quantityDisplay = page.getByText('slots')
+    this.slotPriceDisplay = page.getByText('฿199/slot/เดือน')
     this.subscribeButton = page.getByRole('button', { name: 'สมัครสมาชิก' })
 
     // Replay

@@ -11,7 +11,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { isUnlimited } from '@/lib/utils'
+import { cn, isUnlimited } from '@/lib/utils'
 import type { CustomerQuota, ReplayCredit } from '@/types'
 
 interface AccountStatusCardProps {
@@ -104,7 +104,7 @@ export function AccountStatusCard({
             {eventsRatio > 0 && (
               <div className="h-1.5 bg-secondary rounded-full overflow-hidden mt-2">
                 <div
-                  className={`h-full rounded-full transition-all ${eventsRatio >= 0.9 ? 'bg-red-500' : eventsRatio >= 0.7 ? 'bg-amber-500' : 'bg-primary'}`}
+                  className={cn('h-full rounded-full transition-all', eventsRatio >= 0.9 ? 'bg-red-500' : eventsRatio >= 0.7 ? 'bg-amber-500' : 'bg-primary')}
                   style={{ width: `${Math.min(eventsRatio * 100, 100)}%` }}
                 />
               </div>
@@ -127,13 +127,11 @@ export function AccountStatusCard({
               <span className="text-xs text-muted-foreground">รีเพลย์คงเหลือ</span>
             </div>
             <p className="text-2xl font-bold text-foreground">
-              {hasUnlimited
+              {hasUnlimited || isUnlimited(quota.remaining_replays)
                 ? 'ไม่จำกัด'
-                : isUnlimited(quota.remaining_replays)
-                  ? 'ไม่จำกัด'
-                  : quota.remaining_replays === 0 && totalCredits === 0
-                    ? 'ไม่มี'
-                    : String(quota.remaining_replays)}
+                : quota.remaining_replays === 0 && totalCredits === 0
+                  ? 'ไม่มี'
+                  : String(quota.remaining_replays)}
             </p>
           </div>
         </div>

@@ -717,10 +717,10 @@ export function GuidePage() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['getting-started']))
   const [expandedSubsections, setExpandedSubsections] = useState<Set<string>>(new Set(['login', 'first-steps']))
 
-  // Filter sections by search query
-  const filteredSections = useMemo(() => {
-    if (!searchQuery.trim()) return guideSections
-    const q = searchQuery.toLowerCase()
+  // Shared filter helper
+  const filterSections = useCallback((query: string) => {
+    if (!query.trim()) return guideSections
+    const q = query.toLowerCase()
     return guideSections
       .map((section) => {
         const sectionMatch = section.title.toLowerCase().includes(q)
@@ -730,24 +730,18 @@ export function GuidePage() {
         return null
       })
       .filter(Boolean) as GuideSection[]
-  }, [searchQuery])
+  }, [])
+
+  const filteredSections = useMemo(() => filterSections(searchQuery), [filterSections, searchQuery])
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value)
     if (value.trim()) {
-      const q = value.toLowerCase()
-      const matched = guideSections
-        .map((section) => {
-          const sectionMatch = section.title.toLowerCase().includes(q)
-          const matchedSubs = section.subsections.filter((sub) => sub.title.toLowerCase().includes(q))
-          if (sectionMatch || matchedSubs.length > 0) return section
-          return null
-        })
-        .filter(Boolean) as GuideSection[]
+      const matched = filterSections(value)
       setExpandedSections(new Set(matched.map((s) => s.id)))
       setExpandedSubsections(new Set(matched.flatMap((s) => s.subsections.map((sub) => sub.id))))
     }
-  }, [])
+  }, [filterSections])
 
   const toggleSection = useCallback((id: string) => {
     setExpandedSections((prev) => {

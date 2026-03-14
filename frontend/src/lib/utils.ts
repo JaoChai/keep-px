@@ -42,3 +42,10 @@ export const PACK_TYPE_NAMES: Record<string, string> = {
   pixel_slots: 'Pixel Slots',
   plan_grant: 'Admin Grant',
 }
+
+export const CTA_EVENT_OPTIONS = [
+  { value: 'Lead', label: 'ลูกค้าสนใจ — แอด LINE / ทักแชท (Lead)' },
+  { value: 'Purchase', label: 'ลูกค้าสั่งซื้อ — โอนเงิน / จ่ายเงิน (Purchase)' },
+  { value: 'Contact', label: 'ลูกค้าติดต่อ — กดโทร / กดแชท (Contact)' },
+  { value: 'CompleteRegistration', label: 'ลูกค้าสมัคร — ลงทะเบียน / สมัครสมาชิก (CompleteRegistration)' },
+] as const
