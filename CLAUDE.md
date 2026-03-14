@@ -124,4 +124,4 @@ Tell the user: what was done, PR link, deploy status, any follow-up needed.
 - **Backend env** (`backend/.env.example`): `DATABASE_URL`, `JWT_SECRET` (required), `PORT`, `ENV`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `FB_GRAPH_API_URL`, `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_RPS`
 - **Frontend env**: `VITE_API_URL` (empty = Vite proxy)
 - **sqlc**: `cd backend && sqlc generate` — NEVER edit `db/generated/` manually.
-- **Migrations**: Run `backend/db/migrations/*.up.sql` manually against Neon.
+- **Migrations**: Auto-run on deploy via `golang-migrate` in `cmd/server/main.go` (`m.Up()` at startup). Migration files in `backend/db/migrations/` are included in the Docker image. No manual step needed.
