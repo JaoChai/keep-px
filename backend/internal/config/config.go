@@ -51,6 +51,7 @@ type Config struct {
 	DBHealthCheckPeriod time.Duration `env:"DB_HEALTH_CHECK_PERIOD" envDefault:"15s"`
 	DBConnectTimeout   time.Duration `env:"DB_CONNECT_TIMEOUT" envDefault:"5s"`
 	DBQueryTimeout     time.Duration `env:"DB_QUERY_TIMEOUT" envDefault:"10s"`
+	SalePageCacheTTL   time.Duration `env:"SALE_PAGE_CACHE_TTL" envDefault:"60s"`
 }
 
 func Load() (*Config, error) {

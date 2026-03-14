@@ -52,6 +52,7 @@ func setupPixelTest(t *testing.T) *pixelTestEnv {
 	r.Use(middleware.JWTAuth(testJWTSecret))
 	r.Get("/pixels", h.List)
 	r.Post("/pixels", h.Create)
+	r.Get("/pixels/{id}", h.Get)
 	r.Put("/pixels/{id}", h.Update)
 	r.Delete("/pixels/{id}", h.Delete)
 	r.Post("/pixels/{id}/test", h.Test)
@@ -86,6 +87,71 @@ func (env *pixelTestEnv) setupQuotaAllowed(customerID string, currentCount int) 
 // setupQuotaExceeded configures mocks so pixel creation quota is exceeded (sandbox = 2 max).
 func (env *pixelTestEnv) setupQuotaExceeded(customerID string) {
 	env.setupQuotaAllowed(customerID, 2) // sandbox allows 2, so count=2 means exceeded
+}
+
+// ---------------------------------------------------------------------------
+// Tests: Get
+// ---------------------------------------------------------------------------
+
+func TestPixelHandler_Get(t *testing.T) {
+	t.Run("success returns pixel", func(t *testing.T) {
+		env := setupPixelTest(t)
+		customerID := testCustomerID
+		pixelID := testPixelID
+		token := testJWT(customerID, false)
+
+		env.pixelRepo.On("GetByID", mock.Anything, pixelID).
+			Return(&domain.Pixel{
+				ID:         pixelID,
+				CustomerID: customerID,
+				FBPixelID:  "123456789012345",
+				Name:       "My Pixel",
+			}, nil)
+
+		rec := doRequest(env.router, http.MethodGet, "/pixels/"+pixelID, nil, token)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var resp APIResponse
+		require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+		assert.NotNil(t, resp.Data)
+	})
+
+	t.Run("not found returns 404", func(t *testing.T) {
+		env := setupPixelTest(t)
+		customerID := testCustomerID
+		pixelID := testPixelMissing
+		token := testJWT(customerID, false)
+
+		env.pixelRepo.On("GetByID", mock.Anything, pixelID).Return((*domain.Pixel)(nil), nil)
+
+		rec := doRequest(env.router, http.MethodGet, "/pixels/"+pixelID, nil, token)
+
+		assert.Equal(t, http.StatusNotFound, rec.Code)
+	})
+
+	t.Run("not owned returns 403", func(t *testing.T) {
+		env := setupPixelTest(t)
+		customerID := testCustomerID
+		pixelID := testPixelID
+		token := testJWT(customerID, false)
+
+		env.pixelRepo.On("GetByID", mock.Anything, pixelID).
+			Return(&domain.Pixel{
+				ID:         pixelID,
+				CustomerID: "cust-other",
+				Name:       "Other's Pixel",
+			}, nil)
+
+		rec := doRequest(env.router, http.MethodGet, "/pixels/"+pixelID, nil, token)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+	})
+
+	t.Run("no auth returns 401", func(t *testing.T) {
+		env := setupPixelTest(t)
+		rec := doRequest(env.router, http.MethodGet, "/pixels/"+testPixelID, nil, "")
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +203,7 @@ func TestPixelHandler_Create(t *testing.T) {
 			Return(nil)
 
 		body := service.CreatePixelInput{
-			FBPixelID:     "123456",
+			FBPixelID:     "123456789012345",
 			FBAccessToken: "token-abc",
 			Name:          "My Pixel",
 		}
@@ -177,7 +243,7 @@ func TestPixelHandler_Create(t *testing.T) {
 		env.setupQuotaExceeded(customerID)
 
 		body := service.CreatePixelInput{
-			FBPixelID:     "123456",
+			FBPixelID:     "123456789012345",
 			FBAccessToken: "token-abc",
 			Name:          "My Pixel",
 		}
@@ -194,7 +260,7 @@ func TestPixelHandler_Create(t *testing.T) {
 		env := setupPixelTest(t)
 
 		body := service.CreatePixelInput{
-			FBPixelID:     "123456",
+			FBPixelID:     "123456789012345",
 			FBAccessToken: "token-abc",
 			Name:          "My Pixel",
 		}
@@ -218,11 +284,10 @@ func TestPixelHandler_Update(t *testing.T) {
 		existingPixel := &domain.Pixel{
 			ID:            pixelID,
 			CustomerID:    customerID,
-			FBPixelID:     "111",
+			FBPixelID:     "111222333444555",
 			FBAccessToken: "old-token",
 			Name:          "Old Name",
 			IsActive:      true,
-			Status:        "active",
 		}
 
 		env.pixelRepo.On("GetByID", mock.Anything, pixelID).Return(existingPixel, nil)
@@ -296,11 +361,10 @@ func TestPixelHandler_Update(t *testing.T) {
 			Return(&domain.Pixel{
 				ID:            pixelID,
 				CustomerID:    customerID,
-				FBPixelID:     "111",
+				FBPixelID:     "111222333444555",
 				FBAccessToken: "token",
 				Name:          "My Pixel",
 				IsActive:      true,
-				Status:        "active",
 			}, nil)
 
 		selfRef := pixelID

@@ -16,6 +16,8 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/facebook"
 )
 
+const testBackupPixelID = "pixel-2"
+
 func newTestPixelService() (*PixelService, *MockPixelRepo) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
@@ -24,22 +26,114 @@ func newTestPixelService() (*PixelService, *MockPixelRepo) {
 }
 
 func TestPixelService_Create(t *testing.T) {
-	svc, pixelRepo := newTestPixelService()
+	t.Run("success", func(t *testing.T) {
+		svc, pixelRepo := newTestPixelService()
 
-	pixelRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.Pixel")).Return(nil)
+		pixelRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.Pixel")).Return(nil)
 
-	pixel, err := svc.Create(context.Background(), "cust-1", CreatePixelInput{
-		FBPixelID:     "123456",
-		FBAccessToken: "token-abc",
-		Name:          "My Pixel",
+		pixel, err := svc.Create(context.Background(), "cust-1", CreatePixelInput{
+			FBPixelID:     "123456789012345",
+			FBAccessToken: "token-abc",
+			Name:          "My Pixel",
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, pixel)
+		assert.Equal(t, "cust-1", pixel.CustomerID)
+		assert.Equal(t, "123456789012345", pixel.FBPixelID)
+		assert.Equal(t, "My Pixel", pixel.Name)
+		pixelRepo.AssertExpectations(t)
 	})
 
-	assert.NoError(t, err)
-	assert.NotNil(t, pixel)
-	assert.Equal(t, "cust-1", pixel.CustomerID)
-	assert.Equal(t, "123456", pixel.FBPixelID)
-	assert.Equal(t, "My Pixel", pixel.Name)
-	pixelRepo.AssertExpectations(t)
+	t.Run("invalid fb pixel id letters", func(t *testing.T) {
+		svc, _ := newTestPixelService()
+		_, err := svc.Create(context.Background(), "cust-1", CreatePixelInput{
+			FBPixelID:     "abc123",
+			FBAccessToken: "token-abc",
+			Name:          "My Pixel",
+		})
+		assert.ErrorIs(t, err, ErrInvalidFBPixelID)
+	})
+
+	t.Run("invalid fb pixel id too short", func(t *testing.T) {
+		svc, _ := newTestPixelService()
+		_, err := svc.Create(context.Background(), "cust-1", CreatePixelInput{
+			FBPixelID:     "12345678901234",
+			FBAccessToken: "token-abc",
+			Name:          "My Pixel",
+		})
+		assert.ErrorIs(t, err, ErrInvalidFBPixelID)
+	})
+
+	t.Run("invalid fb pixel id too long", func(t *testing.T) {
+		svc, _ := newTestPixelService()
+		_, err := svc.Create(context.Background(), "cust-1", CreatePixelInput{
+			FBPixelID:     "12345678901234567",
+			FBAccessToken: "token-abc",
+			Name:          "My Pixel",
+		})
+		assert.ErrorIs(t, err, ErrInvalidFBPixelID)
+	})
+
+	t.Run("create with valid backup pixel", func(t *testing.T) {
+		svc, pixelRepo := newTestPixelService()
+		backupID := testBackupPixelID
+
+		pixelRepo.On("GetByID", mock.Anything, testBackupPixelID).Return(&domain.Pixel{
+			ID:         testBackupPixelID,
+			CustomerID: "cust-1",
+		}, nil)
+		pixelRepo.On("Create", mock.Anything, mock.MatchedBy(func(p *domain.Pixel) bool {
+			return p.BackupPixelID != nil && *p.BackupPixelID == testBackupPixelID
+		})).Return(nil)
+
+		pixel, err := svc.Create(context.Background(), "cust-1", CreatePixelInput{
+			FBPixelID:     "123456789012345",
+			FBAccessToken: "token-abc",
+			Name:          "My Pixel",
+			BackupPixelID: &backupID,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, pixel)
+		assert.Equal(t, &backupID, pixel.BackupPixelID)
+		pixelRepo.AssertExpectations(t)
+	})
+
+	t.Run("create with backup pixel not found", func(t *testing.T) {
+		svc, pixelRepo := newTestPixelService()
+		backupID := "nonexistent"
+
+		pixelRepo.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
+
+		_, err := svc.Create(context.Background(), "cust-1", CreatePixelInput{
+			FBPixelID:     "123456789012345",
+			FBAccessToken: "token-abc",
+			Name:          "My Pixel",
+			BackupPixelID: &backupID,
+		})
+
+		assert.ErrorIs(t, err, ErrBackupPixelNotFound)
+	})
+
+	t.Run("create with backup pixel owned by another", func(t *testing.T) {
+		svc, pixelRepo := newTestPixelService()
+		backupID := "pixel-3"
+
+		pixelRepo.On("GetByID", mock.Anything, "pixel-3").Return(&domain.Pixel{
+			ID:         "pixel-3",
+			CustomerID: "cust-other",
+		}, nil)
+
+		_, err := svc.Create(context.Background(), "cust-1", CreatePixelInput{
+			FBPixelID:     "123456789012345",
+			FBAccessToken: "token-abc",
+			Name:          "My Pixel",
+			BackupPixelID: &backupID,
+		})
+
+		assert.ErrorIs(t, err, ErrBackupPixelNotOwned)
+	})
 }
 
 func TestPixelService_GetByID(t *testing.T) {
@@ -110,7 +204,7 @@ func TestPixelService_List(t *testing.T) {
 
 	pixelRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return([]*domain.Pixel{
 		{ID: "pixel-1", CustomerID: "cust-1", Name: "Pixel 1"},
-		{ID: "pixel-2", CustomerID: "cust-1", Name: "Pixel 2"},
+		{ID: testBackupPixelID, CustomerID: "cust-1", Name: "Pixel 2"},
 	}, nil)
 
 	pixels, err := svc.List(context.Background(), "cust-1")
@@ -173,20 +267,20 @@ func TestPixelService_Update(t *testing.T) {
 			name:       "set backup pixel",
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
-			input:      UpdatePixelInput{BackupPixelID: strPtr("pixel-2")},
+			input:      UpdatePixelInput{BackupPixelID: strPtr(testBackupPixelID)},
 			setup: func(pr *MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
 					Name:       "Primary",
 				}, nil)
-				pr.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
-					ID:         "pixel-2",
+				pr.On("GetByID", mock.Anything, testBackupPixelID).Return(&domain.Pixel{
+					ID:         testBackupPixelID,
 					CustomerID: "cust-1",
 					Name:       "Backup",
 				}, nil)
 				pr.On("Update", mock.Anything, mock.MatchedBy(func(p *domain.Pixel) bool {
-					return p.BackupPixelID != nil && *p.BackupPixelID == "pixel-2"
+					return p.BackupPixelID != nil && *p.BackupPixelID == testBackupPixelID
 				})).Return(nil)
 			},
 			wantErr: nil,
@@ -197,7 +291,7 @@ func TestPixelService_Update(t *testing.T) {
 			pixelID:    "pixel-1",
 			input:      UpdatePixelInput{BackupPixelID: strPtr("")},
 			setup: func(pr *MockPixelRepo) {
-				backupID := "pixel-2"
+				backupID := testBackupPixelID
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
@@ -238,7 +332,7 @@ func TestPixelService_Update(t *testing.T) {
 					CustomerID: "cust-other",
 				}, nil)
 			},
-			wantErr: ErrPixelNotOwned,
+			wantErr: ErrBackupPixelNotOwned,
 		},
 	}
 

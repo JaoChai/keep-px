@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
@@ -14,13 +15,14 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 )
 
-func newTestSalePageService() (*SalePageService, *MockSalePageRepo, *MockCustomerRepo, *MockPixelRepo) {
+func newTestSalePageService(t *testing.T) (*SalePageService, *MockSalePageRepo, *MockCustomerRepo, *MockPixelRepo) {
+	t.Helper()
 	salePageRepo := new(MockSalePageRepo)
 	customerRepo := new(MockCustomerRepo)
 	pixelRepo := new(MockPixelRepo)
 	ctx, cancel := context.WithCancel(context.Background())
-	_ = cancel
-	svc := NewSalePageService(ctx, salePageRepo, customerRepo, pixelRepo, nil)
+	t.Cleanup(cancel)
+	svc := NewSalePageService(ctx, salePageRepo, customerRepo, pixelRepo, nil, 60*time.Second)
 	return svc, salePageRepo, customerRepo, pixelRepo
 }
 
@@ -33,7 +35,8 @@ type quotaMocks struct {
 	usageRepo    *MockEventUsageRepo
 }
 
-func newTestSalePageServiceWithQuota() (*SalePageService, *quotaMocks) {
+func newTestSalePageServiceWithQuota(t *testing.T) (*SalePageService, *quotaMocks) {
+	t.Helper()
 	m := &quotaMocks{
 		salePageRepo: new(MockSalePageRepo),
 		customerRepo: new(MockCustomerRepo),
@@ -46,8 +49,8 @@ func newTestSalePageServiceWithQuota() (*SalePageService, *quotaMocks) {
 	quotaService := NewQuotaService(m.creditRepo, m.subRepo, m.usageRepo, m.pixelRepo, m.salePageRepo, m.customerRepo)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	_ = cancel
-	svc := NewSalePageService(ctx, m.salePageRepo, m.customerRepo, m.pixelRepo, quotaService)
+	t.Cleanup(cancel)
+	svc := NewSalePageService(ctx, m.salePageRepo, m.customerRepo, m.pixelRepo, quotaService, 60*time.Second)
 	return svc, m
 }
 
@@ -320,7 +323,7 @@ func TestSalePageService_Create(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, salePageRepo, _, pixelRepo := newTestSalePageService()
+			svc, salePageRepo, _, pixelRepo := newTestSalePageService(t)
 			tt.setup(salePageRepo, pixelRepo)
 
 			page, err := svc.Create(context.Background(), "cust-1", tt.input)
@@ -346,7 +349,7 @@ func TestSalePageService_Create(t *testing.T) {
 }
 
 func TestSalePageService_Create_QuotaExceeded(t *testing.T) {
-	svc, m := newTestSalePageServiceWithQuota()
+	svc, m := newTestSalePageServiceWithQuota(t)
 
 	// Set up quota check: sandbox plan allows 1 sale page, customer already has 1
 	m.customerRepo.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
@@ -419,7 +422,7 @@ func TestSalePageService_GetByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, salePageRepo, _, _ := newTestSalePageService()
+			svc, salePageRepo, _, _ := newTestSalePageService(t)
 			tt.setup(salePageRepo)
 
 			page, err := svc.GetByID(context.Background(), tt.customerID, tt.pageID)
@@ -440,42 +443,45 @@ func TestSalePageService_GetByID(t *testing.T) {
 
 func TestSalePageService_List(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		svc, salePageRepo, _, _ := newTestSalePageService()
+		svc, salePageRepo, _, _ := newTestSalePageService(t)
 
-		salePageRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return([]*domain.SalePage{
+		salePageRepo.On("ListByCustomerID", mock.Anything, "cust-1", 20, 0).Return([]*domain.SalePage{
 			{ID: "page-1", CustomerID: "cust-1", Name: "Page 1"},
 			{ID: "page-2", CustomerID: "cust-1", Name: "Page 2"},
-		}, nil)
+		}, 2, nil)
 
-		pages, err := svc.List(context.Background(), "cust-1")
+		pages, total, err := svc.List(context.Background(), "cust-1", 1, 20)
 
 		assert.NoError(t, err)
 		assert.Len(t, pages, 2)
+		assert.Equal(t, 2, total)
 		salePageRepo.AssertExpectations(t)
 	})
 
 	t.Run("empty_returns_empty_slice", func(t *testing.T) {
-		svc, salePageRepo, _, _ := newTestSalePageService()
+		svc, salePageRepo, _, _ := newTestSalePageService(t)
 
-		salePageRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return(nil, nil)
+		salePageRepo.On("ListByCustomerID", mock.Anything, "cust-1", 20, 0).Return(nil, 0, nil)
 
-		pages, err := svc.List(context.Background(), "cust-1")
+		pages, total, err := svc.List(context.Background(), "cust-1", 1, 20)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, pages)
 		assert.Len(t, pages, 0)
+		assert.Equal(t, 0, total)
 		salePageRepo.AssertExpectations(t)
 	})
 
 	t.Run("repo_error", func(t *testing.T) {
-		svc, salePageRepo, _, _ := newTestSalePageService()
+		svc, salePageRepo, _, _ := newTestSalePageService(t)
 
-		salePageRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return(nil, errors.New("db error"))
+		salePageRepo.On("ListByCustomerID", mock.Anything, "cust-1", 20, 0).Return(nil, 0, errors.New("db error"))
 
-		pages, err := svc.List(context.Background(), "cust-1")
+		pages, total, err := svc.List(context.Background(), "cust-1", 1, 20)
 
 		assert.Error(t, err)
 		assert.Nil(t, pages)
+		assert.Equal(t, 0, total)
 		salePageRepo.AssertExpectations(t)
 	})
 }
@@ -734,7 +740,7 @@ func TestSalePageService_Update(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, salePageRepo, _, pixelRepo := newTestSalePageService()
+			svc, salePageRepo, _, pixelRepo := newTestSalePageService(t)
 			tt.setup(salePageRepo, pixelRepo)
 
 			page, err := svc.Update(context.Background(), tt.customerID, tt.pageID, tt.input)
@@ -803,7 +809,7 @@ func TestSalePageService_Delete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, salePageRepo, _, _ := newTestSalePageService()
+			svc, salePageRepo, _, _ := newTestSalePageService(t)
 			tt.setup(salePageRepo)
 
 			err := svc.Delete(context.Background(), tt.customerID, tt.pageID)
@@ -864,7 +870,7 @@ func TestSalePageService_GetBySlug(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, salePageRepo, _, _ := newTestSalePageService()
+			svc, salePageRepo, _, _ := newTestSalePageService(t)
 			tt.setup(salePageRepo)
 
 			page, err := svc.GetBySlug(context.Background(), tt.slug)
@@ -886,7 +892,7 @@ func TestSalePageService_GetBySlug(t *testing.T) {
 
 func TestSalePageService_GetPublishData(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		svc, salePageRepo, customerRepo, pixelRepo := newTestSalePageService()
+		svc, salePageRepo, customerRepo, pixelRepo := newTestSalePageService(t)
 
 		salePageRepo.On("GetBySlug", mock.Anything, "my-page").Return(&domain.SalePage{
 			ID:          "page-1",
@@ -918,7 +924,7 @@ func TestSalePageService_GetPublishData(t *testing.T) {
 	})
 
 	t.Run("success_no_pixels", func(t *testing.T) {
-		svc, salePageRepo, customerRepo, _ := newTestSalePageService()
+		svc, salePageRepo, customerRepo, _ := newTestSalePageService(t)
 
 		salePageRepo.On("GetBySlug", mock.Anything, "no-pixel-page").Return(&domain.SalePage{
 			ID:          "page-2",
@@ -942,7 +948,7 @@ func TestSalePageService_GetPublishData(t *testing.T) {
 	})
 
 	t.Run("page_not_found", func(t *testing.T) {
-		svc, salePageRepo, _, _ := newTestSalePageService()
+		svc, salePageRepo, _, _ := newTestSalePageService(t)
 
 		salePageRepo.On("GetBySlug", mock.Anything, "nonexistent").Return(nil, nil)
 
@@ -954,7 +960,7 @@ func TestSalePageService_GetPublishData(t *testing.T) {
 	})
 
 	t.Run("page_not_published", func(t *testing.T) {
-		svc, salePageRepo, _, _ := newTestSalePageService()
+		svc, salePageRepo, _, _ := newTestSalePageService(t)
 
 		salePageRepo.On("GetBySlug", mock.Anything, "draft").Return(&domain.SalePage{
 			ID:          "page-1",
@@ -971,7 +977,7 @@ func TestSalePageService_GetPublishData(t *testing.T) {
 	})
 
 	t.Run("customer_not_found", func(t *testing.T) {
-		svc, salePageRepo, customerRepo, _ := newTestSalePageService()
+		svc, salePageRepo, customerRepo, _ := newTestSalePageService(t)
 
 		salePageRepo.On("GetBySlug", mock.Anything, "orphan-page").Return(&domain.SalePage{
 			ID:          "page-1",
@@ -991,7 +997,7 @@ func TestSalePageService_GetPublishData(t *testing.T) {
 	})
 
 	t.Run("cache_hit", func(t *testing.T) {
-		svc, salePageRepo, customerRepo, pixelRepo := newTestSalePageService()
+		svc, salePageRepo, customerRepo, pixelRepo := newTestSalePageService(t)
 
 		salePageRepo.On("GetBySlug", mock.Anything, "cached-page").Return(&domain.SalePage{
 			ID:          "page-1",

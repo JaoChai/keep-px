@@ -16,7 +16,6 @@ export interface Pixel {
   fb_pixel_id: string
   name: string
   is_active: boolean
-  status: string
   backup_pixel_id?: string
   test_event_code?: string
   created_at: string

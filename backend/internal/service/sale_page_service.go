@@ -46,13 +46,13 @@ type SalePageService struct {
 	cache        *salePageCache
 }
 
-func NewSalePageService(ctx context.Context, salePageRepo repository.SalePageRepository, customerRepo repository.CustomerRepository, pixelRepo repository.PixelRepository, quotaService *QuotaService) *SalePageService {
+func NewSalePageService(ctx context.Context, salePageRepo repository.SalePageRepository, customerRepo repository.CustomerRepository, pixelRepo repository.PixelRepository, quotaService *QuotaService, cacheTTL time.Duration) *SalePageService {
 	return &SalePageService{
 		salePageRepo: salePageRepo,
 		customerRepo: customerRepo,
 		pixelRepo:    pixelRepo,
 		quotaService: quotaService,
-		cache:        newSalePageCache(ctx, 60*time.Second),
+		cache:        newSalePageCache(ctx, cacheTTL),
 	}
 }
 
@@ -220,15 +220,22 @@ func (s *SalePageService) GetByID(ctx context.Context, customerID, pageID string
 	return page, nil
 }
 
-func (s *SalePageService) List(ctx context.Context, customerID string) ([]*domain.SalePage, error) {
-	pages, err := s.salePageRepo.ListByCustomerID(ctx, customerID)
+func (s *SalePageService) List(ctx context.Context, customerID string, page, perPage int) ([]*domain.SalePage, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 20
+	}
+	offset := (page - 1) * perPage
+	pages, total, err := s.salePageRepo.ListByCustomerID(ctx, customerID, perPage, offset)
 	if err != nil {
-		return nil, fmt.Errorf("list sale pages: %w", err)
+		return nil, 0, fmt.Errorf("list sale pages: %w", err)
 	}
 	if pages == nil {
 		pages = []*domain.SalePage{}
 	}
-	return pages, nil
+	return pages, total, nil
 }
 
 func (s *SalePageService) Update(ctx context.Context, customerID, pageID string, input UpdateSalePageInput) (*domain.SalePage, error) {

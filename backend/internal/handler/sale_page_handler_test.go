@@ -103,7 +103,7 @@ func TestSalePageHandler_List(t *testing.T) {
 		customerID := testCustomerID
 		token := testJWT(customerID, false)
 
-		env.salePageRepo.On("ListByCustomerID", mock.Anything, customerID).
+		env.salePageRepo.On("ListByCustomerID", mock.Anything, customerID, 20, 0).
 			Return([]*domain.SalePage{
 				{
 					ID:           testSalePageID,
@@ -113,17 +113,15 @@ func TestSalePageHandler_List(t *testing.T) {
 					TemplateName: "simple",
 					Content:      validSimpleContent(),
 				},
-			}, nil)
+			}, 1, nil)
 
 		rec := doRequest(env.router, http.MethodGet, "/sale-pages", nil, token)
 
 		assert.Equal(t, http.StatusOK, rec.Code)
-		var resp APIResponse
+		var resp PaginatedResponse
 		require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
 		assert.NotNil(t, resp.Data)
-		pages, ok := resp.Data.([]interface{})
-		require.True(t, ok)
-		assert.Len(t, pages, 1)
+		assert.Equal(t, 1, resp.Total)
 	})
 }
 

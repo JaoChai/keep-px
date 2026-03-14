@@ -88,12 +88,33 @@ type salePageTemplateData struct {
 
 func (h *SalePageHandler) List(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
-	pages, err := h.salePageService.List(r.Context(), customerID)
+	page := queryInt(r, "page", 1)
+	perPage := queryInt(r, "per_page", 20)
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 20
+	}
+
+	pages, total, err := h.salePageService.List(r.Context(), customerID, page, perPage)
 	if err != nil {
 		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list sale pages", err)
 		return
 	}
-	JSON(w, http.StatusOK, APIResponse{Data: pages})
+
+	totalPages := total / perPage
+	if total%perPage != 0 {
+		totalPages++
+	}
+
+	JSON(w, http.StatusOK, PaginatedResponse{
+		Data:       pages,
+		Total:      total,
+		Page:       page,
+		PerPage:    perPage,
+		TotalPages: totalPages,
+	})
 }
 
 func (h *SalePageHandler) Create(w http.ResponseWriter, r *http.Request) {

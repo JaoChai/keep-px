@@ -9,7 +9,6 @@ type Pixel struct {
 	FBAccessToken string    `json:"-"`
 	Name          string    `json:"name"`
 	IsActive      bool      `json:"is_active"`
-	Status        string    `json:"status"`
 	BackupPixelID *string   `json:"backup_pixel_id,omitempty"`
 	TestEventCode *string   `json:"test_event_code,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`

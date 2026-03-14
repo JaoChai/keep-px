@@ -1,10 +1,11 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { ChevronUp, ChevronDown, Trash2, Image, Type, MessageCircle, Globe, Link, Upload, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useUploadImage, useUploadImages } from '@/hooks/use-upload'
 import type { Block, ButtonStyle } from '@/types'
 
@@ -17,6 +18,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
   const uploadImage = useUploadImage()
   const uploadImages = useUploadImages()
   const imageFileRef = useRef<HTMLInputElement>(null)
+  const [deleteBlockConfirm, setDeleteBlockConfirm] = useState<number | null>(null)
 
   const addBlock = (block: Block) => onChange([...blocks, block])
 
@@ -92,7 +94,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
               <Button variant="ghost" size="icon" className="h-7 w-7" disabled={index === blocks.length - 1} onClick={() => moveBlock(index, 1)}>
                 <ChevronDown className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeBlock(index)}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteBlockConfirm(index)}>
                 <Trash2 className="h-4 w-4 text-red-500" />
               </Button>
             </div>
@@ -124,7 +126,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
                   onClick={() => document.getElementById(`img-upload-${block.id}`)?.click()}
                 >
                   {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                  {block.image_url ? 'เปลี่ยนรูป' : 'อัพโหลดรูป'}
+                  {uploadImage.isPending && uploadImage.progress > 0 ? `${uploadImage.progress}%` : block.image_url ? 'เปลี่ยนรูป' : 'อัพโหลดรูป'}
                 </Button>
               </div>
               <Input
@@ -210,7 +212,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
             onClick={() => imageFileRef.current?.click()}
           >
             {uploadImages.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Image className="h-3.5 w-3.5" />}
-            รูปภาพ
+            {uploadImages.isPending && uploadImages.progress > 0 ? `${uploadImages.progress}%` : 'รูปภาพ'}
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={addTextBlock}>
             <Type className="h-3.5 w-3.5" />
@@ -230,6 +232,22 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
           </Button>
         </div>
       </div>
+
+      {/* Block Delete Confirmation */}
+      <Dialog open={deleteBlockConfirm !== null} onOpenChange={() => setDeleteBlockConfirm(null)}>
+        <DialogContent onClose={() => setDeleteBlockConfirm(null)}>
+          <DialogHeader>
+            <DialogTitle>ลบบล็อก</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mt-2">
+            คุณแน่ใจหรือไม่ว่าต้องการลบบล็อกนี้?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteBlockConfirm(null)}>ยกเลิก</Button>
+            <Button variant="destructive" onClick={() => { if (deleteBlockConfirm !== null) { removeBlock(deleteBlockConfirm); setDeleteBlockConfirm(null) } }}>ลบ</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

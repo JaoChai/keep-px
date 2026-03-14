@@ -16,7 +16,7 @@ export function usePixels() {
 export function useCreatePixel() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (input: { fb_pixel_id: string; fb_access_token: string; name: string; test_event_code?: string }) => {
+    mutationFn: async (input: { fb_pixel_id: string; fb_access_token: string; name: string; test_event_code?: string; backup_pixel_id?: string }) => {
       const { data } = await api.post<APIResponse<Pixel>>('/pixels', input)
       return data.data!
     },

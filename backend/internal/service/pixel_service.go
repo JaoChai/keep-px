@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,16 +14,16 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
 
-const (
-	pixelStatusActive = "active"
-	pixelStatusPaused = "paused"
-)
+var fbPixelIDRegex = regexp.MustCompile(`^\d{15,16}$`)
 
 var (
-	ErrPixelNotFound      = errors.New("pixel not found")
-	ErrPixelNotOwned      = errors.New("pixel not owned by customer")
-	ErrPixelNoAccessToken = errors.New("pixel has no access token configured")
-	ErrBackupPixelSelf    = errors.New("cannot set pixel as its own backup")
+	ErrPixelNotFound        = errors.New("pixel not found")
+	ErrPixelNotOwned        = errors.New("pixel not owned by customer")
+	ErrPixelNoAccessToken   = errors.New("pixel has no access token configured")
+	ErrBackupPixelSelf      = errors.New("cannot set pixel as its own backup")
+	ErrBackupPixelNotFound  = errors.New("backup pixel not found")
+	ErrBackupPixelNotOwned  = errors.New("backup pixel not owned by customer")
+	ErrInvalidFBPixelID     = errors.New("invalid Facebook Pixel ID format: must be 15-16 digits")
 )
 
 type PixelService struct {
@@ -46,6 +47,7 @@ type CreatePixelInput struct {
 	FBAccessToken string  `json:"fb_access_token" validate:"required"`
 	Name          string  `json:"name" validate:"required"`
 	TestEventCode *string `json:"test_event_code,omitempty"`
+	BackupPixelID *string `json:"backup_pixel_id,omitempty"`
 }
 
 type UpdatePixelInput struct {
@@ -57,7 +59,41 @@ type UpdatePixelInput struct {
 	TestEventCode *string `json:"test_event_code,omitempty"`
 }
 
+func validateFBPixelID(id string) error {
+	if !fbPixelIDRegex.MatchString(id) {
+		return ErrInvalidFBPixelID
+	}
+	return nil
+}
+
+func (s *PixelService) validateBackupPixel(ctx context.Context, backupID, customerID string) error {
+	backupPixel, err := s.pixelRepo.GetByID(ctx, backupID)
+	if err != nil {
+		return fmt.Errorf("get backup pixel: %w", err)
+	}
+	if backupPixel == nil {
+		return ErrBackupPixelNotFound
+	}
+	if backupPixel.CustomerID != customerID {
+		return ErrBackupPixelNotOwned
+	}
+	return nil
+}
+
 func (s *PixelService) Create(ctx context.Context, customerID string, input CreatePixelInput) (*domain.Pixel, error) {
+	if err := validateFBPixelID(input.FBPixelID); err != nil {
+		return nil, err
+	}
+
+	// Validate backup pixel before quota check (fail fast on invalid input)
+	var backupID *string
+	if input.BackupPixelID != nil && *input.BackupPixelID != "" {
+		if err := s.validateBackupPixel(ctx, *input.BackupPixelID, customerID); err != nil {
+			return nil, err
+		}
+		backupID = input.BackupPixelID
+	}
+
 	// Check pixel creation quota
 	if s.quotaService != nil {
 		if err := s.quotaService.CheckPixelCreationQuota(ctx, customerID); err != nil {
@@ -71,6 +107,7 @@ func (s *PixelService) Create(ctx context.Context, customerID string, input Crea
 		FBAccessToken: input.FBAccessToken,
 		Name:          input.Name,
 		TestEventCode: input.TestEventCode,
+		BackupPixelID: backupID,
 	}
 
 	if err := s.pixelRepo.Create(ctx, pixel); err != nil {
@@ -117,6 +154,9 @@ func (s *PixelService) Update(ctx context.Context, customerID, pixelID string, i
 	}
 
 	if input.FBPixelID != nil {
+		if err := validateFBPixelID(*input.FBPixelID); err != nil {
+			return nil, err
+		}
 		pixel.FBPixelID = *input.FBPixelID
 	}
 	if input.FBAccessToken != nil {
@@ -127,11 +167,6 @@ func (s *PixelService) Update(ctx context.Context, customerID, pixelID string, i
 	}
 	if input.IsActive != nil {
 		pixel.IsActive = *input.IsActive
-		if !*input.IsActive {
-			pixel.Status = pixelStatusPaused
-		} else {
-			pixel.Status = pixelStatusActive
-		}
 	}
 
 	if input.TestEventCode != nil {
@@ -147,20 +182,11 @@ func (s *PixelService) Update(ctx context.Context, customerID, pixelID string, i
 			// Clear backup
 			pixel.BackupPixelID = nil
 		} else {
-			// Validate: not self
 			if *input.BackupPixelID == pixelID {
 				return nil, ErrBackupPixelSelf
 			}
-			// Validate: backup exists and owned by same customer
-			backupPixel, err := s.pixelRepo.GetByID(ctx, *input.BackupPixelID)
-			if err != nil {
-				return nil, fmt.Errorf("get backup pixel: %w", err)
-			}
-			if backupPixel == nil {
-				return nil, ErrPixelNotFound
-			}
-			if backupPixel.CustomerID != customerID {
-				return nil, ErrPixelNotOwned
+			if err := s.validateBackupPixel(ctx, *input.BackupPixelID, customerID); err != nil {
+				return nil, err
 			}
 			pixel.BackupPixelID = input.BackupPixelID
 		}

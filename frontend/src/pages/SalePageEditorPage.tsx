@@ -12,11 +12,15 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { SalePagePreview } from '@/components/sale-pages/SalePagePreview'
 import { StyleEditor } from '@/components/sale-pages/StyleEditor'
+import { UnsavedChangesDialog } from '@/components/shared/UnsavedChangesDialog'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
 import { useQuota } from '@/hooks/use-billing'
 import { usePixels } from '@/hooks/use-pixels'
 import { useUploadImage, useUploadImages } from '@/hooks/use-upload'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
+import { useAutoSaveDraft, loadDraft } from '@/hooks/use-auto-save-draft'
 import { CTA_EVENT_OPTIONS } from '@/lib/utils'
+import { toast } from 'sonner'
 import type { SalePageContent, SalePageContentV2, PageStyle } from '@/types'
 
 const salePageSchema = z.object({
@@ -81,7 +85,8 @@ export function SalePageEditorPage() {
     reset,
     setValue,
     control,
-    formState: { errors, isSubmitting },
+    watch,
+    formState: { errors, isSubmitting, isDirty },
   } = useForm<SalePageForm>({
     resolver: zodResolver(salePageSchema),
     defaultValues: {
@@ -106,13 +111,28 @@ export function SalePageEditorPage() {
 
   const [selectedPixelIds, setSelectedPixelIds] = useState<string[]>([])
   const [initializedId, setInitializedId] = useState<string | null>(null)
+  const [hasUserEdited, setHasUserEdited] = useState(false)
+  const unsaved = useUnsavedChanges(isDirty || hasUserEdited)
+
+  const draftKey = isEditing ? `sale-page-classic:${id}` : 'sale-page-classic:new'
+  const formValuesRef = useRef<SalePageForm | null>(null)
+  useEffect(() => {
+    const sub = watch((values) => { formValuesRef.current = values as SalePageForm })
+    return () => sub.unsubscribe()
+  }, [watch])
+  const draftData = useMemo(
+    () => ({ ...(formValuesRef.current ?? {}), selectedPixelIds, features, bodyImages, pageStyle }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedPixelIds, features, bodyImages, pageStyle, isDirty, hasUserEdited]
+  )
+  const { clearDraft } = useAutoSaveDraft(draftKey, draftData)
 
   // Load existing data when editing — hydrates form + local state from server data
   useEffect(() => {
     if (existingPage && !isV2 && initializedId !== existingPage.id) {
       const c = existingPage.content as SalePageContent
       const featuresList = c.body.features.length > 0 ? c.body.features : ['']
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from server
+       
       setInitializedId(existingPage.id)
        
       setSelectedPixelIds(existingPage.pixel_ids ?? [])
@@ -140,6 +160,39 @@ export function SalePageEditorPage() {
       setShowCustomSlug(true)  
     }
   }, [existingPage, isV2, initializedId, reset])
+
+  // Restore draft (only for new pages to avoid overwriting server data)
+  useEffect(() => {
+    if (isEditing) return // Don't override server data for editing
+    const draft = loadDraft<Record<string, unknown>>(draftKey)
+    if (!draft) return
+    if (draft.name) {
+      reset({
+        name: (draft.name as string) ?? '',
+        slug: (draft.slug as string) ?? '',
+        hero_title: (draft.hero_title as string) ?? '',
+        hero_subtitle: (draft.hero_subtitle as string) ?? '',
+        hero_image_url: (draft.hero_image_url as string) ?? '',
+        description: (draft.description as string) ?? '',
+        features: (draft.features as string[]) ?? [''],
+        cta_button_text: (draft.cta_button_text as string) ?? '',
+        cta_button_link: (draft.cta_button_link as string) ?? '',
+        contact_line_id: (draft.contact_line_id as string) ?? '',
+        contact_phone: (draft.contact_phone as string) ?? '',
+        contact_website_url: (draft.contact_website_url as string) ?? '',
+        cta_event_name: (draft.cta_event_name as string) ?? 'Lead',
+        tracking_content_name: (draft.tracking_content_name as string) ?? '',
+        tracking_content_value: (draft.tracking_content_value as number) ?? 0,
+        tracking_currency: (draft.tracking_currency as string) ?? 'THB',
+      })
+      setSelectedPixelIds((draft.selectedPixelIds as string[]) ?? [])
+      setFeatures((draft.features as string[]) ?? [''])
+      setBodyImages((draft.bodyImages as string[]) ?? [])
+      setPageStyle((draft.pageStyle as PageStyle) ?? {})
+      toast('กู้คืนแบบร่างจากการบันทึกอัตโนมัติ')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Sync features state to form
   useEffect(() => {
@@ -194,17 +247,20 @@ export function SalePageEditorPage() {
   const addFeature = () => {
     if (features.length < 10) {
       setFeatures([...features, ''])
+      setHasUserEdited(true)
     }
   }
 
   const removeFeature = (index: number) => {
     setFeatures(features.filter((_, i) => i !== index))
+    setHasUserEdited(true)
   }
 
   const updateFeature = (index: number, value: string) => {
     const updated = [...features]
     updated[index] = value
     setFeatures(updated)
+    setHasUserEdited(true)
   }
 
   const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,6 +268,7 @@ export function SalePageEditorPage() {
     if (!file) return
     const url = await uploadImage.mutateAsync(file)
     setValue('hero_image_url', url)
+    setHasUserEdited(true)
     if (heroFileRef.current) heroFileRef.current.value = ''
   }
 
@@ -220,11 +277,13 @@ export function SalePageEditorPage() {
     if (!files || files.length === 0) return
     const urls = await uploadImages.mutateAsync(Array.from(files))
     setBodyImages((prev) => [...prev, ...urls])
+    setHasUserEdited(true)
     if (bodyFileRef.current) bodyFileRef.current.value = ''
   }
 
   const removeBodyImage = (index: number) => {
     setBodyImages((prev) => prev.filter((_, i) => i !== index))
+    setHasUserEdited(true)
   }
 
   const buildContent = (data: SalePageForm): SalePageContent => ({
@@ -269,6 +328,9 @@ export function SalePageEditorPage() {
 
     if (isEditing) {
       const result = await updateSalePage.mutateAsync({ id, ...payload })
+      clearDraft()
+      setHasUserEdited(false)
+      unsaved.allowNavigation()
       if (isPublished) {
         setPublishedDialog({ slug: result.slug })
       } else {
@@ -276,6 +338,9 @@ export function SalePageEditorPage() {
       }
     } else {
       const result = await createSalePage.mutateAsync(payload)
+      clearDraft()
+      setHasUserEdited(false)
+      unsaved.allowNavigation()
       if (isPublished) {
         setPublishedDialog({ slug: result.slug })
       } else {
@@ -389,6 +454,7 @@ export function SalePageEditorPage() {
                               } else {
                                 setSelectedPixelIds(prev => prev.filter(id => id !== pixel.id))
                               }
+                              setHasUserEdited(true)
                             }}
                             className="rounded border-border"
                           />
@@ -438,7 +504,7 @@ export function SalePageEditorPage() {
                         onClick={() => heroFileRef.current?.click()}
                       >
                         {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                        อัพโหลดรูป
+                        {uploadImage.isPending && uploadImage.progress > 0 ? `${uploadImage.progress}%` : 'อัพโหลดรูป'}
                       </Button>
                     </div>
                     <Input id="hero_image_url" placeholder="หรือวาง URL รูปภาพ" {...register('hero_image_url')} className="text-xs" />
@@ -519,7 +585,7 @@ export function SalePageEditorPage() {
                         onClick={() => bodyFileRef.current?.click()}
                       >
                         {uploadImages.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                        เพิ่มรูปภาพ
+                        {uploadImages.isPending && uploadImages.progress > 0 ? `${uploadImages.progress}%` : 'เพิ่มรูปภาพ'}
                       </Button>
                     </div>
                   </div>
@@ -610,7 +676,7 @@ export function SalePageEditorPage() {
               </Card>
 
               {/* Page Style */}
-              <StyleEditor style={pageStyle} onChange={setPageStyle} />
+              <StyleEditor style={pageStyle} onChange={(s) => { setPageStyle(s); setHasUserEdited(true) }} />
 
               {/* Contact Info */}
               <Card>
@@ -653,6 +719,8 @@ export function SalePageEditorPage() {
               </div>
             </div>
           </div>
+
+          <UnsavedChangesDialog isBlocked={unsaved.isBlocked} onStay={unsaved.cancelLeave} onLeave={unsaved.confirmLeave} />
 
           {/* Published Success Dialog */}
           <Dialog open={!!publishedDialog} onOpenChange={() => setPublishedDialog(null)}>

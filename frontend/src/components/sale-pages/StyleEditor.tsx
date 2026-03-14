@@ -149,7 +149,7 @@ export function StyleEditor({ style, onChange }: StyleEditorProps) {
               onClick={() => fileRef.current?.click()}
             >
               {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-              อัพโหลดรูปพื้นหลัง
+              {uploadImage.isPending && uploadImage.progress > 0 ? `${uploadImage.progress}%` : 'อัพโหลดรูปพื้นหลัง'}
             </Button>
           </div>
           <Input

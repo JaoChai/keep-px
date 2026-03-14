@@ -1,0 +1,1 @@
+ALTER TABLE pixels DROP COLUMN IF EXISTS status;

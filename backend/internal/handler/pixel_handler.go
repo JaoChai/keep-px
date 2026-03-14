@@ -29,6 +29,46 @@ func NewPixelHandler(pixelService *service.PixelService, logger *slog.Logger) *P
 	}
 }
 
+// mapPixelError maps pixel service sentinel errors to HTTP responses.
+// Returns true if the error was handled, false otherwise.
+func mapPixelError(err error, w http.ResponseWriter) bool {
+	switch {
+	case errors.Is(err, service.ErrPixelNotFound):
+		ErrorJSON(w, http.StatusNotFound, "pixel not found")
+	case errors.Is(err, service.ErrPixelNotOwned):
+		ErrorJSON(w, http.StatusForbidden, "pixel not owned by you")
+	case errors.Is(err, service.ErrInvalidFBPixelID):
+		ErrorJSON(w, http.StatusBadRequest, "invalid Facebook Pixel ID: must be 15-16 digits")
+	case errors.Is(err, service.ErrBackupPixelSelf):
+		ErrorJSON(w, http.StatusBadRequest, "cannot set pixel as its own backup")
+	case errors.Is(err, service.ErrBackupPixelNotFound):
+		ErrorJSON(w, http.StatusBadRequest, "backup pixel not found")
+	case errors.Is(err, service.ErrBackupPixelNotOwned):
+		ErrorJSON(w, http.StatusForbidden, "backup pixel not owned by you")
+	case errors.Is(err, service.ErrPixelNoAccessToken):
+		ErrorJSON(w, http.StatusBadRequest, "pixel has no access token configured")
+	case errors.Is(err, service.ErrQuotaPixelsExceeded):
+		ErrorJSON(w, http.StatusPaymentRequired, "pixel limit exceeded")
+	default:
+		return false
+	}
+	return true
+}
+
+func (h *PixelHandler) Get(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
+	pixelID := chi.URLParam(r, "id")
+
+	pixel, err := h.pixelService.GetByID(r.Context(), customerID, pixelID)
+	if err != nil {
+		if !mapPixelError(err, w) {
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get pixel", err)
+		}
+		return
+	}
+	JSON(w, http.StatusOK, APIResponse{Data: pixel})
+}
+
 func (h *PixelHandler) List(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	pixels, err := h.pixelService.List(r.Context(), customerID)
@@ -54,11 +94,9 @@ func (h *PixelHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	pixel, err := h.pixelService.Create(r.Context(), customerID, input)
 	if err != nil {
-		if errors.Is(err, service.ErrQuotaPixelsExceeded) {
-			ErrorJSON(w, http.StatusPaymentRequired, "pixel limit exceeded")
-			return
+		if !mapPixelError(err, w) {
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to create pixel", err)
 		}
-		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to create pixel", err)
 		return
 	}
 	JSON(w, http.StatusCreated, APIResponse{Data: pixel})
@@ -76,19 +114,9 @@ func (h *PixelHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	pixel, err := h.pixelService.Update(r.Context(), customerID, pixelID, input)
 	if err != nil {
-		if errors.Is(err, service.ErrPixelNotFound) {
-			ErrorJSON(w, http.StatusNotFound, "pixel not found")
-			return
+		if !mapPixelError(err, w) {
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to update pixel", err)
 		}
-		if errors.Is(err, service.ErrPixelNotOwned) {
-			ErrorJSON(w, http.StatusForbidden, "pixel not owned by you")
-			return
-		}
-		if errors.Is(err, service.ErrBackupPixelSelf) {
-			ErrorJSON(w, http.StatusBadRequest, "cannot set pixel as its own backup")
-			return
-		}
-		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to update pixel", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Data: pixel})
@@ -100,15 +128,9 @@ func (h *PixelHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	err := h.pixelService.Delete(r.Context(), customerID, pixelID)
 	if err != nil {
-		if errors.Is(err, service.ErrPixelNotFound) {
-			ErrorJSON(w, http.StatusNotFound, "pixel not found")
-			return
+		if !mapPixelError(err, w) {
+			ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to delete pixel", err)
 		}
-		if errors.Is(err, service.ErrPixelNotOwned) {
-			ErrorJSON(w, http.StatusForbidden, "pixel not owned by you")
-			return
-		}
-		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to delete pixel", err)
 		return
 	}
 	JSON(w, http.StatusOK, APIResponse{Message: "pixel deleted"})
@@ -120,16 +142,7 @@ func (h *PixelHandler) Test(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.pixelService.TestConnection(r.Context(), customerID, pixelID)
 	if err != nil {
-		if errors.Is(err, service.ErrPixelNotFound) {
-			ErrorJSON(w, http.StatusNotFound, "pixel not found")
-			return
-		}
-		if errors.Is(err, service.ErrPixelNotOwned) {
-			ErrorJSON(w, http.StatusForbidden, "pixel not owned by you")
-			return
-		}
-		if errors.Is(err, service.ErrPixelNoAccessToken) {
-			ErrorJSON(w, http.StatusBadRequest, "pixel has no access token configured")
+		if mapPixelError(err, w) {
 			return
 		}
 		// Check for Facebook CAPI error — never expose raw FB response to client

@@ -74,7 +74,7 @@ type SalePageRepository interface {
 	Create(ctx context.Context, page *domain.SalePage) error
 	GetByID(ctx context.Context, id string) (*domain.SalePage, error)
 	GetBySlug(ctx context.Context, slug string) (*domain.SalePage, error)
-	ListByCustomerID(ctx context.Context, customerID string) ([]*domain.SalePage, error)
+	ListByCustomerID(ctx context.Context, customerID string, limit, offset int) ([]*domain.SalePage, int, error)
 	CountByCustomerID(ctx context.Context, customerID string) (int, error)
 	Update(ctx context.Context, page *domain.SalePage) error
 	Delete(ctx context.Context, id string) error

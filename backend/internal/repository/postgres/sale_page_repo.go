@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -46,7 +47,7 @@ func (r *SalePageRepo) GetByID(ctx context.Context, id string) (*domain.SalePage
 		`SELECT id, customer_id, name, slug, template_name, content, is_published, created_at, updated_at
 		 FROM sale_pages WHERE id = $1`, id,
 	).Scan(&p.ID, &p.CustomerID, &p.Name, &p.Slug, &p.TemplateName, &p.Content, &p.IsPublished, &p.CreatedAt, &p.UpdatedAt)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -68,7 +69,7 @@ func (r *SalePageRepo) GetBySlug(ctx context.Context, slug string) (*domain.Sale
 		`SELECT id, customer_id, name, slug, template_name, content, is_published, created_at, updated_at
 		 FROM sale_pages WHERE slug = $1`, slug,
 	).Scan(&p.ID, &p.CustomerID, &p.Name, &p.Slug, &p.TemplateName, &p.Content, &p.IsPublished, &p.CreatedAt, &p.UpdatedAt)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -92,37 +93,48 @@ func (r *SalePageRepo) CountByCustomerID(ctx context.Context, customerID string)
 	return count, err
 }
 
-func (r *SalePageRepo) ListByCustomerID(ctx context.Context, customerID string) ([]*domain.SalePage, error) {
+func (r *SalePageRepo) ListByCustomerID(ctx context.Context, customerID string, limit, offset int) ([]*domain.SalePage, int, error) {
+	var total int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM sale_pages WHERE customer_id = $1`, customerID,
+	).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, customer_id, name, slug, template_name, content, is_published, created_at, updated_at
-		 FROM sale_pages WHERE customer_id = $1 ORDER BY created_at DESC`, customerID,
+		 FROM sale_pages WHERE customer_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		customerID, limit, offset,
 	)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	var pages []*domain.SalePage
+	var pageIDs []string
 	for rows.Next() {
 		p := &domain.SalePage{}
 		if err := rows.Scan(&p.ID, &p.CustomerID, &p.Name, &p.Slug, &p.TemplateName, &p.Content, &p.IsPublished, &p.CreatedAt, &p.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		pages = append(pages, p)
+		pageIDs = append(pageIDs, p.ID)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
+	pixelMap, err := r.loadPixelIDsForPages(ctx, pageIDs)
+	if err != nil {
+		return nil, 0, err
+	}
 	for _, p := range pages {
-		pixelIDs, err := r.loadPixelIDs(ctx, p.ID)
-		if err != nil {
-			return nil, err
-		}
-		p.PixelIDs = pixelIDs
+		p.PixelIDs = pixelMap[p.ID]
 	}
 
-	return pages, nil
+	return pages, total, nil
 }
 
 func (r *SalePageRepo) Update(ctx context.Context, p *domain.SalePage) error {
@@ -176,6 +188,32 @@ func (r *SalePageRepo) setPixels(ctx context.Context, tx pgx.Tx, salePageID stri
 		}
 	}
 	return nil
+}
+
+func (r *SalePageRepo) loadPixelIDsForPages(ctx context.Context, pageIDs []string) (map[string][]string, error) {
+	if len(pageIDs) == 0 {
+		return map[string][]string{}, nil
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT sale_page_id, pixel_id FROM sale_page_pixels WHERE sale_page_id = ANY($1) ORDER BY sale_page_id, position ASC`,
+		pageIDs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make(map[string][]string, len(pageIDs))
+	for _, pid := range pageIDs {
+		result[pid] = []string{}
+	}
+	for rows.Next() {
+		var spID, pxID string
+		if err := rows.Scan(&spID, &pxID); err != nil {
+			return nil, err
+		}
+		result[spID] = append(result[spID], pxID)
+	}
+	return result, rows.Err()
 }
 
 func (r *SalePageRepo) loadPixelIDs(ctx context.Context, salePageID string) ([]string, error) {
