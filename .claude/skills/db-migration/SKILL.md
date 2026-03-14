@@ -150,14 +150,31 @@ cd backend && go build ./...
 
 ## Database Schema Reference
 
-Current tables in the database:
-- `customers` — User accounts (id, email, password_hash, name, api_key, plan)
-- `pixels` — Facebook Pixel configs (id, customer_id, fb_pixel_id, fb_access_token, name, is_active, status)
-- `pixel_events` — Captured events (id, pixel_id, event_name, event_data, user_data, source_url, event_time)
+24 migrations (000001–000024). Current active tables:
+
+- `customers` — User accounts (id, email, name, google_id, api_key, plan, is_admin, suspended_at)
+- `pixels` — Facebook Pixel configs (id, customer_id, fb_pixel_id, fb_access_token, name, is_active, backup_pixel_id)
+- `pixel_events` — Captured events (id, pixel_id, event_name, event_data, user_data, source_url, event_time, event_id)
 - `event_rules` — Visual event setup rules (id, pixel_id, page_url, event_name, trigger_type, css_selector)
-- `replay_sessions` — Event replay jobs (id, customer_id, source_pixel_id, target_pixel_id, status)
+- `replay_sessions` — Event replay jobs (id, customer_id, source_pixel_id, target_pixel_id, status, events_replayed, events_failed)
 - `refresh_tokens` — JWT refresh tokens (id, customer_id, token_hash, expires_at)
-- `sale_pages` — Landing page builder (id, customer_id, pixel_id, name, slug, template_name, content)
+- `sale_pages` — Landing page builder (id, customer_id, name, slug, template_name, content, content_version)
+- `sale_page_pixels` — M:M join table (sale_page_id, pixel_id, position)
+- `notifications` — User notifications (id, customer_id, type, title, message, read)
+- `purchases` — Stripe checkout records (id, customer_id, stripe_session_id, pack_type, amount, status)
+- `replay_credits` — Credit packs for replays (id, customer_id, total_replays, used_replays, max_events_per_replay, expires_at)
+- `subscriptions` — Stripe subscriptions (id, customer_id, stripe_subscription_id, plan, status)
+- `event_usage` — Monthly event usage tracking (id, customer_id, month, event_count)
+- `stripe_webhook_events` — Webhook idempotency (event_id, event_type, processed_at)
+- `admin_credit_grants` — Admin credit grant audit trail (id, admin_id, customer_id, pack_type, reason)
+- `admin_audit_logs` — Admin action audit logs (id, admin_id, action, target_type, target_id, details)
+
+**Dropped tables:** `custom_domains` (created 000003, dropped 000009)
+
+### Key Migration Patterns
+- All DDL uses `IF NOT EXISTS` / `IF EXISTS` for idempotency (server restarts re-run migrations)
+- M:M join tables use composite primary keys: `PRIMARY KEY (sale_page_id, pixel_id)`
+- Column additions use `ADD COLUMN IF NOT EXISTS` for safe re-runs
 
 ## Related
 

@@ -85,7 +85,7 @@ Tell the user: what was done, PR link, deploy status, any follow-up needed.
 |-------|------|-------|
 | Entry | `cmd/server/main.go` | Config, pgxpool, router, graceful shutdown |
 | Config | `internal/config/` | `caarlos0/env`, loads `.env` via godotenv |
-| Domain | `internal/domain/` | Pure structs (Customer, Pixel, PixelEvent, ReplaySession) |
+| Domain | `internal/domain/` | Pure structs (Customer, Pixel, PixelEvent, SalePage, ReplaySession, Notification, Subscription, Purchase, ReplayCredit) |
 | Repository | `internal/repository/` | Interfaces in `interfaces.go`, pgx implementations in `postgres/` |
 | Service | `internal/service/` | Business logic, sentinel errors for handler error mapping |
 | Handler | `internal/handler/` | `go-playground/validator`, `handler.JSON()`/`handler.ErrorJSON()` |
@@ -94,32 +94,45 @@ Tell the user: what was done, PR link, deploy status, any follow-up needed.
 | CAPI | `internal/facebook/capi.go` | Facebook Conversions API client |
 
 ### Key Patterns
-- **Auth**: JWT (dashboard, `middleware.GetCustomerID(ctx)`) + API Key (sale pages, `X-API-Key`)
+- **Auth**: Google OAuth + JWT (dashboard, `middleware.GetCustomerID(ctx)`) + API Key (sale pages, `X-API-Key`)
 - **Ownership**: Services check `pixel.CustomerID == customerID` before operations
 - **CAPI**: Async forwarding via `go s.forwardToCAPI(...)`
 - **Replay**: Background goroutine, semaphore (5 workers), ~50 events/sec rate limit
+- **Billing**: Stripe checkout sessions → webhook → replay credits (pack system)
+- **Admin**: `is_admin` flag on customers table, admin middleware, audit logging
 - **Repository nil**: `GetByID` returns `(nil, nil)` when not found — callers check for nil
 
 ### Frontend
 - **State**: Zustand (auth) + TanStack Query (server)
-- **Routing**: react-router v7, `ProtectedRoute` wrapper
-- **API**: Axios with auto token refresh (`src/lib/api.ts`), `@/` = `src/`
+- **Routing**: react-router v7, `ProtectedRoute` wrapper, lazy-loaded admin routes
+- **API**: Axios with auto token refresh + mutex (`src/lib/api.ts`), `@/` = `src/`
 - **UI**: shadcn/ui in `src/components/ui/`, Vite proxy `/api` → `:8080`
+- **Admin**: Separate admin pages under `/admin/*`, requires `is_admin` flag
 
 ## API Routes
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/api/v1/auth/register\|login\|refresh` | Public | Auth endpoints |
+| POST | `/api/v1/auth/google` | Public | Google OAuth login |
+| POST | `/api/v1/auth/refresh` | Public | Token refresh |
+| POST | `/api/v1/auth/logout` | JWT | Logout (revoke refresh token) |
 | POST | `/api/v1/events/ingest` | API Key | Batch event ingestion |
-| CRUD | `/api/v1/pixels/*` | JWT | Pixel management |
+| CRUD | `/api/v1/pixels/*` | JWT | Pixel management + test connection |
 | GET | `/api/v1/events` | JWT | Event log (paginated) |
+| CRUD | `/api/v1/sale-pages/*` | JWT | Sale page CRUD + pixel assignment |
+| GET | `/p/:slug` | Public | Public sale page rendering |
 | POST/GET | `/api/v1/replays/*` | JWT | Replay sessions |
 | GET | `/api/v1/analytics/*` | JWT | Dashboard analytics |
+| POST | `/api/v1/billing/checkout` | JWT | Stripe checkout session |
+| GET | `/api/v1/billing/status` | JWT | Billing status + credits |
+| POST | `/api/v1/billing/webhook` | Stripe sig | Stripe webhook handler |
+| GET | `/api/v1/notifications` | JWT | User notifications |
+| GET/PUT | `/api/v1/settings/*` | JWT | User settings + API key |
+| GET/PUT/POST | `/api/v1/admin/*` | JWT+Admin | Admin panel endpoints |
 
 ## Reference
 
-- **Database**: PostgreSQL on Neon. Tables: `customers`, `pixels`, `pixel_events`, `replay_sessions`, `refresh_tokens`. UUIDs, `TIMESTAMPTZ`.
+- **Database**: PostgreSQL on Neon. 16 active tables: `customers`, `pixels`, `pixel_events`, `event_rules`, `replay_sessions`, `refresh_tokens`, `sale_pages`, `sale_page_pixels`, `notifications`, `purchases`, `replay_credits`, `subscriptions`, `event_usage`, `stripe_webhook_events`, `admin_credit_grants`, `admin_audit_logs`. UUIDs, `TIMESTAMPTZ`. 24 migrations.
 - **Deploy**: Railway — Backend (Go/Alpine Dockerfile) + Frontend (Node→Nginx Dockerfile, needs `VITE_API_URL` build arg).
 - **Backend env** (`backend/.env.example`): `DATABASE_URL`, `JWT_SECRET` (required), `PORT`, `ENV`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `FB_GRAPH_API_URL`, `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_RPS`
 - **Frontend env**: `VITE_API_URL` (empty = Vite proxy)

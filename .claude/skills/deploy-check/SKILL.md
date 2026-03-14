@@ -1,6 +1,6 @@
 ---
 name: deploy-check
-description: Run pre-deployment verification checklist across all 3 packages (backend, frontend, SDK) before pushing to Railway
+description: Run pre-deployment verification checklist across backend and frontend packages before pushing to Railway
 ---
 
 # Deploy Check
@@ -43,15 +43,7 @@ cd frontend && npm run build
 
 This runs `tsc` + `vite build`. Must exit 0 with no TypeScript errors.
 
-### Step 3: SDK Build
-
-```bash
-cd sdk && npm run build
-```
-
-Must produce `sdk/dist/pixlinks.min.js` and `sdk/dist/pixlinks.esm.js`.
-
-### Step 4: Security Scan
+### Step 3: Security Scan
 
 Check for common security issues:
 
@@ -65,7 +57,7 @@ Must return empty.
 ```bash
 grep -rn --include='*.go' --include='*.ts' --include='*.tsx' --include='*.js' \
   -E '(password|secret|token|api_key)\s*[:=]\s*["\x27][^"\x27]{8,}' \
-  backend/internal/ frontend/src/ sdk/src/ || true
+  backend/internal/ frontend/src/ || true
 ```
 Review any matches — false positives are OK (like variable names), but actual hardcoded credentials must be flagged.
 
@@ -76,7 +68,7 @@ grep -rn --include='*.go' --include='*.ts' --include='*.tsx' \
   backend/ frontend/src/ || true
 ```
 
-### Step 5: Deployment Files
+### Step 4: Deployment Files
 
 Verify Railway configuration files exist:
 
@@ -92,7 +84,7 @@ Check that `backend/Dockerfile` and `frontend/Dockerfile` exist:
 ls backend/Dockerfile frontend/Dockerfile
 ```
 
-### Step 6: Output Summary
+### Step 5: Output Summary
 
 Print a summary table:
 
@@ -103,7 +95,6 @@ Pre-Deployment Check Results
 [PASS/FAIL] Backend lint      (go vet ./...)
 [PASS/FAIL] Backend tests     (go test ./...)
 [PASS/FAIL] Frontend build    (npm run build)
-[PASS/FAIL] SDK build         (npm run build)
 [PASS/FAIL] Security scan     (no secrets, no .env)
 [PASS/FAIL] Deploy configs    (railway.json + Dockerfiles)
 ============================
