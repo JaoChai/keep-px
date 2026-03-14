@@ -6,20 +6,22 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useSalePages, useDeleteSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
+import { usePixelNameMap } from '@/hooks/use-pixel-name-map'
 import { QueryErrorAlert } from '@/components/shared/QueryErrorAlert'
 
 export function SalePagesPage() {
   const { data: salePages, isLoading, isError: isSalePagesError, error: salePagesError, refetch: refetchSalePages } = useSalePages()
-  const { data: pixels, isError: isPixelsError, error: pixelsError, refetch: refetchPixels } = usePixels()
+  const { isError: isPixelsError, error: pixelsError, refetch: refetchPixels } = usePixels()
   const deleteSalePage = useDeleteSalePage()
   const navigate = useNavigate()
 
+  const pixelNameMap = usePixelNameMap()
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   const getPixelNames = (pixelIds: string[]) => {
-    if (!pixelIds?.length || !pixels) return '-'
+    if (!pixelIds?.length) return '-'
     return pixelIds
-      .map(pid => pixels.find(p => p.id === pid)?.name ?? '?')
+      .map(pid => pixelNameMap.get(pid) ?? '?')
       .join(', ')
   }
 

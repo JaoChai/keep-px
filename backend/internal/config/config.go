@@ -44,8 +44,8 @@ type Config struct {
 	TokenEncryptionKey string `env:"TOKEN_ENCRYPTION_KEY"`
 
 	// Database pool tuning (defaults optimized for Neon serverless)
-	DBMaxConns         int32         `env:"DB_MAX_CONNS" envDefault:"10"`
-	DBMinConns         int32         `env:"DB_MIN_CONNS" envDefault:"2"`
+	DBMaxConns         int32         `env:"DB_MAX_CONNS" envDefault:"20"`
+	DBMinConns         int32         `env:"DB_MIN_CONNS" envDefault:"3"`
 	DBMaxConnLifetime  time.Duration `env:"DB_MAX_CONN_LIFETIME" envDefault:"30m"`
 	DBMaxConnIdleTime  time.Duration `env:"DB_MAX_CONN_IDLE_TIME" envDefault:"5m"`
 	DBHealthCheckPeriod time.Duration `env:"DB_HEALTH_CHECK_PERIOD" envDefault:"15s"`

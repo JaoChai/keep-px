@@ -39,11 +39,12 @@ export class BillingPage {
     this.pixelsQuota = this.accountStatusCard.getByText('พิกเซล')
     this.retentionInfo = this.accountStatusCard.getByText(/เก็บข้อมูล \d+ วัน/)
 
-    // Pixel Slots
-    this.pixelSlotsHeading = page.getByRole('heading', { name: 'Pixel Slots' })
-    this.quantityDisplay = page.getByText('pixel slots', { exact: true })
-    this.slotPriceDisplay = page.getByText('฿199/pixel/เดือน')
-    this.subscribeButton = page.getByRole('button', { name: 'สมัครสมาชิก' })
+    // Pixel Slots — scoped to the card containing the heading
+    const pixelSlotsCard = page.locator('#pixel-slots')
+    this.pixelSlotsHeading = pixelSlotsCard.getByRole('heading', { name: 'Pixel Slots' })
+    this.quantityDisplay = pixelSlotsCard.getByText('slots', { exact: true })
+    this.slotPriceDisplay = pixelSlotsCard.getByText('฿199/slot/เดือน')
+    this.subscribeButton = pixelSlotsCard.getByRole('button', { name: 'สมัครสมาชิก' })
 
     // Replay
     this.replayHeading = page.getByRole('heading', { name: 'รีเพลย์' })

@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { ExternalLink } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { useBillingOverview, useQuota, useCreateCheckout, useCreatePortalSession, useUpdateSlots } from '@/hooks/use-billing'
 import { AccountStatusCard } from '@/components/billing/AccountStatusCard'
@@ -42,7 +40,7 @@ export function BillingPage() {
   }, [])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">การเงิน</h1>
@@ -58,43 +56,32 @@ export function BillingPage() {
           credits={activeCredits}
           onUpgrade={scrollToSlots}
           onManageBilling={() => portal.mutate()}
+          isPortalPending={portal.isPending}
         />
       )}
 
-      {/* Pixel Slots */}
-      <div id="pixel-slots">
-        <PixelSlotSection
-          currentSlots={quota?.pixel_slots ?? 0}
+      {/* Pixel Slots + Replay side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div id="pixel-slots">
+          <PixelSlotSection
+            currentSlots={quota?.pixel_slots ?? 0}
+            isPending={checkout.isPending}
+            pendingType={pendingType}
+            onCheckout={handleCheckout}
+            onUpdateSlots={(q) => updateSlots.mutate(q)}
+            isUpdating={updateSlots.isPending}
+          />
+        </div>
+
+        <ReplaySection
+          credits={activeCredits}
+          pendingCheckoutType={pendingType}
           isPending={checkout.isPending}
-          pendingType={pendingType}
           onCheckout={handleCheckout}
-          onUpdateSlots={(q) => updateSlots.mutate(q)}
-          isUpdating={updateSlots.isPending}
         />
       </div>
 
-      {/* Replay */}
-      <ReplaySection
-        credits={activeCredits}
-        pendingCheckoutType={pendingType}
-        isPending={checkout.isPending}
-        onCheckout={handleCheckout}
-      />
-
-      {/* Manage billing + History */}
-      <div className="flex items-center justify-between">
-        <div />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => portal.mutate()}
-          disabled={portal.isPending}
-        >
-          <ExternalLink className="h-4 w-4" />
-          {portal.isPending ? 'กำลังเปิด...' : 'จัดการการชำระเงิน'}
-        </Button>
-      </div>
-
+      {/* Purchase History */}
       <PurchaseHistorySection
         purchases={overview?.purchases ?? []}
         isLoading={overviewLoading}

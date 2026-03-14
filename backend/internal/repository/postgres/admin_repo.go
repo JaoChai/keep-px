@@ -311,22 +311,22 @@ func (r *AdminRepo) GetPlatformStats(ctx context.Context) (*domain.PlatformStats
 	})
 
 	g.Go(func() error {
-		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM replay_sessions WHERE status = 'completed'`).Scan(&successfulReplays)
+		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM replay_sessions WHERE status = $1`, domain.ReplayStatusCompleted).Scan(&successfulReplays)
 	})
 
 	g.Go(func() error {
-		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM replay_sessions WHERE status = 'failed'`).Scan(&failedReplays)
+		return r.pool.QueryRow(gCtx, `SELECT COUNT(*) FROM replay_sessions WHERE status = $1`, domain.ReplayStatusFailed).Scan(&failedReplays)
 	})
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
-			`SELECT COALESCE(SUM(amount_satang), 0) FROM purchases WHERE status = 'completed'`,
+			`SELECT COALESCE(SUM(amount_satang), 0) FROM purchases WHERE status = $1`, domain.PurchaseStatusCompleted,
 		).Scan(&totalRevenueSatang)
 	})
 
 	g.Go(func() error {
 		return r.pool.QueryRow(gCtx,
-			`SELECT COALESCE(SUM(amount_satang), 0) FROM purchases WHERE status = 'completed' AND completed_at >= date_trunc('month', CURRENT_DATE)`,
+			`SELECT COALESCE(SUM(amount_satang), 0) FROM purchases WHERE status = $1 AND completed_at >= date_trunc('month', CURRENT_DATE)`, domain.PurchaseStatusCompleted,
 		).Scan(&monthRevenueSatang)
 	})
 
@@ -374,10 +374,10 @@ func (r *AdminRepo) GetRevenueChart(ctx context.Context, days int) ([]*domain.Re
 		        COALESCE(SUM(p.amount_satang), 0) AS amount_satang,
 		        COUNT(p.id) AS purchase_count
 		 FROM generate_series(CURRENT_DATE - ($1 - 1) * INTERVAL '1 day', CURRENT_DATE, '1 day') AS d
-		 LEFT JOIN purchases p ON p.completed_at::date = d::date AND p.status = 'completed'
+		 LEFT JOIN purchases p ON p.completed_at::date = d::date AND p.status = $2
 		 GROUP BY d::date
 		 ORDER BY d::date`,
-		days,
+		days, domain.PurchaseStatusCompleted,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get revenue chart: %w", err)
@@ -598,10 +598,15 @@ func (r *AdminRepo) ListAllSalePages(ctx context.Context, search, customerID str
 	selectQuery := fmt.Sprintf(
 		`SELECT sp.id, sp.customer_id, sp.name, sp.slug, sp.template_name, sp.content, sp.is_published, sp.created_at, sp.updated_at,
 		        c.email, c.name,
-		        (SELECT COUNT(*) FROM pixel_events pe
-		         JOIN sale_page_pixels spp ON spp.pixel_id = pe.pixel_id
-		         WHERE spp.sale_page_id = sp.id) AS event_count
-		 FROM sale_pages sp JOIN customers c ON c.id = sp.customer_id
+		        COALESCE(ec.cnt, 0) AS event_count
+		 FROM sale_pages sp
+		 JOIN customers c ON c.id = sp.customer_id
+		 LEFT JOIN (
+		   SELECT spp.sale_page_id, COUNT(*) AS cnt
+		   FROM sale_page_pixels spp
+		   JOIN pixel_events pe ON pe.pixel_id = spp.pixel_id
+		   GROUP BY spp.sale_page_id
+		 ) ec ON ec.sale_page_id = sp.id
 		 %s ORDER BY sp.created_at DESC LIMIT $%d OFFSET $%d`,
 		baseWhere, argIdx, argIdx+1,
 	)
@@ -752,9 +757,16 @@ func (r *AdminRepo) ListAllPixels(ctx context.Context, search, customerID string
 	selectQuery := fmt.Sprintf(
 		`SELECT p.id, p.customer_id, p.fb_pixel_id, p.name, p.is_active, p.status, p.backup_pixel_id, p.test_event_code, p.created_at, p.updated_at,
 		        c.email, c.name,
-		        (SELECT COUNT(*) FROM pixel_events pe WHERE pe.pixel_id = p.id) AS event_count,
-		        (SELECT COUNT(*) FROM sale_page_pixels spp WHERE spp.pixel_id = p.id) AS sale_page_count
-		 FROM pixels p JOIN customers c ON c.id = p.customer_id
+		        COALESCE(ec.cnt, 0) AS event_count,
+		        COALESCE(sc.cnt, 0) AS sale_page_count
+		 FROM pixels p
+		 JOIN customers c ON c.id = p.customer_id
+		 LEFT JOIN (
+		   SELECT pixel_id, COUNT(*) AS cnt FROM pixel_events GROUP BY pixel_id
+		 ) ec ON ec.pixel_id = p.id
+		 LEFT JOIN (
+		   SELECT pixel_id, COUNT(*) AS cnt FROM sale_page_pixels GROUP BY pixel_id
+		 ) sc ON sc.pixel_id = p.id
 		 %s ORDER BY p.created_at DESC LIMIT $%d OFFSET $%d`,
 		baseWhere, argIdx, argIdx+1,
 	)

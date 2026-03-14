@@ -5,6 +5,15 @@ import (
 	"time"
 )
 
+// Replay session status constants.
+const (
+	ReplayStatusPending   = "pending"
+	ReplayStatusRunning   = "running"
+	ReplayStatusCompleted = "completed"
+	ReplayStatusFailed    = "failed"
+	ReplayStatusCancelled = "cancelled"
+)
+
 type ReplaySession struct {
 	ID                string          `json:"id"`
 	CustomerID        string          `json:"customer_id"`

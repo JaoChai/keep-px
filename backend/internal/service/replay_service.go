@@ -260,7 +260,7 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 			s.logger.Warn("replay skipped due to shutdown", "session_id", session.ID)
 			writeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			if err := s.replayRepo.UpdateStatusWithError(writeCtx, session.ID, "failed", "server shutdown before replay started"); err != nil {
+			if err := s.replayRepo.UpdateStatusWithError(writeCtx, session.ID, domain.ReplayStatusFailed, "server shutdown before replay started"); err != nil {
 				s.logger.Error("failed to mark session failed on shutdown", "error", err, "session_id", session.ID)
 			}
 			s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
@@ -277,7 +277,7 @@ func (s *ReplayService) sendBatchWithRetry(ctx context.Context, pixelID, accessT
 }
 
 func (s *ReplayService) executeReplay(ctx context.Context, session *domain.ReplaySession, targetPixel *domain.Pixel, events []*domain.PixelEvent) {
-	if err := s.replayRepo.UpdateStatus(ctx, session.ID, "running"); err != nil {
+	if err := s.replayRepo.UpdateStatus(ctx, session.ID, domain.ReplayStatusRunning); err != nil {
 		s.logger.Error("failed to update replay status to running", "error", err, "session_id", session.ID)
 	}
 
@@ -289,7 +289,7 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 	for i := 0; i < len(events); i += batchSize {
 		// Check for cancellation before each batch
 		status, err := s.replayRepo.GetStatus(ctx, session.ID)
-		if err == nil && status == "cancelled" {
+		if err == nil && status == domain.ReplayStatusCancelled {
 			s.logger.Info("replay cancelled by user", "session_id", session.ID, "replayed", replayed, "failed", failed)
 			// Save failed batch ranges for potential retry
 			if len(failedBatchRanges) > 0 {
@@ -359,7 +359,7 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 			// Fail-fast on auth error (any batch) — token is invalid, no point continuing
 			if facebook.IsAuthError(err) {
 				s.logger.Error("replay auth error, failing fast", "error", err, "session_id", session.ID)
-				if err := s.replayRepo.UpdateStatusWithError(ctx, session.ID, "failed", sanitizeReplayError(err)); err != nil {
+				if err := s.replayRepo.UpdateStatusWithError(ctx, session.ID, domain.ReplayStatusFailed, sanitizeReplayError(err)); err != nil {
 					s.logger.Error("failed to update replay status to failed", "error", err, "session_id", session.ID)
 				}
 				s.createReplayNotification(session, domain.NotificationTypeCAPIAuthError,
@@ -406,14 +406,14 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 		if lastErr != nil {
 			errMsg = sanitizeReplayError(lastErr)
 		}
-		if err := s.replayRepo.UpdateStatusWithError(ctx, session.ID, "failed", errMsg); err != nil {
+		if err := s.replayRepo.UpdateStatusWithError(ctx, session.ID, domain.ReplayStatusFailed, errMsg); err != nil {
 			s.logger.Error("failed to update replay status to failed", "error", err, "session_id", session.ID)
 		}
 		s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
 			"Replay failed",
 			fmt.Sprintf("All %d events failed to replay. You can retry from the replay history.", session.TotalEvents))
 	} else {
-		if err := s.replayRepo.UpdateStatus(ctx, session.ID, "completed"); err != nil {
+		if err := s.replayRepo.UpdateStatus(ctx, session.ID, domain.ReplayStatusCompleted); err != nil {
 			s.logger.Error("failed to update replay status to completed", "error", err, "session_id", session.ID)
 		}
 		s.createReplayNotification(session, domain.NotificationTypeReplayCompleted,
@@ -482,7 +482,7 @@ func (s *ReplayService) Cancel(ctx context.Context, customerID, sessionID string
 
 	// Check if eligible for credit refund BEFORE cancelling
 	// Only refund if still pending (no events sent yet)
-	eligibleForRefund := session.Status == "pending" && session.CreditID != nil
+	eligibleForRefund := session.Status == domain.ReplayStatusPending && session.CreditID != nil
 
 	// Atomic cancel: only transitions pending/running -> cancelled
 	cancelled, err := s.replayRepo.CancelSession(ctx, sessionID)
@@ -601,7 +601,7 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 	}
 
 	// Only failed or cancelled sessions can be retried
-	if session.Status != "failed" && session.Status != "cancelled" {
+	if session.Status != domain.ReplayStatusFailed && session.Status != domain.ReplayStatusCancelled {
 		return nil, ErrReplayNotRetryable
 	}
 
@@ -695,7 +695,7 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 			s.logger.Warn("replay skipped due to shutdown", "session_id", newSession.ID)
 			writeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			if err := s.replayRepo.UpdateStatusWithError(writeCtx, newSession.ID, "failed", "server shutdown before replay started"); err != nil {
+			if err := s.replayRepo.UpdateStatusWithError(writeCtx, newSession.ID, domain.ReplayStatusFailed, "server shutdown before replay started"); err != nil {
 				s.logger.Error("failed to mark session failed on shutdown", "error", err, "session_id", newSession.ID)
 			}
 			s.createReplayNotification(newSession, domain.NotificationTypeReplayFailed,

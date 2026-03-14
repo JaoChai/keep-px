@@ -1,3 +1,4 @@
+import { CreditCard } from 'lucide-react'
 import { Collapsible } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
 import { formatBaht, PACK_TYPE_NAMES } from '@/lib/utils'
@@ -8,12 +9,13 @@ interface PurchaseHistorySectionProps {
   isLoading: boolean
 }
 
+const STATUS_CONFIG = {
+  completed: { variant: 'success' as const, label: 'สำเร็จ' },
+  pending: { variant: 'secondary' as const, label: 'รอดำเนินการ' },
+} as const
+
 function StatusBadge({ status }: { status: string }) {
-  const config = {
-    completed: { variant: 'success' as const, label: 'สำเร็จ' },
-    pending: { variant: 'secondary' as const, label: 'รอดำเนินการ' },
-  }
-  const { variant, label } = config[status as keyof typeof config] ?? { variant: 'destructive' as const, label: 'ล้มเหลว' }
+  const { variant, label } = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ?? { variant: 'destructive' as const, label: 'ล้มเหลว' }
   return <Badge variant={variant}>{label}</Badge>
 }
 
@@ -37,25 +39,28 @@ export function PurchaseHistorySection({ purchases, isLoading }: PurchaseHistory
     <section>
       <Collapsible title={title}>
         {count === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            ยังไม่มีประวัติการซื้อ
-          </p>
+          <div className="text-center py-6">
+            <CreditCard className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">
+              ยังไม่มีประวัติการซื้อ
+            </p>
+          </div>
         ) : (
           <>
             {/* Desktop table */}
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm" aria-label="ประวัติการซื้อ">
-                <thead className="bg-muted">
+                <thead className="bg-secondary">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">วันที่</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">แพ็ก</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">จำนวนเงิน</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">สถานะ</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">วันที่</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">แพ็ก</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">จำนวนเงิน</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {purchases.map((purchase) => (
-                    <tr key={purchase.id}>
+                    <tr key={purchase.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-4 py-3 text-foreground">
                         {new Date(purchase.created_at).toLocaleDateString('th-TH')}
                       </td>
@@ -75,7 +80,7 @@ export function PurchaseHistorySection({ purchases, isLoading }: PurchaseHistory
             {/* Mobile card list */}
             <div className="sm:hidden space-y-3">
               {purchases.map((purchase) => (
-                <div key={purchase.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <div key={purchase.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
                   <div>
                     <p className="text-sm font-medium text-foreground">{PACK_TYPE_NAMES[purchase.pack_type] ?? purchase.pack_type}</p>
                     <p className="text-xs text-muted-foreground">

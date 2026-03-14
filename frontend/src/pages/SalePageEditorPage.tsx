@@ -16,14 +16,8 @@ import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-
 import { useQuota } from '@/hooks/use-billing'
 import { usePixels } from '@/hooks/use-pixels'
 import { useUploadImage, useUploadImages } from '@/hooks/use-upload'
+import { CTA_EVENT_OPTIONS } from '@/lib/utils'
 import type { SalePageContent, SalePageContentV2, PageStyle } from '@/types'
-
-const CTA_EVENT_OPTIONS = [
-  { value: 'Lead', label: 'ลูกค้าสนใจ — แอด LINE / ทักแชท (Lead)' },
-  { value: 'Purchase', label: 'ลูกค้าสั่งซื้อ — โอนเงิน / จ่ายเงิน (Purchase)' },
-  { value: 'Contact', label: 'ลูกค้าติดต่อ — กดโทร / กดแชท (Contact)' },
-  { value: 'CompleteRegistration', label: 'ลูกค้าสมัคร — ลงทะเบียน / สมัครสมาชิก (CompleteRegistration)' },
-] as const
 
 const salePageSchema = z.object({
   name: z.string().min(1, 'กรุณากรอกชื่อเพจ'),
