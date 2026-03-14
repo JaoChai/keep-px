@@ -112,7 +112,7 @@ export function LoginPage() {
               เข้าสู่ระบบ
             </h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              เริ่มต้นใช้งาน Pixlinks ด้วยบัญชี Google ของคุณ
+              ปกป้องข้อมูล Facebook Pixel ของคุณ
             </p>
           </div>
 
