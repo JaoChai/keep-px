@@ -51,19 +51,19 @@ export function LoginPage() {
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
               <Shield aria-hidden="true" className="h-[22px] w-[22px] text-white" />
             </div>
-            <span className="text-2xl font-bold tracking-tight text-white">
+            <h1 className="text-2xl font-bold tracking-tight text-white">
               Pixlinks
-            </span>
+            </h1>
           </div>
 
-          {/* Headline */}
-          <h1 className="text-[2rem] leading-tight font-semibold tracking-tight text-white">
+          {/* Tagline */}
+          <p className="text-[2rem] leading-tight font-semibold tracking-tight text-white">
             ปกป้องข้อมูล
             <br />
             Facebook Pixel
             <br />
             <span className="text-white/50">ของคุณ</span>
-          </h1>
+          </p>
 
           {/* Features */}
           <div className="mt-10 space-y-5">
