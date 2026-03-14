@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
 import { ArrowLeft, Copy, Check, ExternalLink, Info, Eye, Pencil, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,9 +9,13 @@ import { Collapsible } from '@/components/ui/collapsible'
 import { BlockEditor } from '@/components/sale-pages/BlockEditor'
 import { BlockPreview } from '@/components/sale-pages/BlockPreview'
 import { StyleEditor } from '@/components/sale-pages/StyleEditor'
+import { UnsavedChangesDialog } from '@/components/shared/UnsavedChangesDialog'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
+import { useAutoSaveDraft, loadDraft } from '@/hooks/use-auto-save-draft'
 import { CTA_EVENT_OPTIONS } from '@/lib/utils'
+import { toast } from 'sonner'
 import type { Block, SalePage, SalePageContentV2, PageStyle } from '@/types'
 
 
@@ -77,7 +81,38 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [publishedDialog, setPublishedDialog] = useState<{ slug: string } | null>(null)
   const [copiedUrl, setCopiedUrl] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
+  const unsaved = useUnsavedChanges(hasChanges)
 
+  const draftKey = isEditing && existingPage ? `sale-page:${existingPage.id}` : 'sale-page:new'
+
+  // Auto-save draft
+  const draftData = useMemo(
+    () => ({ name, slug, selectedPixelIds, blocks, pageStyle, ctaEventName, trackingContentName, trackingContentValue, trackingCurrency }),
+    [name, slug, selectedPixelIds, blocks, pageStyle, ctaEventName, trackingContentName, trackingContentValue, trackingCurrency]
+  )
+  const { clearDraft } = useAutoSaveDraft(draftKey, draftData)
+
+  // Restore draft
+  useEffect(() => {
+    const draft = loadDraft<typeof draftData>(draftKey)
+    if (!draft) return
+    // For editing: only restore if draft is different from server data
+    if (isEditing && existingPage) {
+      if (JSON.stringify(draft.blocks) === JSON.stringify(v2?.blocks)) return
+    }
+    setName(draft.name ?? '')
+    setSlug(draft.slug ?? '')
+    setSelectedPixelIds(draft.selectedPixelIds ?? [])
+    setBlocks(draft.blocks ?? [])
+    setPageStyle(draft.pageStyle ?? {})
+    setCtaEventName(draft.ctaEventName ?? 'Lead')
+    setTrackingContentName(draft.trackingContentName ?? '')
+    setTrackingContentValue(draft.trackingContentValue ?? 0)
+    setTrackingCurrency(draft.trackingCurrency ?? 'THB')
+    toast.info('กู้คืนแบบร่างจากการบันทึกอัตโนมัติ')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const buildContent = (): SalePageContentV2 => ({
     version: 2,
@@ -122,6 +157,9 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
         const result = await createSalePage.mutateAsync(payload)
         resultSlug = result.slug
       }
+
+      clearDraft()
+      setHasChanges(false)
 
       if (isPublished) {
         setPublishedDialog({ slug: resultSlug })
@@ -206,7 +244,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                   id="page-name"
                   placeholder="เช่น โปรโมชั่นครีมหน้าใส"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => { setName(e.target.value); setHasChanges(true) }}
                 />
               </div>
               <div className="space-y-2">
@@ -228,7 +266,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                       className="rounded-l-none"
                       placeholder="my-page"
                       value={slug}
-                      onChange={(e) => setSlug(e.target.value)}
+                      onChange={(e) => { setSlug(e.target.value); setHasChanges(true) }}
                     />
                   </div>
                 )}
@@ -253,6 +291,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                           } else {
                             setSelectedPixelIds(prev => prev.filter(id => id !== pixel.id))
                           }
+                          setHasChanges(true)
                         }}
                         className="rounded border-border"
                       />
@@ -265,11 +304,11 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
           </Collapsible>
 
           {/* Block Editor */}
-          <BlockEditor blocks={blocks} onChange={setBlocks} />
+          <BlockEditor blocks={blocks} onChange={(b) => { setBlocks(b); setHasChanges(true) }} />
 
           {/* Page Style */}
           <Collapsible title="รูปแบบหน้าเพจ">
-            <StyleEditor style={pageStyle} onChange={setPageStyle} />
+            <StyleEditor style={pageStyle} onChange={(s) => { setPageStyle(s); setHasChanges(true) }} />
           </Collapsible>
 
           {/* Tracking Settings */}
@@ -281,7 +320,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                   id="cta-event"
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   value={ctaEventName}
-                  onChange={(e) => setCtaEventName(e.target.value)}
+                  onChange={(e) => { setCtaEventName(e.target.value); setHasChanges(true) }}
                 >
                   {CTA_EVENT_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -294,7 +333,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                   id="content-name"
                   placeholder="เช่น ครีมหน้าใส, คอร์สออนไลน์"
                   value={trackingContentName}
-                  onChange={(e) => setTrackingContentName(e.target.value)}
+                  onChange={(e) => { setTrackingContentName(e.target.value); setHasChanges(true) }}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -305,7 +344,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                     type="number"
                     placeholder="0"
                     value={trackingContentValue}
-                    onChange={(e) => setTrackingContentValue(Number(e.target.value) || 0)}
+                    onChange={(e) => { setTrackingContentValue(Number(e.target.value) || 0); setHasChanges(true) }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -314,7 +353,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                     id="currency"
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     value={trackingCurrency}
-                    onChange={(e) => setTrackingCurrency(e.target.value)}
+                    onChange={(e) => { setTrackingCurrency(e.target.value); setHasChanges(true) }}
                   >
                     <option value="THB">THB (บาท)</option>
                     <option value="USD">USD (ดอลลาร์)</option>
@@ -345,6 +384,8 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
           </div>
         </div>
       </div>
+
+      <UnsavedChangesDialog isBlocked={unsaved.isBlocked} onStay={unsaved.cancelLeave} onLeave={unsaved.confirmLeave} />
 
       {/* Published Success Dialog */}
       <Dialog open={!!publishedDialog} onOpenChange={() => setPublishedDialog(null)}>

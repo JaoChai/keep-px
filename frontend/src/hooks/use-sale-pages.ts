@@ -1,14 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import api from '@/lib/api'
-import type { APIResponse, SalePage, SalePageContent, SalePageContentV2 } from '@/types'
+import type { APIResponse, PaginatedResponse, SalePage, SalePageContent, SalePageContentV2 } from '@/types'
 
 export function useSalePages() {
   return useQuery({
     queryKey: ['sale-pages'],
     queryFn: async () => {
-      const { data } = await api.get<APIResponse<SalePage[]>>('/sale-pages')
-      return data.data!
+      const { data } = await api.get<PaginatedResponse<SalePage>>('/sale-pages?per_page=100')
+      return data.data
     },
   })
 }
