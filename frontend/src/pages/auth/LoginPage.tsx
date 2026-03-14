@@ -94,27 +94,24 @@ export function LoginPage() {
 
         <div className="relative z-10 w-full max-w-sm">
           {/* Mobile-only branding */}
-          <div className="mb-8 text-center lg:hidden">
+          <div className="mb-2 text-center lg:hidden">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-foreground">
               <Shield aria-hidden="true" className="h-6 w-6 text-background" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
               Pixlinks
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              ปกป้องข้อมูล Facebook Pixel ของคุณ
-            </p>
           </div>
 
           {/* Desktop heading */}
-          <div className="mb-8 hidden lg:block">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              เข้าสู่ระบบ
-            </h2>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              ปกป้องข้อมูล Facebook Pixel ของคุณ
-            </p>
-          </div>
+          <h2 className="hidden text-2xl font-semibold tracking-tight text-foreground lg:block">
+            เข้าสู่ระบบ
+          </h2>
+
+          {/* Subtitle — single element for both viewports */}
+          <p className="mt-1.5 mb-8 text-center text-sm text-muted-foreground lg:text-left">
+            ปกป้องข้อมูล Facebook Pixel ของคุณ
+          </p>
 
           {/* Login card */}
           <div className="rounded-2xl border border-border bg-card p-8 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
