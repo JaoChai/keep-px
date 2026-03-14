@@ -16,6 +16,8 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/facebook"
 )
 
+const testBackupPixelID = "pixel-2"
+
 func newTestPixelService() (*PixelService, *MockPixelRepo) {
 	pixelRepo := new(MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
@@ -75,14 +77,14 @@ func TestPixelService_Create(t *testing.T) {
 
 	t.Run("create with valid backup pixel", func(t *testing.T) {
 		svc, pixelRepo := newTestPixelService()
-		backupID := "pixel-2"
+		backupID := testBackupPixelID
 
-		pixelRepo.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
-			ID:         "pixel-2",
+		pixelRepo.On("GetByID", mock.Anything, testBackupPixelID).Return(&domain.Pixel{
+			ID:         testBackupPixelID,
 			CustomerID: "cust-1",
 		}, nil)
 		pixelRepo.On("Create", mock.Anything, mock.MatchedBy(func(p *domain.Pixel) bool {
-			return p.BackupPixelID != nil && *p.BackupPixelID == "pixel-2"
+			return p.BackupPixelID != nil && *p.BackupPixelID == testBackupPixelID
 		})).Return(nil)
 
 		pixel, err := svc.Create(context.Background(), "cust-1", CreatePixelInput{
@@ -202,7 +204,7 @@ func TestPixelService_List(t *testing.T) {
 
 	pixelRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return([]*domain.Pixel{
 		{ID: "pixel-1", CustomerID: "cust-1", Name: "Pixel 1"},
-		{ID: "pixel-2", CustomerID: "cust-1", Name: "Pixel 2"},
+		{ID: testBackupPixelID, CustomerID: "cust-1", Name: "Pixel 2"},
 	}, nil)
 
 	pixels, err := svc.List(context.Background(), "cust-1")
@@ -265,20 +267,20 @@ func TestPixelService_Update(t *testing.T) {
 			name:       "set backup pixel",
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
-			input:      UpdatePixelInput{BackupPixelID: strPtr("pixel-2")},
+			input:      UpdatePixelInput{BackupPixelID: strPtr(testBackupPixelID)},
 			setup: func(pr *MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
 					Name:       "Primary",
 				}, nil)
-				pr.On("GetByID", mock.Anything, "pixel-2").Return(&domain.Pixel{
-					ID:         "pixel-2",
+				pr.On("GetByID", mock.Anything, testBackupPixelID).Return(&domain.Pixel{
+					ID:         testBackupPixelID,
 					CustomerID: "cust-1",
 					Name:       "Backup",
 				}, nil)
 				pr.On("Update", mock.Anything, mock.MatchedBy(func(p *domain.Pixel) bool {
-					return p.BackupPixelID != nil && *p.BackupPixelID == "pixel-2"
+					return p.BackupPixelID != nil && *p.BackupPixelID == testBackupPixelID
 				})).Return(nil)
 			},
 			wantErr: nil,
@@ -289,7 +291,7 @@ func TestPixelService_Update(t *testing.T) {
 			pixelID:    "pixel-1",
 			input:      UpdatePixelInput{BackupPixelID: strPtr("")},
 			setup: func(pr *MockPixelRepo) {
-				backupID := "pixel-2"
+				backupID := testBackupPixelID
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
