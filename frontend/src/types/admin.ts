@@ -132,7 +132,6 @@ export interface AdminPixel {
   fb_pixel_id: string
   name: string
   is_active: boolean
-  status: string
   created_at: string
   updated_at: string
   customer_email: string
@@ -148,7 +147,6 @@ export interface AdminPixelDetail {
     fb_pixel_id: string
     name: string
     is_active: boolean
-    status: string
     created_at: string
     updated_at: string
   }

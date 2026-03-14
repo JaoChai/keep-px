@@ -663,7 +663,7 @@ func (r *AdminRepo) GetSalePageAdminDetail(ctx context.Context, id string) (*dom
 
 	g.Go(func() error {
 		rows, err := r.pool.Query(gCtx,
-			`SELECT p.id, p.customer_id, p.fb_pixel_id, p.name, p.is_active, p.status, p.backup_pixel_id, p.test_event_code, p.created_at, p.updated_at
+			`SELECT p.id, p.customer_id, p.fb_pixel_id, p.name, p.is_active, p.backup_pixel_id, p.test_event_code, p.created_at, p.updated_at
 			 FROM pixels p JOIN sale_page_pixels spp ON spp.pixel_id = p.id
 			 WHERE spp.sale_page_id = $1 ORDER BY spp.position`, id,
 		)
@@ -673,7 +673,7 @@ func (r *AdminRepo) GetSalePageAdminDetail(ctx context.Context, id string) (*dom
 		defer rows.Close()
 		for rows.Next() {
 			p := &domain.Pixel{}
-			if err := rows.Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.Name, &p.IsActive, &p.Status, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			if err := rows.Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.Name, &p.IsActive, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt); err != nil {
 				return err
 			}
 			linkedPixels = append(linkedPixels, p)
@@ -755,7 +755,7 @@ func (r *AdminRepo) ListAllPixels(ctx context.Context, search, customerID string
 	}
 
 	selectQuery := fmt.Sprintf(
-		`SELECT p.id, p.customer_id, p.fb_pixel_id, p.name, p.is_active, p.status, p.backup_pixel_id, p.test_event_code, p.created_at, p.updated_at,
+		`SELECT p.id, p.customer_id, p.fb_pixel_id, p.name, p.is_active, p.backup_pixel_id, p.test_event_code, p.created_at, p.updated_at,
 		        c.email, c.name,
 		        COALESCE(ec.cnt, 0) AS event_count,
 		        COALESCE(sc.cnt, 0) AS sale_page_count
@@ -782,7 +782,7 @@ func (r *AdminRepo) ListAllPixels(ctx context.Context, search, customerID string
 	for rows.Next() {
 		ap := &domain.AdminPixel{}
 		if err := rows.Scan(
-			&ap.ID, &ap.CustomerID, &ap.FBPixelID, &ap.Name, &ap.IsActive, &ap.Status, &ap.BackupPixelID, &ap.TestEventCode, &ap.CreatedAt, &ap.UpdatedAt,
+			&ap.ID, &ap.CustomerID, &ap.FBPixelID, &ap.Name, &ap.IsActive, &ap.BackupPixelID, &ap.TestEventCode, &ap.CreatedAt, &ap.UpdatedAt,
 			&ap.CustomerEmail, &ap.CustomerName,
 			&ap.EventCount, &ap.SalePageCount,
 		); err != nil {
@@ -800,13 +800,13 @@ func (r *AdminRepo) GetPixelAdminDetail(ctx context.Context, id string) (*domain
 	detail := &domain.AdminPixelDetail{Pixel: &domain.Pixel{}}
 
 	err := r.pool.QueryRow(ctx,
-		`SELECT p.id, p.customer_id, p.fb_pixel_id, p.name, p.is_active, p.status, p.backup_pixel_id, p.test_event_code, p.created_at, p.updated_at,
+		`SELECT p.id, p.customer_id, p.fb_pixel_id, p.name, p.is_active, p.backup_pixel_id, p.test_event_code, p.created_at, p.updated_at,
 		        c.email, c.name
 		 FROM pixels p JOIN customers c ON c.id = p.customer_id
 		 WHERE p.id = $1`, id,
 	).Scan(
 		&detail.Pixel.ID, &detail.Pixel.CustomerID, &detail.Pixel.FBPixelID, &detail.Pixel.Name,
-		&detail.Pixel.IsActive, &detail.Pixel.Status, &detail.Pixel.BackupPixelID, &detail.Pixel.TestEventCode,
+		&detail.Pixel.IsActive, &detail.Pixel.BackupPixelID, &detail.Pixel.TestEventCode,
 		&detail.Pixel.CreatedAt, &detail.Pixel.UpdatedAt,
 		&detail.CustomerEmail, &detail.CustomerName,
 	)
@@ -977,9 +977,9 @@ func (r *AdminRepo) GetReplaySessionAdminDetail(ctx context.Context, id string) 
 	g.Go(func() error {
 		p := &domain.Pixel{}
 		err := r.pool.QueryRow(gCtx,
-			`SELECT id, customer_id, fb_pixel_id, name, is_active, status, backup_pixel_id, test_event_code, created_at, updated_at
+			`SELECT id, customer_id, fb_pixel_id, name, is_active, backup_pixel_id, test_event_code, created_at, updated_at
 			 FROM pixels WHERE id = $1`, sourcePixelID,
-		).Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.Name, &p.IsActive, &p.Status, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt)
+		).Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.Name, &p.IsActive, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -993,9 +993,9 @@ func (r *AdminRepo) GetReplaySessionAdminDetail(ctx context.Context, id string) 
 	g.Go(func() error {
 		p := &domain.Pixel{}
 		err := r.pool.QueryRow(gCtx,
-			`SELECT id, customer_id, fb_pixel_id, name, is_active, status, backup_pixel_id, test_event_code, created_at, updated_at
+			`SELECT id, customer_id, fb_pixel_id, name, is_active, backup_pixel_id, test_event_code, created_at, updated_at
 			 FROM pixels WHERE id = $1`, targetPixelID,
-		).Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.Name, &p.IsActive, &p.Status, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt)
+		).Scan(&p.ID, &p.CustomerID, &p.FBPixelID, &p.Name, &p.IsActive, &p.BackupPixelID, &p.TestEventCode, &p.CreatedAt, &p.UpdatedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}

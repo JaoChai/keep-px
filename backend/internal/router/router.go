@@ -84,7 +84,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	notifService := service.NewNotificationService(notifRepo)
 	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService, quotaService)
 	analyticsService := service.NewAnalyticsService(pool)
-	salePageService := service.NewSalePageService(shutdownCtx, salePageRepo, customerRepo, pixelRepo, quotaService)
+	salePageService := service.NewSalePageService(shutdownCtx, salePageRepo, customerRepo, pixelRepo, quotaService, cfg.SalePageCacheTTL)
 	adminService := service.NewAdminService(adminRepo, customerRepo, creditRepo, replaySessionRepo, pool, logger)
 
 	// Storage
@@ -157,6 +157,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 			r.Route("/pixels", func(r chi.Router) {
 				r.Get("/", pixelHandler.List)
 				r.Post("/", pixelHandler.Create)
+				r.Get("/{id}", pixelHandler.Get)
 				r.Put("/{id}", pixelHandler.Update)
 				r.Delete("/{id}", pixelHandler.Delete)
 				r.Post("/{id}/test", pixelHandler.Test)

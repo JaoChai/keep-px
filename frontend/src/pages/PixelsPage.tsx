@@ -17,9 +17,10 @@ import type { Pixel } from '@/types'
 
 const pixelSchema = z.object({
   name: z.string().min(1, 'กรุณากรอกชื่อ'),
-  fb_pixel_id: z.string().min(1, 'กรุณากรอก Facebook Pixel ID'),
-  fb_access_token: z.string().min(1, 'กรุณากรอก Access Token'),
+  fb_pixel_id: z.string().regex(/^\d{15,16}$/, 'Pixel ID ต้องเป็นตัวเลข 15-16 หลัก'),
+  fb_access_token: z.string().optional(),
   test_event_code: z.string().optional(),
+  backup_pixel_id: z.string().optional(),
 })
 
 type PixelForm = z.infer<typeof pixelSchema>
@@ -48,13 +49,13 @@ export function PixelsPage() {
 
   const openCreate = () => {
     setEditingPixel(null)
-    reset({ name: '', fb_pixel_id: '', fb_access_token: '', test_event_code: '' })
+    reset({ name: '', fb_pixel_id: '', fb_access_token: '', test_event_code: '', backup_pixel_id: '' })
     setShowDialog(true)
   }
 
   const openEdit = (pixel: Pixel) => {
     setEditingPixel(pixel)
-    reset({ name: pixel.name, fb_pixel_id: pixel.fb_pixel_id, fb_access_token: '', test_event_code: pixel.test_event_code || '' })
+    reset({ name: pixel.name, fb_pixel_id: pixel.fb_pixel_id, fb_access_token: '', test_event_code: pixel.test_event_code || '', backup_pixel_id: pixel.backup_pixel_id || '' })
     setShowDialog(true)
   }
 
@@ -66,12 +67,20 @@ export function PixelsPage() {
         fb_pixel_id: data.fb_pixel_id,
         ...(data.fb_access_token ? { fb_access_token: data.fb_access_token } : {}),
         test_event_code: data.test_event_code || '',
+        backup_pixel_id: data.backup_pixel_id || '',
       })
       setShowDialog(false)
     } else {
+      if (!data.fb_access_token) {
+        toast.error('กรุณากรอก Access Token')
+        return
+      }
       await createPixel.mutateAsync({
-        ...data,
+        name: data.name,
+        fb_pixel_id: data.fb_pixel_id,
+        fb_access_token: data.fb_access_token,
         test_event_code: data.test_event_code || undefined,
+        backup_pixel_id: data.backup_pixel_id || undefined,
       })
       setShowDialog(false)
     }
@@ -238,21 +247,15 @@ export function PixelsPage() {
               <Input id="test_event_code" placeholder="TEST12345" {...register('test_event_code')} />
               <p className="text-xs text-muted-foreground">คัดลอกจาก Facebook Events Manager → เหตุการณ์ทดสอบ เพื่อ debug events</p>
             </div>
-            {editingPixel && (
+            {pixels && pixels.length > (editingPixel ? 1 : 0) && (
               <div className="space-y-2">
                 <Label>พิกเซลสำรอง</Label>
                 <select
                   className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
-                  defaultValue={editingPixel.backup_pixel_id || ''}
-                  onChange={(e) => {
-                    updatePixel.mutate({
-                      id: editingPixel.id,
-                      backup_pixel_id: e.target.value,
-                    })
-                  }}
+                  {...register('backup_pixel_id')}
                 >
                   <option value="">ไม่มีสำรอง</option>
-                  {pixels?.filter(p => p.id !== editingPixel.id).map((p) => (
+                  {pixels.filter(p => !editingPixel || p.id !== editingPixel.id).map((p) => (
                     <option key={p.id} value={p.id}>{p.name} ({p.fb_pixel_id})</option>
                   ))}
                 </select>

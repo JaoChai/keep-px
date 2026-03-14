@@ -52,10 +52,6 @@ export function PixelDetailDialog({ pixelId, onClose }: PixelDetailDialogProps) 
                   )}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Status: </span>
-                  <span className="text-foreground">{px.status}</span>
-                </div>
-                <div>
                   <span className="text-muted-foreground">สร้างเมื่อ: </span>
                   <span className="text-foreground">{timeAgo(px.created_at)}</span>
                 </div>
