@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { StatCard } from '@/components/shared/StatCard'
 import { useAdminEvents, useAdminEventStats } from '@/hooks/use-admin'
 import { timeAgo } from '@/lib/utils'
 import {
@@ -15,24 +16,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-
-function StatCard({ title, value, icon }: { title: string; value: string | number; icon: React.ReactNode }) {
-  return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-foreground">
-            {icon}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
 
 export function AdminEventsPage() {
   const [customerID, setCustomerID] = useState('')

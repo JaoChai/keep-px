@@ -99,11 +99,11 @@ func (r *EventRepo) ListByPixelID(ctx context.Context, pixelID string, limit, of
 	return events, total, rows.Err()
 }
 
-func (r *EventRepo) ListByCustomerID(ctx context.Context, customerID string, pixelID string, limit, offset int) ([]*domain.PixelEvent, int, error) {
+func (r *EventRepo) ListByCustomerID(ctx context.Context, customerID string, pixelID string, eventName string, limit, offset int) ([]*domain.PixelEvent, int, error) {
 	var total int
 	err := r.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM pixel_events pe JOIN pixels p ON p.id = pe.pixel_id
-		 WHERE p.customer_id = $1 AND ($2::text = '' OR pe.pixel_id = $2::uuid)`, customerID, pixelID,
+		 WHERE p.customer_id = $1 AND ($2::text = '' OR pe.pixel_id = $2::uuid) AND ($3::text = '' OR pe.event_name = $3)`, customerID, pixelID, eventName,
 	).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -114,7 +114,8 @@ func (r *EventRepo) ListByCustomerID(ctx context.Context, customerID string, pix
 		 FROM pixel_events pe JOIN pixels p ON p.id = pe.pixel_id
 		 WHERE p.customer_id = $1
 		   AND ($2::text = '' OR pe.pixel_id = $2::uuid)
-		 ORDER BY pe.event_time DESC LIMIT $3 OFFSET $4`, customerID, pixelID, limit, offset,
+		   AND ($3::text = '' OR pe.event_name = $3)
+		 ORDER BY pe.event_time DESC LIMIT $4 OFFSET $5`, customerID, pixelID, eventName, limit, offset,
 	)
 	if err != nil {
 		return nil, 0, err
@@ -246,6 +247,27 @@ func (r *EventRepo) GetEventsForReplayPreview(ctx context.Context, pixelID strin
 func (r *EventRepo) GetDistinctEventTypes(ctx context.Context, pixelID string) ([]string, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT DISTINCT event_name FROM pixel_events WHERE pixel_id = $1 ORDER BY event_name`, pixelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var types []string
+	for rows.Next() {
+		var t string
+		if err := rows.Scan(&t); err != nil {
+			return nil, err
+		}
+		types = append(types, t)
+	}
+	return types, rows.Err()
+}
+
+func (r *EventRepo) GetDistinctEventTypesByCustomerID(ctx context.Context, customerID string) ([]string, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT DISTINCT pe.event_name
+		 FROM pixel_events pe JOIN pixels p ON p.id = pe.pixel_id
+		 WHERE p.customer_id = $1
+		 ORDER BY pe.event_name`, customerID)
 	if err != nil {
 		return nil, err
 	}
