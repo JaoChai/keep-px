@@ -1,6 +1,6 @@
 ---
 name: e2e-debug
-description: Debug Playwright E2E test failures in CI — root cause analysis, Zod schema alignment, and dialog timing patterns
+description: Debug Playwright E2E test failures in CI — root cause analysis, strict mode violations, Thai text selectors, and dialog timing patterns (61 tests, 12 page objects)
 ---
 
 # E2E Debug
@@ -12,6 +12,12 @@ Activate this skill when the user says:
 - "Dialog won't close" / "Form not submitting in test"
 - "Playwright timeout" / "Strict mode violation"
 - "Fix flaky test" / "Debug CI failure"
+
+## Test Suite Overview
+
+- **61 tests** across 17 spec files
+- **12 page objects** (login, pixels, sale-pages, billing, admin, etc.)
+- Tests run in CI via GitHub Actions with Playwright
 
 ## Step 1: Read the CI Error
 
@@ -85,16 +91,49 @@ await expect(page.getByText('new value')).toBeVisible()
 - Between sequential dialogs → wait for previous to fully close first
 - After table update → wait for expected content to appear
 
+## Step 4: Wait Strategies for Rapid Operations
+
+For loops that perform rapid deletions or mutations:
+
+```typescript
+// Add small delay between rapid deletion loops
+for (const item of items) {
+  await item.deleteButton.click()
+  await page.waitForTimeout(500)  // Prevent race conditions
+  await confirmButton.click()
+  await expect(item.row).not.toBeVisible()
+}
+```
+
+For post-deploy auth with exponential backoff:
+
+```typescript
+// Auth retry with exponential backoff (3→6→12→24→48s)
+const delays = [3000, 6000, 12000, 24000, 48000]
+for (const delay of delays) {
+  try {
+    await loginAndVerify()
+    break
+  } catch {
+    await page.waitForTimeout(delay)
+  }
+}
+```
+
 ## Quick Reference: Common CI Failures
 
 | Symptom | Root Cause | Fix |
 |---------|-----------|-----|
 | Dialog stays open after submit | Zod validation failure | Fill ALL required schema fields |
 | Element not found after action | Animation/render delay | Add `toBeVisible()` / `not.toBeVisible()` wait |
-| Strict mode violation | Multiple matching elements | Scope locator: `.locator('form').getByRole(...)` |
+| Strict mode violation | Multiple matching elements | Use `.first()` or scope: `.locator('form').getByRole(...)` |
+| Strict mode on responsive layout | Duplicate elements for mobile/desktop | Use `data-testid` or `.first()` for the visible element |
 | Button click has no effect | Element obscured by overlay | Wait for previous dialog/overlay to close first |
 | Test passes locally, fails CI | CI slower than local | Add explicit waits, never rely on implicit timing |
 | Stale data after mutation | TanStack Query cache | Wait for updated content to appear in DOM |
+| Thai text selector fails | Text mismatch | Use exact Thai text: `getByRole('button', { name: 'บันทึก' })` |
+| Toast blocks click | Toast overlay on target | Dismiss toast before next action: `await toast.waitFor({ state: 'hidden' })` |
+| Serial test step fails | Previous step dependency | Use `test.skip()` when prerequisite step failed |
 
 ## Decision Tree
 
@@ -105,10 +144,14 @@ E2E test fails in CI
 │   ├── After clicking submit? → Check Zod schema (Step 2)
 │   └── On open/close? → Add timing waits (Step 3)
 ├── Strict mode violation?
-│   └── Scope locator with parent: .locator('form').getByRole(...)
+│   ├── Duplicate elements in responsive DOM? → Use .first() or data-testid
+│   └── Multiple forms/dialogs? → Scope locator with parent: .locator('form').getByRole(...)
 ├── Element not found?
 │   ├── After dialog close? → Wait for not.toBeVisible() first
-│   └── After navigation? → Wait for new page content
+│   ├── After navigation? → Wait for new page content
+│   └── Thai text mismatch? → Verify exact Thai string in component
+├── Toast blocking interaction?
+│   └── Wait for toast to disappear before next action
 └── Passes locally but fails CI?
     └── Add explicit waits — CI is always slower
 ```
@@ -130,3 +173,4 @@ git push && gh run watch
 
 - `frontend-feature` for creating new pages with testable structure
 - `deploy-check` for pre-deployment verification including E2E
+- `sale-page-editor` for sale page patterns that affect E2E tests

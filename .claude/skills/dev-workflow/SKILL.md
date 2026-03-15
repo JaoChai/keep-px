@@ -1,9 +1,9 @@
 ---
 name: dev-workflow
-description: Keep-PX development workflow patterns extracted from 120 commits — file co-change maps, recurring pitfalls, and iteration shortcuts
-version: 1.1.0
+description: Keep-PX development workflow patterns extracted from 166 commits — file co-change maps, recurring pitfalls, and iteration shortcuts
+version: 1.2.0
 source: local-git-analysis
-analyzed_commits: 200
+analyzed_commits: 166
 ---
 
 # Keep-PX Development Workflow Patterns
@@ -18,11 +18,11 @@ type: short description (lowercase, no period, max 72 chars)
 
 | Type | Usage | Count |
 |------|-------|-------|
-| `fix:` | Bug fixes, CSP fixes, proxy fixes | 50 (46%) |
-| `feat:` | New features, new pages, new endpoints | 44 (40%) |
-| `chore:` | Config, env vars, cleanup | 7 (6%) |
-| `refactor:` | Code restructuring without behavior change | 6 (5%) |
-| `ci:` | GitHub Actions, hooks | 2 (2%) |
+| `fix:` | Bug fixes, CSP fixes, proxy fixes | 66 (40%) |
+| `feat:` | New features, new pages, new endpoints | 53 (32%) |
+| `merge:` | PR merges | 35 (21%) |
+| `chore:` | Config, env vars, cleanup | 12 (7%) |
+| `refactor:` | Code restructuring without behavior change | 7 (4%) |
 
 Branch naming: `feat/`, `fix/`, `chore/`, `refactor/`, `perf/`
 
@@ -44,9 +44,9 @@ When changing one file, you almost always need to change these others:
 9. backend/cmd/server/main.go             → Wire new dependencies (if new service)
 ```
 
-**router.go** changes 27/120 commits — it's the DI wiring hub.
-**interfaces.go** changes 21/120 — every new repo method touches it.
-**mocks_test.go** changes 18/120 — must update when interfaces change.
+**router.go** changes 27/166 commits — it's the DI wiring hub.
+**interfaces.go** changes 21/166 — every new repo method touches it.
+**mocks_test.go** changes 18/166 — must update when interfaces change.
 
 ### Frontend: Adding/Modifying a Page
 
@@ -58,9 +58,22 @@ When changing one file, you almost always need to change these others:
 5. frontend/src/components/layout/Sidebar.tsx → Add nav entry
 ```
 
-**types/index.ts** changes 19/120 — every API change touches it.
-**router.tsx** changes 13/120 — every new page.
-**Sidebar.tsx** changes 12/120 — every new page.
+**types/index.ts** changes 19/166 — every API change touches it.
+**router.tsx** changes 13/166 — every new page.
+**Sidebar.tsx** changes 12/166 — every new page.
+
+### Sale Page Co-Change Group (7 backend + 5 frontend files)
+
+```
+Backend:
+  domain/sale_page.go → repo/sale_page_repo.go → service/sale_page_service.go
+  → handler/sale_page_handler.go → router.go
+  → templates/blocks.html + simple.html + tracking.html (ALWAYS together)
+
+Frontend:
+  types/index.ts → hooks/use-sale-pages.ts → SalePageEditorPage.tsx
+  → BlockEditor.tsx → SalePagePreview.tsx
+```
 
 ### Full-Stack Feature (both sides)
 
@@ -72,25 +85,11 @@ All backend files above + all frontend files above + often:
 
 ### 1. Nginx CSP Headers (6+ fix rounds)
 
-**Pattern:** Every new external service (Google OAuth, Stripe, R2 CDN) needs CSP updates in **6 places** in `nginx.conf`:
-- Server-level (line ~25)
-- `/assets/` location
-- `/` location
-- `/p/` location (separate sale page CSP)
+**Pattern:** Every new external service (Google OAuth, Stripe, R2 CDN) needs CSP updates in **4 location blocks** in `nginx.conf`.
 
 **Pitfall:** Nginx drops parent `add_header` when child location has its own `add_header`. You must redeclare ALL headers in every location block.
 
-**Checklist for new external domains:**
-- [ ] `script-src` — if loading JS
-- [ ] `style-src` — if loading CSS
-- [ ] `connect-src` — if making API calls
-- [ ] `frame-src` — if embedding iframes
-- [ ] `img-src` — if loading images
-- [ ] All 4 location blocks updated
-
 ### 2. Nginx Proxy Configuration (5+ fix rounds)
-
-**Pattern:** `/p/` and `/api/` proxy to backend. Common mistakes:
 
 | Mistake | Symptom | Fix |
 |---------|---------|-----|
@@ -117,19 +116,31 @@ Change interfaces.go → Update mocks_test.go → Run tests
 
 **Pattern:** All migrations must use `IF NOT EXISTS` / `IF EXISTS` because they may run multiple times (server restarts, CI).
 
-```sql
--- GOOD
-CREATE TABLE IF NOT EXISTS ...
-CREATE INDEX IF NOT EXISTS ...
-ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...
-
--- BAD (will crash on re-run)
-CREATE TABLE ...
-```
-
 ### 6. Stripe Webhook → Event Type Matching
 
 **Pattern:** Stripe API version mismatches cause webhook handler to reject events. Always use `stripe.Event` parsing that tolerates version differences.
+
+### 7. Sale Page Template Co-Change
+
+**Pattern:** `blocks.html`, `simple.html`, and `tracking.html` ALWAYS need the same tracking changes. Forgetting one causes silent rendering or tracking failures.
+
+**Checklist:** When modifying sale page tracking:
+- [ ] `blocks.html` updated
+- [ ] `simple.html` updated
+- [ ] `tracking.html` updated
+- [ ] Changes are identical across all three
+
+### 8. E2E Strict Mode Violations (Duplicate Elements)
+
+**Pattern:** Responsive layouts that show different content on mobile vs desktop create duplicate DOM elements. Playwright's strict mode throws when multiple elements match a selector.
+
+**Fix:** Use `.first()`, `.nth(0)`, or scope locators with parent containers. Better: use unique `data-testid` attributes.
+
+### 9. Login Page Heading Hierarchy
+
+**Pattern:** E2E selectors for headings (`getByRole('heading', { name: ... })`) must match the actual HTML structure. Split-panel layouts with different headings per panel cause selector ambiguity.
+
+**Fix:** Ensure heading text matches what e2e page objects expect, or update page objects to use scoped locators.
 
 ## Hot Files (Change Frequency)
 
@@ -142,11 +153,14 @@ Files that change most often — review these carefully:
 | `types/index.ts` | 19 | Frontend type definitions |
 | `nginx.conf` | 19 | Proxy + CSP headers |
 | `mocks_test.go` | 18 | Test mocks |
+| `sale_page_service.go` | 15 | Sale page business logic |
 | `router.tsx` | 13 | Frontend routing |
 | `Sidebar.tsx` | 12 | Navigation menu |
 | `SalePageEditorPage.tsx` | 12 | Core feature page |
 | `replay_service.go` | 12 | Complex async logic |
 | `event_service.go` | 12 | Event pipeline |
+| `billing/` components | 10 | Billing UI (AccountStatusCard, etc.) |
+| `sale-pages.spec.ts` | 8 | Sale page E2E tests |
 
 ## Iteration Patterns
 

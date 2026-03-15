@@ -1,6 +1,6 @@
 ---
 name: event-pipeline
-description: Checklist and pitfalls for the Keep-PX event tracking pipeline — sale page templates, SDK endpoint sync, and Meta CAPI required fields
+description: Checklist and pitfalls for the Keep-PX event tracking pipeline — sale page templates, Meta CAPI forwarding, and template co-change rules
 ---
 
 # Event Pipeline
@@ -9,10 +9,22 @@ description: Checklist and pitfalls for the Keep-PX event tracking pipeline — 
 
 Activate this skill when the user says:
 - "Edit sale page" / "Add field to sale page" / "Change sale page template"
-- "Fix SDK endpoint" / "Events not showing" / "SDK not sending events"
+- "Events not showing" / "Events not appearing"
 - "Send event to Meta" / "Fix CAPI" / "Test pixel connection"
 - "Events not appearing in Meta Events Manager"
 - "Change event tracking" / "Update pixel integration"
+
+## Architecture
+
+```
+Sale page HTML (blocks.html / simple.html)
+    → tracking.html (injected via Go template)
+    → fetch POST /api/v1/events/ingest (API Key auth)
+    → backend event_service.go (store in DB)
+    → go s.forwardToCAPI() (async Meta CAPI forward)
+```
+
+Events flow from sale page templates directly to the backend ingest endpoint. There is no client-side SDK — all tracking is embedded in the sale page HTML templates.
 
 ## Part 1: Sale Page Co-Change Checklist
 
@@ -27,41 +39,18 @@ When modifying the Sale Page feature, a single change typically touches 8-15 fil
 6. `backend/internal/router/router.go` — New routes (if needed)
 7. `backend/internal/templates/sale_pages/blocks.html` — Block template
 8. `backend/internal/templates/sale_pages/simple.html` — Simple template
+9. `backend/internal/templates/sale_pages/tracking.html` — Tracking script (shared)
 
 ### Frontend (change after backend)
-9. `frontend/src/types/index.ts` — TypeScript types (must match domain struct)
-10. `frontend/src/hooks/use-sale-pages.ts` — TanStack Query hooks
-11. `frontend/src/pages/SalePageEditorPage.tsx` — Editor page
-12. `frontend/src/pages/BlockEditorPage.tsx` — Block editor
+10. `frontend/src/types/index.ts` — TypeScript types (must match domain struct)
+11. `frontend/src/hooks/use-sale-pages.ts` — TanStack Query hooks
+12. `frontend/src/pages/SalePageEditorPage.tsx` — Editor page
 13. `frontend/src/components/sale-pages/BlockEditor.tsx` — Block editor component
-14. `frontend/src/components/sale-pages/BlockPreview.tsx` — Block preview
-15. `frontend/src/components/sale-pages/SalePagePreview.tsx` — Page preview
+14. `frontend/src/components/sale-pages/SalePagePreview.tsx` — Page preview
 
-**Critical**: `blocks.html` and `simple.html` ALWAYS need the same changes. Forgetting one causes silent rendering failures.
+**Critical**: `blocks.html`, `simple.html`, and `tracking.html` ALWAYS need the same tracking changes. Forgetting one causes silent rendering or tracking failures.
 
-## Part 2: SDK Endpoint Three-Point Sync
-
-When changing the SDK endpoint, you MUST sync all three locations:
-
-```
-sdk/src/tracker.ts (DEFAULT_ENDPOINT)
-        ↕ must match
-backend/internal/templates/sale_pages/*.html (data-endpoint="...")
-        ↕ must match
-frontend/src/pages/PixelsPage.tsx ("Get Code" snippet)
-```
-
-If any one is out of sync, events silently fail — SDK sends to wrong URL, backend never receives POST, no CAPI forwarding.
-
-### Diagnostic: Events Not Appearing
-1. Check browser Network tab → POST `/api/v1/events/ingest`
-2. POST goes to wrong domain → SDK endpoint misconfigured
-3. No POST at all → `data-endpoint` missing from script tag
-4. Check backend logs for incoming event requests
-
-**Trap**: Browser pixel (fbq) works independently. Pixel Helper shows green, but server-side CAPI path may be broken.
-
-## Part 3: Meta CAPI Required Fields
+## Part 2: Meta CAPI Required Fields
 
 When sending events to Facebook Conversions API, ALL of these fields are required:
 
@@ -99,16 +88,28 @@ EventData{
 2. Response 400 → Missing `user_data` or `event_source_url`
 3. Events with `test_event_code` → only in Test Events tab, not Overview
 
+## Diagnostic: Events Not Appearing
+
+1. Check sale page HTML source → confirm tracking.html is injected
+2. Check browser Network tab → POST `/api/v1/events/ingest`
+3. No POST at all → `tracking.html` not rendering or API key missing
+4. POST returns 4xx → Check API key validity and request body format
+5. Check backend logs for received events and CAPI response
+
+**Trap**: Browser pixel (fbq) works independently. Pixel Helper shows green, but server-side CAPI path may be broken.
+
 ## Verification
 
 After changes to the event pipeline:
-1. Check SDK sends POST to correct backend URL (browser Network tab)
-2. Check backend logs for received events
-3. Check CAPI response status in backend logs (should be 200)
-4. Verify events appear in Meta Events Manager (allow 20 min)
+1. Check sale page renders tracking script (view page source at `/p/<slug>`)
+2. Check browser Network for POST to `/api/v1/events/ingest`
+3. Check backend logs for received events
+4. Check CAPI response status in backend logs (should be 200)
+5. Verify events appear in Meta Events Manager (allow 20 min)
 
 ## Related
 
+- `sale-page-editor` for sale page CRUD and template patterns
 - `go-service-scaffold` for creating new backend resources
 - `api-endpoint` for adding new endpoints
 - `deploy-check` for pre-deployment verification
