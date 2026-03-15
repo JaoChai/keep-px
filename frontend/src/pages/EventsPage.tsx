@@ -81,6 +81,75 @@ function formatAbsoluteTime(date: string | Date): string {
   })
 }
 
+const TH_CLASS = 'text-left text-sm font-medium text-muted-foreground px-4 py-3'
+
+function EventTableHeader() {
+  return (
+    <thead>
+      <tr className="border-b border-border bg-muted">
+        <th className={TH_CLASS}>อีเวนต์</th>
+        <th className={TH_CLASS}>พิกเซล</th>
+        <th className={TH_CLASS}>URL ต้นทาง</th>
+        <th className={TH_CLASS}>CAPI</th>
+        <th className={TH_CLASS}>เวลา</th>
+      </tr>
+    </thead>
+  )
+}
+
+function EventRow({ id, eventName, pixelLabel, sourceUrl, forwardedToCapi, eventTime, onClick, animate }: {
+  id: string
+  eventName: string
+  pixelLabel: string
+  sourceUrl?: string
+  forwardedToCapi: boolean
+  eventTime: string
+  onClick: () => void
+  animate?: boolean
+}) {
+  return (
+    <tr
+      key={id}
+      onClick={onClick}
+      className={`border-b border-border last:border-0 cursor-pointer hover:bg-muted/50 transition-colors${animate ? ' animate-[fadeIn_0.3s_ease-in]' : ''}`}
+    >
+      <td className="px-4 py-3">
+        <Badge variant={eventBadgeVariant(eventName)}>{eventName}</Badge>
+      </td>
+      <td className="px-4 py-3 text-sm text-foreground">{pixelLabel}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">
+        {sourceUrl ? (
+          <ShadTooltip>
+            <TooltipTrigger asChild>
+              <span className="truncate block">{sourceUrl}</span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-md break-all">
+              {sourceUrl}
+            </TooltipContent>
+          </ShadTooltip>
+        ) : '-'}
+      </td>
+      <td className="px-4 py-3">
+        {forwardedToCapi ? (
+          <Check className="h-4 w-4 text-emerald-600" />
+        ) : (
+          <X className="h-4 w-4 text-red-400" />
+        )}
+      </td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">
+        <ShadTooltip>
+          <TooltipTrigger asChild>
+            <span>{timeAgo(eventTime)}</span>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {formatAbsoluteTime(eventTime)}
+          </TooltipContent>
+        </ShadTooltip>
+      </td>
+    </tr>
+  )
+}
+
 function SkeletonRows({ count = 5 }: { count?: number }) {
   return (
     <>
@@ -106,42 +175,35 @@ export function EventsPage() {
   const fromFilter = searchParams.get('from') || null
   const toFilter = searchParams.get('to') || null
 
+  const buildParams = (overrides: { mode?: string; pixel_id?: string | null; event_name?: string | null; from?: string | null; to?: string | null } = {}) => {
+    const p: Record<string, string> = { mode: overrides.mode ?? mode }
+    const pid = overrides.pixel_id !== undefined ? overrides.pixel_id : pixelId
+    const en = overrides.event_name !== undefined ? overrides.event_name : eventNameFilter
+    const f = overrides.from !== undefined ? overrides.from : fromFilter
+    const t = overrides.to !== undefined ? overrides.to : toFilter
+    if (pid) p.pixel_id = pid
+    if (en) p.event_name = en
+    if (f) p.from = f
+    if (t) p.to = t
+    return p
+  }
+
   const setMode = (m: 'live' | 'history') => {
-    const params: Record<string, string> = { mode: m }
-    if (pixelId) params.pixel_id = pixelId
-    if (eventNameFilter) params.event_name = eventNameFilter
-    if (fromFilter) params.from = fromFilter
-    if (toFilter) params.to = toFilter
-    setSearchParams(params)
+    setSearchParams(buildParams({ mode: m }))
   }
 
   const setPixelFilter = (id: string | null) => {
-    const params: Record<string, string> = { mode }
-    if (id) params.pixel_id = id
-    if (eventNameFilter) params.event_name = eventNameFilter
-    if (fromFilter) params.from = fromFilter
-    if (toFilter) params.to = toFilter
-    setSearchParams(params)
+    setSearchParams(buildParams({ pixel_id: id }))
     setHistoryPage(1)
   }
 
   const setEventNameFilter = (name: string | null) => {
-    const params: Record<string, string> = { mode }
-    if (pixelId) params.pixel_id = pixelId
-    if (name) params.event_name = name
-    if (fromFilter) params.from = fromFilter
-    if (toFilter) params.to = toFilter
-    setSearchParams(params)
+    setSearchParams(buildParams({ event_name: name }))
     setHistoryPage(1)
   }
 
   const setDateRange = (from: string | null, to: string | null) => {
-    const params: Record<string, string> = { mode }
-    if (pixelId) params.pixel_id = pixelId
-    if (eventNameFilter) params.event_name = eventNameFilter
-    if (from) params.from = from
-    if (to) params.to = to
-    setSearchParams(params)
+    setSearchParams(buildParams({ from, to }))
     setHistoryPage(1)
   }
 
@@ -534,70 +596,20 @@ export function EventsPage() {
           ) : (
             <div className="border border-border rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted">
-                    <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                      อีเวนต์
-                    </th>
-                    <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                      พิกเซล
-                    </th>
-                    <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                      URL ต้นทาง
-                    </th>
-                    <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                      CAPI
-                    </th>
-                    <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                      เวลา
-                    </th>
-                  </tr>
-                </thead>
+                <EventTableHeader />
                 <tbody>
                   {realtimeEvents.map((event) => (
-                    <tr
+                    <EventRow
                       key={event.id}
+                      id={event.id}
+                      eventName={event.event_name}
+                      pixelLabel={event.pixel_name}
+                      sourceUrl={event.source_url}
+                      forwardedToCapi={event.forwarded_to_capi}
+                      eventTime={event.event_time}
                       onClick={() => setSelectedEventId(event.id)}
-                      className="border-b border-border last:border-0 animate-[fadeIn_0.3s_ease-in] cursor-pointer hover:bg-muted/50 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <Badge variant={eventBadgeVariant(event.event_name)}>
-                          {event.event_name}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">{event.pixel_name}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">
-                        {event.source_url ? (
-                          <ShadTooltip>
-                            <TooltipTrigger asChild>
-                              <span className="truncate block">{event.source_url}</span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-md break-all">
-                              {event.source_url}
-                            </TooltipContent>
-                          </ShadTooltip>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {event.forwarded_to_capi ? (
-                          <Check className="h-4 w-4 text-emerald-600" />
-                        ) : (
-                          <X className="h-4 w-4 text-red-400" />
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        <ShadTooltip>
-                          <TooltipTrigger asChild>
-                            <span>{timeAgo(event.event_time)}</span>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            {formatAbsoluteTime(event.event_time)}
-                          </TooltipContent>
-                        </ShadTooltip>
-                      </td>
-                    </tr>
+                      animate
+                    />
                   ))}
                 </tbody>
               </table>
@@ -607,15 +619,7 @@ export function EventsPage() {
         historyQuery.isLoading ? (
           <div className="border border-border rounded-lg overflow-hidden">
             <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted">
-                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">อีเวนต์</th>
-                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">พิกเซล</th>
-                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">URL ต้นทาง</th>
-                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">CAPI</th>
-                  <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">เวลา</th>
-                </tr>
-              </thead>
+              <EventTableHeader />
               <tbody>
                 <SkeletonRows />
               </tbody>
@@ -632,72 +636,19 @@ export function EventsPage() {
           <>
             <div className="border border-border rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted">
-                    <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                      อีเวนต์
-                    </th>
-                    <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                      พิกเซล
-                    </th>
-                    <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                      URL ต้นทาง
-                    </th>
-                    <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                      CAPI
-                    </th>
-                    <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">
-                      เวลา
-                    </th>
-                  </tr>
-                </thead>
+                <EventTableHeader />
                 <tbody>
                   {historyEvents.map((event) => (
-                    <tr
+                    <EventRow
                       key={event.id}
+                      id={event.id}
+                      eventName={event.event_name}
+                      pixelLabel={pixelNameMap.get(event.pixel_id) ?? event.pixel_id}
+                      sourceUrl={event.source_url}
+                      forwardedToCapi={event.forwarded_to_capi}
+                      eventTime={event.event_time}
                       onClick={() => setSelectedEventId(event.id)}
-                      className="border-b border-border last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <Badge variant={eventBadgeVariant(event.event_name)}>
-                          {event.event_name}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        {pixelNameMap.get(event.pixel_id) ?? event.pixel_id}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">
-                        {event.source_url ? (
-                          <ShadTooltip>
-                            <TooltipTrigger asChild>
-                              <span className="truncate block">{event.source_url}</span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-md break-all">
-                              {event.source_url}
-                            </TooltipContent>
-                          </ShadTooltip>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {event.forwarded_to_capi ? (
-                          <Check className="h-4 w-4 text-emerald-600" />
-                        ) : (
-                          <X className="h-4 w-4 text-red-400" />
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        <ShadTooltip>
-                          <TooltipTrigger asChild>
-                            <span>{timeAgo(event.event_time)}</span>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            {formatAbsoluteTime(event.event_time)}
-                          </TooltipContent>
-                        </ShadTooltip>
-                      </td>
-                    </tr>
+                    />
                   ))}
                 </tbody>
               </table>

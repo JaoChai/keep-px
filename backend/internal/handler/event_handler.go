@@ -93,11 +93,15 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 	if page < 1 {
 		page = 1
 	}
-	if perPage < 1 {
+	if perPage < 1 || perPage > 100 {
 		perPage = 50
 	}
 
 	eventName := r.URL.Query().Get("event_name")
+	if len(eventName) > 256 {
+		ErrorJSON(w, http.StatusBadRequest, "event_name too long")
+		return
+	}
 
 	var from, to *time.Time
 	if fromStr := r.URL.Query().Get("from"); fromStr != "" {
@@ -115,6 +119,11 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		to = &t
+	}
+
+	if from != nil && to != nil && from.After(*to) {
+		ErrorJSON(w, http.StatusBadRequest, "from must not be after to")
+		return
 	}
 
 	events, total, err := h.eventService.ListByCustomerID(r.Context(), customerID, pixelID, eventName, from, to, page, perPage)
