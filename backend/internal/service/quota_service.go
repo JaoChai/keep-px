@@ -192,8 +192,20 @@ func (s *QuotaService) ConsumeReplayCredit(ctx context.Context, customerID strin
 		if readErr != nil || len(readCredits) == 0 {
 			return nil, ErrQuotaReplayNotAllowed
 		}
-		// Credits exist but none matched event count constraint
-		return nil, ErrQuotaReplayEventsExceeded
+		// Check if any active credit has sufficient max_events_per_replay
+		hasCapableCredit := false
+		for _, c := range readCredits {
+			if (c.MaxEventsPerReplay == 0 || c.MaxEventsPerReplay >= eventCount) && c.RemainingReplays() != 0 {
+				hasCapableCredit = true
+				break
+			}
+		}
+		if !hasCapableCredit {
+			// All credits either fully used or can't handle this event count
+			return nil, ErrQuotaReplayEventsExceeded
+		}
+		// Credits exist and could handle it — likely consumed by concurrent request
+		return nil, ErrQuotaReplayNotAllowed
 	}
 
 	return credit, nil
