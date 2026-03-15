@@ -165,6 +165,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 			// Event log routes - Phase 4
 			r.Get("/events", eventHandler.List)
+			r.Get("/events/event-types", eventHandler.EventTypes)
 			r.Get("/events/recent", eventHandler.ListRecent)
 			r.Get("/events/{id}", eventHandler.GetByID)
 

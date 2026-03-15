@@ -93,11 +93,40 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 	if page < 1 {
 		page = 1
 	}
-	if perPage < 1 {
+	if perPage < 1 || perPage > 100 {
 		perPage = 50
 	}
 
-	events, total, err := h.eventService.ListByCustomerID(r.Context(), customerID, pixelID, page, perPage)
+	eventName := r.URL.Query().Get("event_name")
+	if len(eventName) > 256 {
+		ErrorJSON(w, http.StatusBadRequest, "event_name too long")
+		return
+	}
+
+	var from, to *time.Time
+	if fromStr := r.URL.Query().Get("from"); fromStr != "" {
+		t, err := time.Parse(time.RFC3339, fromStr)
+		if err != nil {
+			ErrorJSON(w, http.StatusBadRequest, "from must be in RFC3339 format")
+			return
+		}
+		from = &t
+	}
+	if toStr := r.URL.Query().Get("to"); toStr != "" {
+		t, err := time.Parse(time.RFC3339, toStr)
+		if err != nil {
+			ErrorJSON(w, http.StatusBadRequest, "to must be in RFC3339 format")
+			return
+		}
+		to = &t
+	}
+
+	if from != nil && to != nil && from.After(*to) {
+		ErrorJSON(w, http.StatusBadRequest, "from must not be after to")
+		return
+	}
+
+	events, total, err := h.eventService.ListByCustomerID(r.Context(), customerID, pixelID, eventName, from, to, page, perPage)
 	if err != nil {
 		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list events", err)
 		return
@@ -174,6 +203,18 @@ func (h *EventHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSON(w, http.StatusOK, APIResponse{Data: event})
+}
+
+func (h *EventHandler) EventTypes(w http.ResponseWriter, r *http.Request) {
+	customerID := middleware.GetCustomerID(r.Context())
+
+	types, err := h.eventService.GetDistinctEventTypesByCustomerID(r.Context(), customerID)
+	if err != nil {
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get event types", err)
+		return
+	}
+
+	JSON(w, http.StatusOK, APIResponse{Data: types})
 }
 
 // extractClientIP returns the real client IP by checking CDN/proxy headers first,

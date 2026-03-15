@@ -276,7 +276,7 @@ func (s *EventService) forwardToBackupPixel(ctx context.Context, event *domain.P
 	s.forwardToCAPI(ctx, event, backupPixel, client)
 }
 
-func (s *EventService) ListByCustomerID(ctx context.Context, customerID string, pixelID string, page, perPage int) ([]*domain.PixelEvent, int, error) {
+func (s *EventService) ListByCustomerID(ctx context.Context, customerID string, pixelID string, eventName string, from, to *time.Time, page, perPage int) ([]*domain.PixelEvent, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -285,7 +285,7 @@ func (s *EventService) ListByCustomerID(ctx context.Context, customerID string, 
 	}
 	offset := (page - 1) * perPage
 
-	events, total, err := s.eventRepo.ListByCustomerID(ctx, customerID, pixelID, perPage, offset)
+	events, total, err := s.eventRepo.ListByCustomerID(ctx, customerID, pixelID, eventName, from, to, perPage, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list events: %w", err)
 	}
@@ -293,6 +293,17 @@ func (s *EventService) ListByCustomerID(ctx context.Context, customerID string, 
 		events = []*domain.PixelEvent{}
 	}
 	return events, total, nil
+}
+
+func (s *EventService) GetDistinctEventTypesByCustomerID(ctx context.Context, customerID string) ([]string, error) {
+	types, err := s.eventRepo.GetDistinctEventTypesByCustomerID(ctx, customerID)
+	if err != nil {
+		return nil, fmt.Errorf("get event types: %w", err)
+	}
+	if types == nil {
+		types = []string{}
+	}
+	return types, nil
 }
 
 func (s *EventService) ListLatest(ctx context.Context, customerID, pixelID string, limit int) ([]*domain.RealtimeEvent, error) {

@@ -348,8 +348,8 @@ func (m *MockEventRepo) ListByPixelID(ctx context.Context, pixelID string, limit
 	}
 	return args.Get(0).([]*domain.PixelEvent), args.Int(1), args.Error(2)
 }
-func (m *MockEventRepo) ListByCustomerID(ctx context.Context, customerID string, pixelID string, limit, offset int) ([]*domain.PixelEvent, int, error) {
-	args := m.Called(ctx, customerID, pixelID, limit, offset)
+func (m *MockEventRepo) ListByCustomerID(ctx context.Context, customerID string, pixelID string, eventName string, from, to *time.Time, limit, offset int) ([]*domain.PixelEvent, int, error) {
+	args := m.Called(ctx, customerID, pixelID, eventName, from, to, limit, offset)
 	if args.Get(0) == nil {
 		return nil, args.Int(1), args.Error(2)
 	}
@@ -379,6 +379,13 @@ func (m *MockEventRepo) GetEventsForReplayPreview(ctx context.Context, pixelID s
 }
 func (m *MockEventRepo) GetDistinctEventTypes(ctx context.Context, pixelID string) ([]string, error) {
 	args := m.Called(ctx, pixelID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+func (m *MockEventRepo) GetDistinctEventTypesByCustomerID(ctx context.Context, customerID string) ([]string, error) {
+	args := m.Called(ctx, customerID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
