@@ -2,13 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import type { APIResponse, PaginatedResponse, PixelEvent } from '@/types'
 
-export function useEvents(page = 1, perPage = 50, pixelId?: string | null, eventName?: string | null) {
+export function useEvents(page = 1, perPage = 50, pixelId?: string | null, eventName?: string | null, from?: string | null, to?: string | null) {
   return useQuery({
-    queryKey: ['events', page, perPage, pixelId ?? '', eventName ?? ''],
+    queryKey: ['events', page, perPage, pixelId ?? '', eventName ?? '', from ?? '', to ?? ''],
     queryFn: async () => {
       const params: Record<string, string | number> = { page, per_page: perPage }
       if (pixelId) params.pixel_id = pixelId
       if (eventName) params.event_name = eventName
+      if (from) params.from = from
+      if (to) params.to = to
       const { data } = await api.get<PaginatedResponse<PixelEvent>>('/events', { params })
       return data
     },

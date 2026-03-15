@@ -233,8 +233,8 @@ func (m *MockEventRepo) ListByPixelID(ctx context.Context, pixelID string, limit
 	}
 	return args.Get(0).([]*domain.PixelEvent), args.Int(1), args.Error(2)
 }
-func (m *MockEventRepo) ListByCustomerID(ctx context.Context, customerID string, pixelID string, eventName string, limit, offset int) ([]*domain.PixelEvent, int, error) {
-	args := m.Called(ctx, customerID, pixelID, eventName, limit, offset)
+func (m *MockEventRepo) ListByCustomerID(ctx context.Context, customerID string, pixelID string, eventName string, from, to *time.Time, limit, offset int) ([]*domain.PixelEvent, int, error) {
+	args := m.Called(ctx, customerID, pixelID, eventName, from, to, limit, offset)
 	if args.Get(0) == nil {
 		return nil, args.Int(1), args.Error(2)
 	}
