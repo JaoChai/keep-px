@@ -245,6 +245,13 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 	}
 
 	if err := s.replayRepo.Create(ctx, session); err != nil {
+		// Compensating action: refund the consumed credit
+		if credit != nil {
+			if refundErr := s.quotaService.RefundReplayCredit(ctx, credit.ID); refundErr != nil {
+				s.logger.Error("failed to refund credit after session creation failure",
+					"credit_id", credit.ID, "error", refundErr)
+			}
+		}
 		return nil, fmt.Errorf("create replay session: %w", err)
 	}
 
@@ -436,16 +443,21 @@ func sanitizeReplayError(err error) string {
 	if errors.As(err, &capiErr) {
 		switch capiErr.StatusCode {
 		case 401, 403:
-			return "Facebook authentication failed. Check your access token."
+			return "Facebook authentication failed. Check your access token and ensure it has not expired."
 		case 400:
-			return "Facebook rejected the request. Check your Pixel ID and Access Token."
+			return "Facebook rejected the request. Verify your Pixel ID and access token are correct."
 		case 429:
-			return "Facebook rate limit exceeded."
+			return "Facebook rate limit exceeded. Try again later or increase batch delay."
+		case 500, 502, 503:
+			return fmt.Sprintf("Facebook server error (HTTP %d). This is temporary — retry later.", capiErr.StatusCode)
 		default:
-			return fmt.Sprintf("Facebook returned HTTP %d.", capiErr.StatusCode)
+			return fmt.Sprintf("Facebook returned HTTP %d. Contact support if this persists.", capiErr.StatusCode)
 		}
 	}
-	return "replay failed"
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "Request to Facebook timed out. Try increasing batch delay."
+	}
+	return "Replay failed due to a network or server error."
 }
 
 func (s *ReplayService) GetByID(ctx context.Context, customerID, sessionID string) (*domain.ReplaySession, error) {
@@ -680,6 +692,13 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 	}
 
 	if err := s.replayRepo.Create(ctx, newSession); err != nil {
+		// Compensating action: refund the consumed credit
+		if retryCredit != nil {
+			if refundErr := s.quotaService.RefundReplayCredit(ctx, retryCredit.ID); refundErr != nil {
+				s.logger.Error("failed to refund credit after session creation failure",
+					"credit_id", retryCredit.ID, "error", refundErr)
+			}
+		}
 		return nil, fmt.Errorf("create retry replay session: %w", err)
 	}
 

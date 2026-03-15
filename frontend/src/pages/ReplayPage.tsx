@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ReplayStatusBadge } from '@/components/shared/ReplayStatusBadge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import axios from 'axios'
 import { toast } from 'sonner'
 import { usePixels } from '@/hooks/use-pixels'
 import { useReplays, useReplaySession, useCreateReplay, useCancelReplay, useRetryReplay, useReplayPreview, useEventTypes } from '@/hooks/use-replays'
@@ -25,16 +26,41 @@ const replaySchema = z.object({
   date_to: z.string().optional(),
   time_mode: z.enum(['original', 'current']),
   batch_delay_ms: z.number().min(0).max(60000),
-})
+}).refine(
+  (data) => {
+    if (data.date_from && data.date_to) {
+      return data.date_from <= data.date_to
+    }
+    return true
+  },
+  { message: 'วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', path: ['date_to'] }
+)
 
 type ReplayForm = z.infer<typeof replaySchema>
 
 function toStartOfDay(dateStr: string): string {
-  return new Date(dateStr + 'T00:00:00').toISOString()
+  const date = new Date(dateStr + 'T00:00:00')
+  const offset = -date.getTimezoneOffset()
+  const sign = offset >= 0 ? '+' : '-'
+  const pad = (n: number) => String(Math.abs(n)).padStart(2, '0')
+  const tz = `${sign}${pad(Math.floor(offset / 60))}:${pad(offset % 60)}`
+  return `${dateStr}T00:00:00${tz}`
 }
 
 function toEndOfDay(dateStr: string): string {
-  return new Date(dateStr + 'T23:59:59').toISOString()
+  const date = new Date(dateStr + 'T23:59:59')
+  const offset = -date.getTimezoneOffset()
+  const sign = offset >= 0 ? '+' : '-'
+  const pad = (n: number) => String(Math.abs(n)).padStart(2, '0')
+  const tz = `${sign}${pad(Math.floor(offset / 60))}:${pad(offset % 60)}`
+  return `${dateStr}T23:59:59${tz}`
+}
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err) && err.response?.data?.error) {
+    return err.response.data.error
+  }
+  return fallback
 }
 
 export function ReplayPage() {
@@ -90,8 +116,8 @@ export function ReplayPage() {
       })
       setPreview(result)
       setPendingFormData(formData)
-    } catch {
-      toast.error('ไม่สามารถโหลดตัวอย่างได้')
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'ไม่สามารถโหลดตัวอย่างได้'))
     }
   }
 
@@ -113,8 +139,8 @@ export function ReplayPage() {
       if (result.warning) {
         toast.warning(result.warning)
       }
-    } catch {
-      toast.error('ไม่สามารถเริ่มรีเพลย์ได้')
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'ไม่สามารถเริ่มรีเพลย์ได้'))
     }
   }
 
@@ -122,8 +148,8 @@ export function ReplayPage() {
     try {
       await cancelReplay.mutateAsync(id)
       toast.success('ยกเลิกรีเพลย์แล้ว')
-    } catch {
-      toast.error('ไม่สามารถยกเลิกรีเพลย์ได้')
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'ไม่สามารถยกเลิกรีเพลย์ได้'))
     }
   }
 
@@ -132,8 +158,8 @@ export function ReplayPage() {
       const result = await retryReplay.mutateAsync(id)
       setActiveReplayId(result.id)
       toast.success('เริ่มลองใหม่แล้ว')
-    } catch {
-      toast.error('ไม่สามารถลองรีเพลย์ใหม่ได้')
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'ไม่สามารถลองรีเพลย์ใหม่ได้'))
     }
   }
 
@@ -213,7 +239,23 @@ export function ReplayPage() {
 
                 {eventTypes && eventTypes.length > 0 && (
                   <div className="space-y-2">
-                    <Label>ประเภทอีเวนต์ (ไม่บังคับ)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>ประเภทอีเวนต์ (ไม่บังคับ)</Label>
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline"
+                        onClick={() =>
+                          setSelectedEventTypes(prev =>
+                            prev.length === eventTypes.length ? [] : [...eventTypes]
+                          )
+                        }
+                      >
+                        {selectedEventTypes.length === eventTypes.length ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด'}
+                      </button>
+                    </div>
+                    {selectedEventTypes.length > 0 && (
+                      <p className="text-xs text-muted-foreground">เลือกแล้ว {selectedEventTypes.length} / {eventTypes.length}</p>
+                    )}
                     <div className="space-y-1.5 max-h-32 overflow-y-auto rounded-md border border-border p-2">
                       {eventTypes.map((type) => (
                         <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -245,6 +287,7 @@ export function ReplayPage() {
                 <div className="space-y-2">
                   <Label>วันที่สิ้นสุด (ไม่บังคับ)</Label>
                   <Input type="date" {...register('date_to')} />
+                  {errors.date_to && <p className="text-sm text-red-500">{errors.date_to.message}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -363,16 +406,31 @@ export function ReplayPage() {
                   </div>
                 )}
 
-                <div className="w-full bg-border rounded-full h-3">
-                  <div
-                    className="bg-primary h-3 rounded-full transition-all duration-500"
-                    style={{
-                      width: `${activeReplay.total_events > 0
-                        ? ((activeReplay.replayed_events + activeReplay.failed_events) / activeReplay.total_events) * 100
-                        : 0}%`
-                    }}
-                  />
+                <div className="w-full bg-border rounded-full h-3 overflow-hidden flex">
+                  {activeReplay.total_events > 0 && (
+                    <>
+                      <div
+                        className="bg-emerald-500 h-3 transition-all duration-500"
+                        style={{
+                          width: `${(activeReplay.replayed_events / activeReplay.total_events) * 100}%`
+                        }}
+                      />
+                      {activeReplay.failed_events > 0 && (
+                        <div
+                          className="bg-red-400 h-3 transition-all duration-500"
+                          style={{
+                            width: `${(activeReplay.failed_events / activeReplay.total_events) * 100}%`
+                          }}
+                        />
+                      )}
+                    </>
+                  )}
                 </div>
+                <p className="text-xs text-muted-foreground text-right">
+                  {activeReplay.total_events > 0
+                    ? `${Math.round((activeReplay.replayed_events / activeReplay.total_events) * 100)}% สำเร็จ`
+                    : '0%'}
+                </p>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-2xl font-bold text-foreground">{activeReplay.total_events}</p>
