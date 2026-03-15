@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -47,6 +49,7 @@ import {
   ExternalLink,
   Globe,
   Monitor,
+  CalendarDays,
 } from 'lucide-react'
 import { useRealtimeEvents } from '@/hooks/use-realtime-events'
 import { useRealtimeStats } from '@/hooks/use-realtime-stats'
@@ -100,11 +103,15 @@ export function EventsPage() {
   const mode: 'live' | 'history' = rawMode === 'history' ? 'history' : 'live'
   const pixelId = searchParams.get('pixel_id') || null
   const eventNameFilter = searchParams.get('event_name') || null
+  const fromFilter = searchParams.get('from') || null
+  const toFilter = searchParams.get('to') || null
 
   const setMode = (m: 'live' | 'history') => {
     const params: Record<string, string> = { mode: m }
     if (pixelId) params.pixel_id = pixelId
     if (eventNameFilter) params.event_name = eventNameFilter
+    if (fromFilter) params.from = fromFilter
+    if (toFilter) params.to = toFilter
     setSearchParams(params)
   }
 
@@ -112,6 +119,8 @@ export function EventsPage() {
     const params: Record<string, string> = { mode }
     if (id) params.pixel_id = id
     if (eventNameFilter) params.event_name = eventNameFilter
+    if (fromFilter) params.from = fromFilter
+    if (toFilter) params.to = toFilter
     setSearchParams(params)
     setHistoryPage(1)
   }
@@ -120,6 +129,18 @@ export function EventsPage() {
     const params: Record<string, string> = { mode }
     if (pixelId) params.pixel_id = pixelId
     if (name) params.event_name = name
+    if (fromFilter) params.from = fromFilter
+    if (toFilter) params.to = toFilter
+    setSearchParams(params)
+    setHistoryPage(1)
+  }
+
+  const setDateRange = (from: string | null, to: string | null) => {
+    const params: Record<string, string> = { mode }
+    if (pixelId) params.pixel_id = pixelId
+    if (eventNameFilter) params.event_name = eventNameFilter
+    if (from) params.from = from
+    if (to) params.to = to
     setSearchParams(params)
     setHistoryPage(1)
   }
@@ -138,7 +159,7 @@ export function EventsPage() {
   } = useRealtimeEvents()
   const { stats, timeBuckets, eventTypeCounts } = useRealtimeStats(realtimeEvents)
   const [historyPage, setHistoryPage] = useState(1)
-  const historyQuery = useEvents(historyPage, 50, pixelId, eventNameFilter)
+  const historyQuery = useEvents(historyPage, 50, pixelId, eventNameFilter, fromFilter, toFilter)
   const { data: overviewStats, isLoading: overviewLoading, isError: overviewError, error: overviewErr, refetch: refetchOverview } = useOverviewStats()
   const { data: eventTypes } = useCustomerEventTypes()
   const { data: pixels } = usePixels()
@@ -296,22 +317,75 @@ export function EventsPage() {
           </Select>
 
           {mode === 'history' && (
-            <Select
-              value={eventNameFilter ?? 'all'}
-              onValueChange={(v) => setEventNameFilter(v === 'all' ? null : v)}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="อีเวนต์ทั้งหมด" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">อีเวนต์ทั้งหมด</SelectItem>
-                {eventTypes?.map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <>
+              <Select
+                value={eventNameFilter ?? 'all'}
+                onValueChange={(v) => setEventNameFilter(v === 'all' ? null : v)}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="อีเวนต์ทั้งหมด" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">อีเวนต์ทั้งหมด</SelectItem>
+                  {eventTypes?.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Popover>
+                <PopoverTrigger className="inline-flex items-center justify-center gap-1.5 rounded-md border border-input bg-background px-3 h-9 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground">
+                  <CalendarDays className="h-4 w-4" />
+                  {fromFilter || toFilter ? (
+                    <span className="text-xs">
+                      {fromFilter ? new Date(fromFilter).toLocaleDateString('th-TH') : '...'} — {toFilter ? new Date(toFilter).toLocaleDateString('th-TH') : '...'}
+                    </span>
+                  ) : (
+                    <span className="text-sm">ช่วงวันที่</span>
+                  )}
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-4" align="start">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">จาก</label>
+                      <Input
+                        type="datetime-local"
+                        className="mt-1"
+                        value={fromFilter ? fromFilter.slice(0, 16) : ''}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          setDateRange(val ? new Date(val).toISOString() : null, toFilter)
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">ถึง</label>
+                      <Input
+                        type="datetime-local"
+                        className="mt-1"
+                        value={toFilter ? toFilter.slice(0, 16) : ''}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          setDateRange(fromFilter, val ? new Date(val).toISOString() : null)
+                        }}
+                      />
+                    </div>
+                    {(fromFilter || toFilter) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-xs"
+                        onClick={() => setDateRange(null, null)}
+                      >
+                        ล้างช่วงวันที่
+                      </Button>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </>
           )}
         </div>
 

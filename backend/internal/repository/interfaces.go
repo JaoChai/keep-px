@@ -44,7 +44,7 @@ type EventRepository interface {
 	Create(ctx context.Context, event *domain.PixelEvent) (created bool, err error)
 	GetByID(ctx context.Context, id string) (*domain.PixelEvent, error)
 	ListByPixelID(ctx context.Context, pixelID string, limit, offset int) ([]*domain.PixelEvent, int, error)
-	ListByCustomerID(ctx context.Context, customerID string, pixelID string, eventName string, limit, offset int) ([]*domain.PixelEvent, int, error)
+	ListByCustomerID(ctx context.Context, customerID string, pixelID string, eventName string, from, to *time.Time, limit, offset int) ([]*domain.PixelEvent, int, error)
 	MarkForwarded(ctx context.Context, id string, responseCode int, eventsReceived int) error
 	GetEventsForReplay(ctx context.Context, pixelID string, eventTypes []string, from, to *time.Time, createdBefore *time.Time) ([]*domain.PixelEvent, error)
 	CountEventsForReplay(ctx context.Context, pixelID string, eventTypes []string, from, to *time.Time) (int, error)

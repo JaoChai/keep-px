@@ -213,7 +213,7 @@ func TestEventHandler_List(t *testing.T) {
 			{ID: "e2", PixelID: pixelID, EventName: "Purchase", EventData: json.RawMessage(`{}`)},
 		}
 		// Default: page=1, per_page=50 -> offset=0, limit=50
-		eventRepo.On("ListByCustomerID", mock.Anything, eventTestCustomerID, "", "", 50, 0).Return(events, 2, nil)
+		eventRepo.On("ListByCustomerID", mock.Anything, eventTestCustomerID, "", "", (*time.Time)(nil), (*time.Time)(nil), 50, 0).Return(events, 2, nil)
 
 		r := eventRouter(h)
 		token := eventToken(eventTestCustomerID)
@@ -238,7 +238,7 @@ func TestEventHandler_List(t *testing.T) {
 		events := []*domain.PixelEvent{
 			{ID: "e1", PixelID: pixelID, EventName: "PageView", EventData: json.RawMessage(`{}`)},
 		}
-		eventRepo.On("ListByCustomerID", mock.Anything, eventTestCustomerID, pixelID, "", 50, 0).Return(events, 1, nil)
+		eventRepo.On("ListByCustomerID", mock.Anything, eventTestCustomerID, pixelID, "", (*time.Time)(nil), (*time.Time)(nil), 50, 0).Return(events, 1, nil)
 
 		r := eventRouter(h)
 		token := eventToken(eventTestCustomerID)

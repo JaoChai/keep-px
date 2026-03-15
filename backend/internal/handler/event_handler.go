@@ -99,7 +99,25 @@ func (h *EventHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	eventName := r.URL.Query().Get("event_name")
 
-	events, total, err := h.eventService.ListByCustomerID(r.Context(), customerID, pixelID, eventName, page, perPage)
+	var from, to *time.Time
+	if fromStr := r.URL.Query().Get("from"); fromStr != "" {
+		t, err := time.Parse(time.RFC3339, fromStr)
+		if err != nil {
+			ErrorJSON(w, http.StatusBadRequest, "from must be in RFC3339 format")
+			return
+		}
+		from = &t
+	}
+	if toStr := r.URL.Query().Get("to"); toStr != "" {
+		t, err := time.Parse(time.RFC3339, toStr)
+		if err != nil {
+			ErrorJSON(w, http.StatusBadRequest, "to must be in RFC3339 format")
+			return
+		}
+		to = &t
+	}
+
+	events, total, err := h.eventService.ListByCustomerID(r.Context(), customerID, pixelID, eventName, from, to, page, perPage)
 	if err != nil {
 		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to list events", err)
 		return
