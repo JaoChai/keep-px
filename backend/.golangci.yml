@@ -25,5 +25,3 @@ linters:
 
   exclusions:
     generated: strict
-    paths:
-      - db/generated

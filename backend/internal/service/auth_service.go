@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/idtoken"
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
@@ -20,7 +19,6 @@ import (
 
 var (
 	ErrInvalidCredentials  = errors.New("invalid credentials")
-	ErrEmailAlreadyExists  = errors.New("email already exists")
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
 	ErrInvalidGoogleToken  = errors.New("invalid google token")
 	ErrAccountSuspended    = errors.New("account suspended")
@@ -50,17 +48,6 @@ type AuthTokens struct {
 	Customer     *domain.Customer `json:"customer"`
 }
 
-type RegisterInput struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
-	Name     string `json:"name" validate:"required"`
-}
-
-type LoginInput struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
-}
-
 type GoogleAuthInput struct {
 	IDToken string `json:"id_token" validate:"required"`
 }
@@ -74,64 +61,6 @@ func (s *AuthService) GetCustomerByID(ctx context.Context, id string) (*domain.C
 		return nil, ErrInvalidCredentials
 	}
 	return customer, nil
-}
-
-func (s *AuthService) Register(ctx context.Context, input RegisterInput) (*AuthTokens, error) {
-	existing, err := s.customerRepo.GetByEmail(ctx, input.Email)
-	if err != nil {
-		return nil, fmt.Errorf("check email: %w", err)
-	}
-	if existing != nil {
-		return nil, ErrEmailAlreadyExists
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, fmt.Errorf("hash password: %w", err)
-	}
-
-	apiKey, err := generateAPIKey()
-	if err != nil {
-		return nil, fmt.Errorf("generate api key: %w", err)
-	}
-
-	customer := &domain.Customer{
-		Email:        input.Email,
-		PasswordHash: string(hashedPassword),
-		Name:         input.Name,
-		APIKey:       apiKey,
-		Plan:         domain.PlanSandbox,
-	}
-
-	if err := s.customerRepo.Create(ctx, customer); err != nil {
-		return nil, fmt.Errorf("create customer: %w", err)
-	}
-
-	return s.generateTokens(ctx, customer)
-}
-
-func (s *AuthService) Login(ctx context.Context, input LoginInput) (*AuthTokens, error) {
-	customer, err := s.customerRepo.GetByEmail(ctx, input.Email)
-	if err != nil {
-		return nil, fmt.Errorf("get customer: %w", err)
-	}
-	if customer == nil {
-		return nil, ErrInvalidCredentials
-	}
-
-	if customer.PasswordHash == "" {
-		return nil, ErrInvalidCredentials
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(customer.PasswordHash), []byte(input.Password)); err != nil {
-		return nil, ErrInvalidCredentials
-	}
-
-	if customer.SuspendedAt != nil {
-		return nil, ErrAccountSuspended
-	}
-
-	return s.generateTokens(ctx, customer)
 }
 
 func (s *AuthService) GoogleAuth(ctx context.Context, input GoogleAuthInput) (*AuthTokens, error) {
@@ -177,7 +106,7 @@ func (s *AuthService) GoogleAuth(ctx context.Context, input GoogleAuthInput) (*A
 		return s.generateTokens(ctx, customer)
 	}
 
-	// New user — create without password
+	// New user — create account
 	apiKey, err := generateAPIKey()
 	if err != nil {
 		return nil, fmt.Errorf("generate api key: %w", err)

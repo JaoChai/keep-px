@@ -24,7 +24,7 @@ type AdminHandler struct {
 func NewAdminHandler(adminService *service.AdminService, logger *slog.Logger) *AdminHandler {
 	return &AdminHandler{
 		adminService: adminService,
-		validate:     validator.New(),
+		validate:     newValidator(),
 		logger:       logger,
 	}
 }

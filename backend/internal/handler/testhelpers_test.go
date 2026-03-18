@@ -40,7 +40,6 @@ func testJWT(customerID string, isAdmin bool) string {
 	return tokenStr
 }
 
-
 // doRequest creates an HTTP test request, optionally sets the Authorization header and JSON body,
 // and returns the recorded response.
 func doRequest(handler http.Handler, method, path string, body interface{}, token string) *httptest.ResponseRecorder {
@@ -69,8 +68,8 @@ func doRequest(handler http.Handler, method, path string, body interface{}, toke
 // testConfig returns a minimal config suitable for handler tests.
 func testConfig() *config.Config {
 	return &config.Config{
-		JWTSecret:    testJWTSecret,
-		JWTAccessTTL: 15 * time.Minute,
+		JWTSecret:     testJWTSecret,
+		JWTAccessTTL:  15 * time.Minute,
 		JWTRefreshTTL: 7 * 24 * time.Hour,
 	}
 }

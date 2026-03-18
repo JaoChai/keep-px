@@ -2,10 +2,25 @@ package handler
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
+
+// newValidator creates a validator that uses JSON tag names in error messages
+// instead of Go struct field names (e.g. "refresh_token" instead of "refreshtoken").
+func newValidator() *validator.Validate {
+	v := validator.New()
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+	return v
+}
 
 // FormatValidationErrors converts validator.ValidationErrors into
 // user-friendly messages that do not leak internal struct field names.

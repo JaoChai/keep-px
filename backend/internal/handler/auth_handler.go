@@ -20,63 +20,9 @@ type AuthHandler struct {
 func NewAuthHandler(authService *service.AuthService, logger *slog.Logger) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
-		validate:    validator.New(),
+		validate:    newValidator(),
 		logger:      logger,
 	}
-}
-
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var input service.RegisterInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		ErrorJSON(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if err := h.validate.Struct(input); err != nil {
-		ErrorJSON(w, http.StatusBadRequest, FormatValidationErrors(err))
-		return
-	}
-
-	tokens, err := h.authService.Register(r.Context(), input)
-	if err != nil {
-		if errors.Is(err, service.ErrEmailAlreadyExists) {
-			ErrorJSON(w, http.StatusConflict, "email already exists")
-			return
-		}
-		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "registration failed", err)
-		return
-	}
-
-	JSON(w, http.StatusCreated, APIResponse{Data: tokens})
-}
-
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var input service.LoginInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		ErrorJSON(w, http.StatusBadRequest, "invalid request body")
-		return
-	}
-
-	if err := h.validate.Struct(input); err != nil {
-		ErrorJSON(w, http.StatusBadRequest, FormatValidationErrors(err))
-		return
-	}
-
-	tokens, err := h.authService.Login(r.Context(), input)
-	if err != nil {
-		if errors.Is(err, service.ErrInvalidCredentials) {
-			ErrorJSON(w, http.StatusUnauthorized, "invalid email or password")
-			return
-		}
-		if errors.Is(err, service.ErrAccountSuspended) {
-			ErrorJSON(w, http.StatusForbidden, "account suspended")
-			return
-		}
-		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "login failed", err)
-		return
-	}
-
-	JSON(w, http.StatusOK, APIResponse{Data: tokens})
 }
 
 func (h *AuthHandler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
@@ -146,8 +92,8 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.RefreshToken == "" {
-		ErrorJSON(w, http.StatusBadRequest, "refresh_token is required")
+	if err := h.validate.Struct(body); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, FormatValidationErrors(err))
 		return
 	}
 
