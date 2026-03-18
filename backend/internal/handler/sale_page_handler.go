@@ -68,7 +68,7 @@ func NewSalePageHandler(salePageService *service.SalePageService, baseURL string
 
 	return &SalePageHandler{
 		salePageService: salePageService,
-		validate:        validator.New(),
+		validate:        newValidator(),
 		templates:       tmplMap,
 		logger:          logger,
 		baseURL:         strings.TrimRight(baseURL, "/"),

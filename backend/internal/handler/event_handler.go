@@ -28,7 +28,7 @@ type EventHandler struct {
 func NewEventHandler(eventService *service.EventService, logger *slog.Logger) *EventHandler {
 	return &EventHandler{
 		eventService: eventService,
-		validate:     validator.New(),
+		validate:     newValidator(),
 		logger:       logger,
 	}
 }

@@ -24,7 +24,7 @@ type PixelHandler struct {
 func NewPixelHandler(pixelService *service.PixelService, logger *slog.Logger) *PixelHandler {
 	return &PixelHandler{
 		pixelService: pixelService,
-		validate:     validator.New(),
+		validate:     newValidator(),
 		logger:       logger,
 	}
 }

@@ -22,7 +22,7 @@ type ReplayHandler struct {
 func NewReplayHandler(replayService *service.ReplayService, logger *slog.Logger) *ReplayHandler {
 	return &ReplayHandler{
 		replayService: replayService,
-		validate:      validator.New(),
+		validate:      newValidator(),
 		logger:        logger,
 	}
 }
