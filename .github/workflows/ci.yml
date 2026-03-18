@@ -151,10 +151,11 @@ jobs:
         id: e2e-auth
         working-directory: backend
         run: |
+          E2E_USER_ID="00000000-0000-4000-a000-000000000e2e"
           # Insert test user into DB
           PGPASSWORD=testpass psql -h localhost -U testuser -d keeppx_test -c "
             INSERT INTO customers (id, email, name, api_key, plan, created_at, updated_at)
-            VALUES ('e2e-test-user-id', 'e2e-test@example.com', 'E2E Test User', 'pk_e2e_test_key', 'sandbox', NOW(), NOW())
+            VALUES ('$E2E_USER_ID', 'e2e-test@example.com', 'E2E Test User', 'pk_e2e_test_key', 'sandbox', NOW(), NOW())
             ON CONFLICT (email) DO NOTHING;
           "
           # Generate JWT access token using Node's built-in crypto
@@ -163,7 +164,7 @@ jobs:
             const b64url = (b) => Buffer.from(b).toString('base64url');
             const header = b64url(JSON.stringify({alg:'HS256',typ:'JWT'}));
             const now = Math.floor(Date.now()/1000);
-            const payload = b64url(JSON.stringify({sub:'e2e-test-user-id',email:'e2e-test@example.com',is_admin:false,iat:now,exp:now+3600}));
+            const payload = b64url(JSON.stringify({sub:'$E2E_USER_ID',email:'e2e-test@example.com',is_admin:false,iat:now,exp:now+3600}));
             const sig = crypto.createHmac('sha256','$JWT_SECRET').update(header+'.'+payload).digest('base64url');
             console.log(header+'.'+payload+'.'+sig);
           ")
