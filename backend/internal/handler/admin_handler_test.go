@@ -18,6 +18,8 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
+const testTargetCustomerID = "target-cust"
+
 // ---------------------------------------------------------------------------
 // Test setup
 // ---------------------------------------------------------------------------
@@ -247,7 +249,7 @@ func TestAdminHandler_GetCustomerDetail(t *testing.T) {
 	t.Run("success returns customer detail", func(t *testing.T) {
 		env := setupAdminTest(t)
 		token := testJWT(testCustomerID, true)
-		targetID := "target-cust"
+		targetID := testTargetCustomerID
 
 		detail := &domain.AdminCustomerDetail{
 			Customer:   &domain.Customer{ID: targetID, Email: "target@example.com", Name: "Target", PasswordHash: "secret-hash"},
@@ -301,7 +303,7 @@ func TestAdminHandler_ChangePlan(t *testing.T) {
 	t.Run("success changes plan", func(t *testing.T) {
 		env := setupAdminTest(t)
 		token := testJWT(testCustomerID, true)
-		targetID := "target-cust"
+		targetID := testTargetCustomerID
 
 		env.customerRepo.On("GetByID", mock.Anything, targetID).
 			Return(&domain.Customer{ID: targetID, Plan: domain.PlanSandbox}, nil)
@@ -369,7 +371,7 @@ func TestAdminHandler_SuspendCustomer(t *testing.T) {
 	t.Run("success suspends customer", func(t *testing.T) {
 		env := setupAdminTest(t)
 		token := testJWT(testCustomerID, true)
-		targetID := "target-cust"
+		targetID := testTargetCustomerID
 
 		env.adminRepo.On("SuspendCustomer", mock.Anything, targetID).Return(nil)
 		env.adminRepo.On("CreateAuditLog", mock.Anything, mock.Anything).Return(nil)
@@ -429,7 +431,7 @@ func TestAdminHandler_ActivateCustomer(t *testing.T) {
 	t.Run("success activates customer", func(t *testing.T) {
 		env := setupAdminTest(t)
 		token := testJWT(testCustomerID, true)
-		targetID := "target-cust"
+		targetID := testTargetCustomerID
 
 		env.adminRepo.On("ActivateCustomer", mock.Anything, targetID).Return(nil)
 		env.adminRepo.On("CreateAuditLog", mock.Anything, mock.Anything).Return(nil)

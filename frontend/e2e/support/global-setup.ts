@@ -19,10 +19,13 @@ async function globalSetup() {
   const refreshToken = process.env.E2E_REFRESH_TOKEN
 
   if (!accessToken || !refreshToken) {
-    throw new Error(
-      'E2E auth setup requires E2E_ACCESS_TOKEN and E2E_REFRESH_TOKEN environment variables. ' +
-        'Generate test tokens via the backend or Google OAuth flow.'
+    console.warn(
+      '[global-setup] E2E_ACCESS_TOKEN and E2E_REFRESH_TOKEN not set — writing empty auth state. ' +
+        'Tests requiring authentication will fail.'
     )
+    // Write empty storage state so Playwright config doesn't error on missing file
+    fs.writeFileSync(storagePath, JSON.stringify({ cookies: [], origins: [] }, null, 2))
+    return
   }
 
   // Write storageState with tokens in localStorage
