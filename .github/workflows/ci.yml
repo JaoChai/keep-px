@@ -147,6 +147,30 @@ jobs:
             PGPASSWORD=testpass psql -h localhost -U testuser -d keeppx_test -f "$f"
           done
 
+      - name: Seed test user and generate auth tokens
+        id: e2e-auth
+        working-directory: backend
+        run: |
+          # Insert test user into DB
+          PGPASSWORD=testpass psql -h localhost -U testuser -d keeppx_test -c "
+            INSERT INTO customers (id, email, name, api_key, plan, created_at, updated_at)
+            VALUES ('e2e-test-user-id', 'e2e-test@example.com', 'E2E Test User', 'pk_e2e_test_key', 'sandbox', NOW(), NOW())
+            ON CONFLICT (email) DO NOTHING;
+          "
+          # Generate JWT access token using Node's built-in crypto
+          ACCESS_TOKEN=$(node -e "
+            const crypto = require('crypto');
+            const b64url = (b) => Buffer.from(b).toString('base64url');
+            const header = b64url(JSON.stringify({alg:'HS256',typ:'JWT'}));
+            const now = Math.floor(Date.now()/1000);
+            const payload = b64url(JSON.stringify({sub:'e2e-test-user-id',email:'e2e-test@example.com',is_admin:false,iat:now,exp:now+3600}));
+            const sig = crypto.createHmac('sha256','$JWT_SECRET').update(header+'.'+payload).digest('base64url');
+            console.log(header+'.'+payload+'.'+sig);
+          ")
+          REFRESH_TOKEN=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+          echo "E2E_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
+          echo "E2E_REFRESH_TOKEN=$REFRESH_TOKEN" >> "$GITHUB_ENV"
+
       - name: Install frontend dependencies
         run: npm ci
 
@@ -269,8 +293,8 @@ jobs:
         env:
           E2E_BASE_URL: ${{ vars.FRONTEND_PROD_URL }}
           E2E_API_URL: ${{ vars.BACKEND_PROD_URL }}
-          E2E_USER_EMAIL: ${{ secrets.E2E_PROD_USER_EMAIL }}
-          E2E_USER_PASSWORD: ${{ secrets.E2E_PROD_USER_PASSWORD }}
+          E2E_ACCESS_TOKEN: ${{ secrets.E2E_PROD_ACCESS_TOKEN }}
+          E2E_REFRESH_TOKEN: ${{ secrets.E2E_PROD_REFRESH_TOKEN }}
 
       - name: Upload smoke test results
         if: failure()
