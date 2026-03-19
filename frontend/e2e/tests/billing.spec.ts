@@ -51,3 +51,27 @@ test.describe('Billing @smoke', () => {
     await expect(billing.purchaseHistorySection).toBeVisible()
   })
 })
+
+// --- Scenario 6: Stripe Portal Button ---
+
+test.describe('Billing - Manage Billing', () => {
+  test('manage billing button or upgrade button is visible', async ({ page }) => {
+    const billing = new BillingPage(page)
+    await billing.goto()
+
+    // For paid users: "จัดการการชำระเงิน" button
+    // For free users: "อัปเกรด" button
+    // Either one should be present in the account status card
+    const manageBillingVisible = await billing.manageBillingButton.isVisible().catch(() => false)
+    const upgradeButtonVisible = await page.getByRole('button', { name: 'อัปเกรด', exact: true }).isVisible().catch(() => false)
+
+    // At least one action button should be present
+    expect(manageBillingVisible || upgradeButtonVisible).toBeTruthy()
+
+    // If the manage billing button is visible, we just verify it exists
+    // (don't click — it redirects to Stripe portal)
+    if (manageBillingVisible) {
+      await expect(billing.manageBillingButton).toBeVisible()
+    }
+  })
+})

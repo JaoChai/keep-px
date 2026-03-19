@@ -14,6 +14,13 @@ export class SidebarPage {
   readonly guideLink: Locator
   readonly logoutButton: Locator
 
+  // Notification bell
+  readonly notificationBellButton: Locator
+  readonly notificationPopover: Locator
+  readonly notificationPopoverHeading: Locator
+  readonly notificationMarkAllReadButton: Locator
+  readonly notificationEmptyState: Locator
+
   constructor(page: Page) {
     this.page = page
     // Scope all locators to the sidebar nav to avoid conflicts with page content
@@ -28,6 +35,14 @@ export class SidebarPage {
     this.settingsLink = this.nav.getByRole('link', { name: 'ตั้งค่า' })
     this.guideLink = this.nav.getByRole('link', { name: 'คู่มือ' })
     this.logoutButton = page.getByRole('button', { name: 'ออกจากระบบ' })
+
+    // Notification bell — button with aria-label "Notifications" in sidebar header
+    this.notificationBellButton = page.getByRole('button', { name: 'Notifications' }).first()
+    // Popover content — appears after clicking the bell
+    this.notificationPopoverHeading = page.getByText('การแจ้งเตือน', { exact: true })
+    this.notificationPopover = page.locator('.absolute').filter({ hasText: 'การแจ้งเตือน' })
+    this.notificationMarkAllReadButton = page.getByText('อ่านทั้งหมด')
+    this.notificationEmptyState = page.getByText('ไม่มีการแจ้งเตือน')
   }
 
   async navigateTo(linkName: string) {

@@ -1,6 +1,6 @@
 ---
 name: e2e-debug
-description: Debug Playwright E2E test failures in CI — root cause analysis, strict mode violations, Thai text selectors, and dialog timing patterns (61 tests, 12 page objects)
+description: Debug Playwright E2E test failures in CI — root cause analysis, strict mode violations, Thai text selectors, and dialog timing patterns (159 tests, 12 page objects)
 ---
 
 # E2E Debug
@@ -15,8 +15,9 @@ Activate this skill when the user says:
 
 ## Test Suite Overview
 
-- **61 tests** across 17 spec files
+- **159 tests** across 19 spec files (+ 2 journey specs)
 - **12 page objects** (login, pixels, sale-pages, billing, admin, etc.)
+- See `e2e-write` skill for proactive rules when writing new tests
 - Tests run in CI via GitHub Actions with Playwright
 
 ## Step 1: Read the CI Error
@@ -134,6 +135,9 @@ for (const delay of delays) {
 | Thai text selector fails | Text mismatch | Use exact Thai text: `getByRole('button', { name: 'บันทึก' })` |
 | Toast blocks click | Toast overlay on target | Dismiss toast before next action: `await toast.waitFor({ state: 'hidden' })` |
 | Serial test step fails | Previous step dependency | Use `test.skip()` when prerequisite step failed |
+| `getByRole('dialog')` not found | Custom dialog, no ARIA role | Use heading-based detection: `getByRole('heading', { name })` |
+| Collapsible content not visible | Collapsible closed by default | Click header to expand before interacting |
+| List interaction on empty sandbox | Test user has no data | Guard with `test.skip(!hasData, 'reason')` |
 
 ## Decision Tree
 
@@ -145,7 +149,8 @@ E2E test fails in CI
 │   └── On open/close? → Add timing waits (Step 3)
 ├── Strict mode violation?
 │   ├── Duplicate elements in responsive DOM? → Use .first() or data-testid
-│   └── Multiple forms/dialogs? → Scope locator with parent: .locator('form').getByRole(...)
+│   ├── Multiple forms/dialogs? → Scope locator with parent: .locator('form').getByRole(...)
+│   └── Thai text collision? → Add { exact: true } or use full text (see e2e-write Rule 1)
 ├── Element not found?
 │   ├── After dialog close? → Wait for not.toBeVisible() first
 │   ├── After navigation? → Wait for new page content
@@ -171,6 +176,7 @@ git push && gh run watch
 
 ## Related
 
+- `e2e-write` for proactive rules when **writing new** E2E tests
 - `frontend-feature` for creating new pages with testable structure
 - `deploy-check` for pre-deployment verification including E2E
 - `sale-page-editor` for sale page patterns that affect E2E tests

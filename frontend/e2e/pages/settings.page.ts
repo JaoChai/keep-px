@@ -7,6 +7,7 @@ export class SettingsPage {
   readonly apiKeySection: Locator
   readonly nameInput: Locator
   readonly emailInput: Locator
+  readonly copyApiKeyButton: Locator
 
   constructor(page: Page) {
     this.page = page
@@ -16,6 +17,8 @@ export class SettingsPage {
     // Labels lack htmlFor — use CSS sibling combinator with Playwright text matching
     this.nameInput = page.locator('label:has-text("ชื่อ") + input').first()
     this.emailInput = page.locator('label:has-text("อีเมล") + input')
+    // Copy button — the button containing the Copy icon (second outline button after eye toggle)
+    this.copyApiKeyButton = page.locator('button', { has: page.locator('[class*="lucide-copy"]') })
   }
 
   async goto() {

@@ -158,6 +158,11 @@ jobs:
             VALUES ('$E2E_USER_ID', 'e2e-test@example.com', 'E2E Test User', 'pk_e2e_test_key', 'sandbox', NOW(), NOW())
             ON CONFLICT (email) DO NOTHING;
           "
+          PGPASSWORD=testpass psql -h localhost -U testuser -d keeppx_test -c "
+            INSERT INTO subscriptions (id, customer_id, stripe_subscription_id, stripe_price_id, addon_type, status, quantity, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at)
+            VALUES (gen_random_uuid(), '$E2E_USER_ID', 'sub_e2e_test', 'price_e2e_test', 'pixel_slots', 'active', 3, NOW(), NOW() + INTERVAL '1 year', false, NOW(), NOW())
+            ON CONFLICT DO NOTHING;
+          "
           # Generate JWT access token using Node's built-in crypto
           ACCESS_TOKEN=$(node -e "
             const crypto = require('crypto');

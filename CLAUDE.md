@@ -22,11 +22,12 @@ git checkout -b feat/... or fix/... or chore/... or refactor/...
 ```
 
 ### Step 2: Plan → Wait for user confirm
-- Non-trivial tasks: enter plan mode, present plan, **wait for user approval**.
+- Non-trivial tasks: ECC `/plan` → present plan, **wait for user approval**.
 - Large tasks (backend + frontend together): use `TeamCreate` to spawn parallel agents.
 - Use MCP `context7` to look up library docs if unsure about APIs.
 
-### Step 3: Scaffold (if needed)
+### Step 3: Scaffold + Domain Context
+**สร้างใหม่:**
 | Need | Skill |
 |------|-------|
 | New backend resource | `/go-service-scaffold` |
@@ -34,10 +35,21 @@ git checkout -b feat/... or fix/... or chore/... or refactor/...
 | Database schema change | `/db-migration` + MCP `neon` to verify |
 | New frontend page | `/frontend-feature` |
 
+**แก้ไขของเดิม — อ่าน domain skill ก่อนเขียน code:**
+| Domain | Skill | ทำไม |
+|--------|-------|-------|
+| Sale pages, templates | `sale-page-editor` | 3 templates ต้อง co-change |
+| Events, CAPI pipeline | `event-pipeline` | tracking + forwarding pitfalls |
+| Auth, JWT, OAuth | `auth-flow` | token refresh + guard patterns |
+| Billing, Stripe | `stripe-webhook` | idempotency + credit system |
+| Nginx, CSP, proxy | `nginx-csp` | 4-location-block inheritance |
+
 ### Step 4: Implement
-- Go logic: `/go-test` — **write tests first**, then implement (TDD).
-- Use MCP `context7` for up-to-date library documentation.
-- Use MCP `neon` to query/inspect database when needed.
+- **Backend (Go):** ECC `/go-test` — write tests first, then implement (TDD).
+- **Frontend (React):** ECC `/tdd` — write tests first + MCP `context7` for library docs.
+- **E2E tests:** Read `e2e-write` skill first (project-specific rules) → เขียน test ตาม rules → ECC `/e2e` เพื่อ **run** เท่านั้น → run `npm run e2e` local before push.
+- **File co-change:** Check `dev-workflow` — แก้ interfaces.go ต้องแก้ mocks, แก้ types ต้องแก้ hooks.
+- **Database:** Use MCP `neon` to query/inspect when needed.
 
 ### Step 5: Quality Gates → loop until green
 Run only gates for packages you changed. **If fail, fix and re-run. Do NOT proceed.**
@@ -48,17 +60,26 @@ Run only gates for packages you changed. **If fail, fix and re-run. Do NOT proce
 | Frontend | `cd frontend && npm run lint && npm run test && npm run build` |
 | E2E | `cd frontend && npm run e2e` |
 
+**ถ้า fail — ใช้ skill debug ก่อนแก้มั่ว:**
+| Failure | Skill | ทำไม |
+|---------|-------|-------|
+| E2E test fail | `e2e-debug` | Root cause analysis + decision tree |
+| Go build fail | ECC `/go-build` | Surgical fix, minimal changes |
+| Frontend build/type fail | ECC `build-error-resolver` | Fix type errors, get build green |
+| CI pipeline fail | `ci-pipeline` | CI structure + common patterns |
+
 ### Step 6: Code Review → loop until clean
-Run applicable reviews. **If issues found, fix and re-review.**
+Run **only** reviews relevant to changed code. **If issues found, fix and re-review.**
 
 | Scope | Tool |
 |-------|------|
-| Go code | `/go-review` |
-| SQL, migrations, schema | `/database-reviewer` |
-| Auth, middleware, user input, API keys | `/security-review` |
+| Go code | ECC `/go-review` |
+| SQL, migrations, schema | ECC `/database-reviewer` |
+| Auth, middleware, user input, API keys | ECC `/security-review` |
 | Code quality, reuse, dead code | `/simplify` |
 
 ### Step 7: Commit + Push
+- **Pre-push check:** Run `deploy-check` skill for deployment readiness.
 - Commit format: `type: short description` (lowercase, no period, max 72 chars)
 - Git hooks run automatically: `pre-commit` (lint-staged), `commit-msg` (commitlint), `pre-push` (quality gates).
 
@@ -71,10 +92,13 @@ Wait for `ci-gate` to pass. **If CI fails, go back to Step 5.**
 ### Step 9: Verify Deploy
 - Check `deploy-verify` job in GitHub Actions.
 - `post-deploy-e2e` runs `@smoke` tests against production.
-- If failed: use MCP `railway` to check logs, fix, go back to Step 5.
+- If failed: use `railway-deploy` skill + MCP `railway` to check logs.
+- CSP/proxy issues: use `nginx-csp` skill (4-location-block inheritance trap).
+- Fix and go back to Step 5.
 
-### Step 10: Report
-Tell the user: what was done, PR link, deploy status, any follow-up needed.
+### Step 10: Report + Learn
+- Tell the user: what was done, PR link, deploy status, any follow-up needed.
+- Run ECC `/learn-eval` — extract reusable patterns from this session into instincts.
 
 ## Architecture
 
@@ -155,3 +179,6 @@ Tell the user: what was done, PR link, deploy status, any follow-up needed.
 - **Handler perPage clamp**: Always clamp `perPage` in handler (not just service) — handler uses it for `TotalPages` calculation.
 - **chi route order**: Static routes (`/events/event-types`) MUST be registered before wildcard (`/events/{id}`).
 - **LSP diagnostics can be stale**: After editing `.tsx` files, LSP may show false errors. Verify with `cd frontend && npx tsc --noEmit` before investigating.
+- **E2E Thai text collisions**: `getByText` + Thai text ต้องใช้ `{ exact: true }` หรือ scope ด้วย parent locator — "สร้าง", "ยกเลิก", "จัดการ" ปรากฏใน 12-16 components
+- **E2E responsive duplicates**: Sidebar/nav ซ้ำ mobile/desktop → ใช้ `.first()` หรือ scope locator, ห้ามใช้ bare `getByRole` ที่ match หลาย element
+- **E2E sandbox empty state**: Test user อาจไม่มี data → ใช้ `test.skip()` + guard check ก่อน interact กับ empty lists
