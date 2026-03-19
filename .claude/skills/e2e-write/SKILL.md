@@ -182,6 +182,38 @@ Forms use Zod validation with `zodResolver`. If a required field is empty, `hand
 
 ---
 
+## Rule 10: Production Smoke Tests Must Be State-Agnostic
+
+`post-deploy-e2e` runs `@smoke` tests against **production** — the test user's data changes over time. Never assume a specific state.
+
+**Bad:**
+```typescript
+// Hardcodes "no credits" — breaks when user has credits
+await expect(page.getByText('ยังไม่มีเครดิตรีเพลย์')).toBeVisible()
+```
+
+**Good:**
+```typescript
+// State-agnostic: accept either state
+const hasCredits = await page.getByText('เครดิตที่มีอยู่').isVisible().catch(() => false)
+if (hasCredits) {
+  await expect(page.getByText('เครดิตที่มีอยู่')).toBeVisible()
+} else {
+  await expect(page.getByText('ยังไม่มีเครดิตรีเพลย์')).toBeVisible()
+}
+```
+
+**Principles:**
+1. Assert **structure** (sections exist, buttons present) — not **specific content state**
+2. Use conditional checks when UI depends on user data (credits, subscriptions, list items)
+3. Add generous `timeout` for `toHaveURL` after save/redirect — production is slower:
+   ```typescript
+   await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
+   ```
+4. Distinguish: PR CI tests (predictable state) vs smoke tests (unpredictable state)
+
+---
+
 ## Conventions
 
 | Convention | Rule |
@@ -209,6 +241,8 @@ Before pushing E2E test code, verify:
 - [ ] Responsive nav locators use `.first()` or scope
 - [ ] Resource creation tests handle quota limits
 - [ ] `waitForLoadState('networkidle')` in page object `goto()`
+- [ ] `@smoke` tests are state-agnostic — no hardcoded assumptions about user data
+- [ ] `toHaveURL` after save/redirect uses `{ timeout: 15000 }` for production
 
 ---
 

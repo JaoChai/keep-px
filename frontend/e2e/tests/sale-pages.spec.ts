@@ -55,7 +55,7 @@ test.describe('Sale Pages @smoke', () => {
     await editor.saveDraft()
 
     // Should redirect back to list
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
 
     // Status should be draft
@@ -78,7 +78,7 @@ test.describe('Sale Pages @smoke', () => {
     await editor.goBackButton.click()
 
     // Should be back on list with published status
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
 
     const statusBadge = salePagesPage.getRow(spName)
@@ -95,12 +95,12 @@ test.describe('Sale Pages @smoke', () => {
     const originalName = `${TEST_PREFIX} Edit ${Date.now()}`
     await editor.fillMinimum(originalName)
     await editor.saveDraft()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(originalName)).toBeVisible()
 
     // Click edit
     await salePagesPage.clickEditOnRow(originalName)
-    await expect(page).toHaveURL(/\/sale-pages\/.*\/edit-blocks/)
+    await expect(page).toHaveURL(/\/sale-pages\/.*\/edit-blocks/, { timeout: 15000 })
 
     // Open settings collapsible (closed by default in edit mode)
     await page.getByText('ตั้งค่าหน้าเพจ').click()
@@ -113,7 +113,7 @@ test.describe('Sale Pages @smoke', () => {
     await editor.saveDraftButton.click()
 
     // Should be back on list with updated name
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(updatedName)).toBeVisible()
   })
 
@@ -127,7 +127,7 @@ test.describe('Sale Pages @smoke', () => {
     const spName = `${TEST_PREFIX} Delete ${Date.now()}`
     await editor.fillMinimum(spName)
     await editor.saveDraft()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
 
     // Click delete
@@ -159,7 +159,7 @@ test.describe('Sale Pages @smoke', () => {
       return
     }
     await editor.goBackButton.click()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
 
     // Click delete
@@ -208,7 +208,7 @@ test.describe('Sale Page Editor Details', () => {
     await expect(editor.publishedUrlCode).toContainText(`/p/${customSlug}`)
 
     await editor.goBackButton.click()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
 
     // Verify slug appears in the list
     const row = page.locator('tr', { hasText: spName })
@@ -229,7 +229,7 @@ test.describe('Sale Page Editor Details', () => {
     await editor.heroImageUrlInput.fill('https://example.com/test-image.jpg')
 
     await editor.saveDraftButton.click()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
   })
 
@@ -246,7 +246,7 @@ test.describe('Sale Page Editor Details', () => {
     await expect(editor.descriptionTextarea).toHaveValue('This is a test description for the sale page')
 
     await editor.saveDraftButton.click()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
   })
 
@@ -289,7 +289,7 @@ test.describe('Sale Page Editor Details', () => {
     await expect(featureInputs).toHaveCount(2)
 
     await editor.saveDraftButton.click()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
   })
 
@@ -308,7 +308,7 @@ test.describe('Sale Page Editor Details', () => {
     await expect(editor.ctaButtonLinkInput).toHaveValue('https://example.com/buy')
 
     await editor.saveDraftButton.click()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
   })
 
@@ -337,7 +337,7 @@ test.describe('Sale Page Editor Details', () => {
     await expect(editor.trackingCurrencySelect).toHaveValue('USD')
 
     await editor.saveDraftButton.click()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
   })
 
@@ -377,7 +377,7 @@ test.describe('Sale Page Editor Details', () => {
     await expect(editor.contactWebsiteUrlInput).toHaveValue('https://example.com')
 
     await editor.saveDraftButton.click()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
   })
 
@@ -414,7 +414,7 @@ test.describe('Sale Page Editor Details', () => {
     await expect(editor.copyUrlButton).toBeVisible()
 
     await editor.goBackButton.click()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
   })
 })
 
@@ -455,7 +455,7 @@ test.describe('Block Editor Flow', () => {
 
     // Save as draft
     await editor.saveDraft()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
   })
 
@@ -487,7 +487,7 @@ test.describe('Block Editor Flow', () => {
 
     // Save
     await editor.saveDraft()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
     await expect(page.getByText(spName)).toBeVisible()
   })
 
@@ -575,7 +575,7 @@ test.describe('Sale Page Edge Cases', () => {
     await editor.leaveButton.click()
 
     // Should be on dashboard now
-    await expect(page).toHaveURL(/\/dashboard/)
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 })
   })
 
   test('double-click publish prevention', async ({ page }) => {
@@ -606,7 +606,7 @@ test.describe('Sale Page Edge Cases', () => {
     }
 
     await editor.goBackButton.click()
-    await expect(page).toHaveURL(/\/sale-pages$/)
+    await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
 
     // Verify only one sale page was created (count rows matching the name)
     const matchingRows = page.locator('tr', { hasText: spName })
