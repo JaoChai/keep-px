@@ -32,8 +32,8 @@ baseTest.describe('Landing Page', () => {
   baseTest('shows branding and CTA button', async ({ page }) => {
     await page.goto('/')
 
-    // Hero heading
-    await baseExpect(page.getByRole('heading', { name: /บัญชีโฆษณาถูกแบน/ })).toBeVisible()
+    // Hero heading — use .first() because "บัญชีโฆษณาถูกแบน" appears in both hero h1 and pain-point h3
+    await baseExpect(page.getByRole('heading', { name: /บัญชีโฆษณาถูกแบน/ }).first()).toBeVisible()
 
     // CTA button "เริ่มต้นฟรี"
     await baseExpect(page.getByRole('link', { name: 'เริ่มต้นฟรี' }).first()).toBeVisible()
