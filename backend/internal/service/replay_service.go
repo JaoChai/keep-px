@@ -17,11 +17,12 @@ import (
 )
 
 var (
-	ErrReplayNotFound      = errors.New("replay session not found")
+	ErrReplayNotFound       = errors.New("replay session not found")
 	ErrReplayNotCancellable = errors.New("replay session cannot be cancelled")
 	ErrReplayNotRetryable   = errors.New("replay session cannot be retried")
 	ErrReplaySamePixel      = errors.New("source and target pixel cannot be the same")
 	ErrPixelNoCredentials   = errors.New("target pixel has no Facebook credentials configured")
+	ErrReplayAlreadyActive  = errors.New("an active replay session already exists for this source pixel")
 )
 
 var ErrInvalidDateFormat = errors.New("invalid date format, expected RFC3339")
@@ -170,6 +171,18 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 		return nil, err
 	}
 
+	// Prevent concurrent replay sessions on the same source pixel (#126)
+	sessions, err := s.replayRepo.ListByCustomerID(ctx, customerID)
+	if err != nil {
+		return nil, fmt.Errorf("list replay sessions: %w", err)
+	}
+	for _, sess := range sessions {
+		if sess.SourcePixelID == input.SourcePixelID &&
+			(sess.Status == domain.ReplayStatusPending || sess.Status == domain.ReplayStatusRunning) {
+			return nil, ErrReplayAlreadyActive
+		}
+	}
+
 	dateFrom, err := parseDateFilter(input.DateFrom)
 	if err != nil {
 		return nil, err
@@ -293,7 +306,27 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 	var failedBatchRanges []domain.BatchRange
 	const batchSize = 1000
 
+	const revalidateInterval = 10 // re-check target pixel every N batches
+
 	for i := 0; i < len(events); i += batchSize {
+		// Periodically re-validate target pixel still exists (#119)
+		batchNum := i / batchSize
+		if batchNum > 0 && batchNum%revalidateInterval == 0 {
+			refreshed, pixErr := s.pixelRepo.GetByID(ctx, targetPixel.ID)
+			if pixErr != nil || refreshed == nil || !refreshed.IsActive {
+				errMsg := "target pixel was deleted or deactivated during replay"
+				s.logger.Error(errMsg, "session_id", session.ID, "target_pixel_id", targetPixel.ID)
+				if err := s.replayRepo.UpdateStatusWithError(ctx, session.ID, domain.ReplayStatusFailed, errMsg); err != nil {
+					s.logger.Error("failed to update replay status", "error", err, "session_id", session.ID)
+				}
+				s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
+					"Replay failed",
+					"Target pixel was deleted or deactivated during replay.")
+				return
+			}
+			targetPixel = refreshed
+		}
+
 		// Check for cancellation before each batch
 		status, err := s.replayRepo.GetStatus(ctx, session.ID)
 		if err == nil && status == domain.ReplayStatusCancelled {

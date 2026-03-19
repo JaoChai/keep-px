@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
 	"github.com/jaochai/pixlinks/backend/internal/service"
@@ -43,6 +44,8 @@ func mapReplayError(err error, w http.ResponseWriter) bool {
 		ErrorJSON(w, http.StatusConflict, "replay session cannot be cancelled")
 	case errors.Is(err, service.ErrReplayNotRetryable):
 		ErrorJSON(w, http.StatusConflict, "replay session cannot be retried")
+	case errors.Is(err, service.ErrReplayAlreadyActive):
+		ErrorJSON(w, http.StatusConflict, "an active replay session already exists for this source pixel")
 	case errors.Is(err, service.ErrQuotaReplayNotAllowed):
 		ErrorJSON(w, http.StatusPaymentRequired, "no replay credits available")
 	case errors.Is(err, service.ErrQuotaReplayEventsExceeded):
@@ -157,6 +160,10 @@ func (h *ReplayHandler) EventTypes(w http.ResponseWriter, r *http.Request) {
 	pixelID := r.URL.Query().Get("pixel_id")
 	if pixelID == "" {
 		ErrorJSON(w, http.StatusBadRequest, "pixel_id is required")
+		return
+	}
+	if _, err := uuid.Parse(pixelID); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, "pixel_id must be a valid UUID")
 		return
 	}
 	types, err := h.replayService.GetEventTypes(r.Context(), customerID, pixelID)

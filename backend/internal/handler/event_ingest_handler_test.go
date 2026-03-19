@@ -103,6 +103,8 @@ func TestEventHandler_Ingest(t *testing.T) {
 
 		// Event repo: create events
 		eventRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PixelEvent")).Return(true, nil).Times(2)
+		// Allow async CAPI failure to persist status (fire-and-forget goroutine)
+		eventRepo.On("MarkForwarded", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
 
 		r := eventIngestRouter(h)
 		token := eventToken(eventTestCustomerID)

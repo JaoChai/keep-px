@@ -218,6 +218,8 @@ func TestReplayService_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc, replayRepo, eventRepo, pixelRepo := newTestReplayService()
 			tt.setup(replayRepo, eventRepo, pixelRepo)
+			// Allow concurrent session check (returns no active sessions)
+			replayRepo.On("ListByCustomerID", mock.Anything, tt.customerID).Return([]*domain.ReplaySession{}, nil).Maybe()
 
 			result, err := svc.Create(context.Background(), tt.customerID, tt.input)
 
@@ -964,6 +966,7 @@ func TestReplayService_Create_SemaphoreBlock(t *testing.T) {
 			{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
 		}, nil)
 	replayRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.ReplaySession")).Return(nil)
+	replayRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplaySession{}, nil).Maybe()
 	replayRepo.On("UpdateStatus", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
 	replayRepo.On("UpdateProgress", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil).Maybe()
 	replayRepo.On("UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(nil).Maybe()
@@ -1009,6 +1012,7 @@ func TestReplayService_Create_ShutdownDuringSemWait(t *testing.T) {
 			{ID: "evt-1", EventName: "PageView", EventTime: time.Now()},
 		}, nil)
 	replayRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.ReplaySession")).Return(nil)
+	replayRepo.On("ListByCustomerID", mock.Anything, "cust-1").Return([]*domain.ReplaySession{}, nil).Maybe()
 	replayRepo.On("UpdateStatusWithError", mock.Anything, mock.AnythingOfType("string"), "failed", "server shutdown before replay started").Return(nil)
 
 	// Fill the semaphore so goroutine will block

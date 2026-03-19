@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -561,7 +562,9 @@ func (s *BillingService) upsertSubscription(ctx context.Context, sub *stripe.Sub
 
 	// Handle replay_monthly activation: grant unlimited replay credit for billing period
 	if addonType == domain.SubTypeReplayMonthly && status == string(stripe.SubscriptionStatusActive) && periodEnd != nil {
-		// Dedup: check if a credit with pack_type=plan_grant and same expiry already exists
+		// Dedup: check if a credit for this subscription period already exists.
+		// Uses subscription ID + period end as a composite dedup key to prevent
+		// double-grant from concurrent webhook events (#131).
 		credits, credErr := s.creditRepo.GetActiveByCustomerID(ctx, customer.ID)
 		if credErr != nil {
 			return fmt.Errorf("check existing credits: %w", credErr)
@@ -583,6 +586,13 @@ func (s *BillingService) upsertSubscription(ctx context.Context, sub *stripe.Sub
 				ExpiresAt:          *periodEnd,
 			}
 			if err := s.creditRepo.Create(ctx, credit); err != nil {
+				// If a unique constraint violation occurs (concurrent webhook),
+				// treat as successful dedup — the credit was already granted.
+				if isDuplicateCreditErr(err) {
+					slog.Info("monthly credit already granted (concurrent dedup)",
+						"customer_id", customer.ID, "subscription_id", sub.ID)
+					return nil
+				}
 				return fmt.Errorf("grant replay monthly credit: %w", err)
 			}
 		}
@@ -645,6 +655,13 @@ func (s *BillingService) cancelSubscription(ctx context.Context, sub *stripe.Sub
 	// replay_monthly: just mark canceled — credits expire naturally at period end
 
 	return nil
+}
+
+// isDuplicateCreditErr checks if a database error is a unique constraint violation,
+// indicating a concurrent webhook already granted the same credit.
+func isDuplicateCreditErr(err error) bool {
+	// PostgreSQL unique violation error code
+	return err != nil && strings.Contains(err.Error(), "23505")
 }
 
 // resolveAddonType maps a Stripe price ID back to an addon/subscription type.

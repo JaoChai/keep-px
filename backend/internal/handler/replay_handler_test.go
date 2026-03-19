@@ -137,6 +137,7 @@ func TestReplayHandler_Create(t *testing.T) {
 
 		pixelRepo.On("GetByID", mock.Anything, "px-src").Return(replaySourcePixel(), nil)
 		pixelRepo.On("GetByID", mock.Anything, "px-tgt").Return(replayTargetPixel(), nil)
+		sessionRepo.On("ListByCustomerID", mock.Anything, replayTestCustomerID).Return([]*domain.ReplaySession{}, nil)
 		eventRepo.On("CountEventsForReplay", mock.Anything, "px-src", []string(nil), (*time.Time)(nil), (*time.Time)(nil)).Return(2, nil)
 		eventRepo.On("GetEventsForReplay", mock.Anything, "px-src", []string(nil), (*time.Time)(nil), (*time.Time)(nil), mock.AnythingOfType("*time.Time")).
 			Return([]*domain.PixelEvent{
@@ -548,6 +549,19 @@ func TestReplayHandler_EventTypes(t *testing.T) {
 		assert.Contains(t, resp["error"].(string), "pixel_id")
 	})
 
+	t.Run("invalid UUID returns 400", func(t *testing.T) {
+		sessionRepo := &MockReplaySessionRepo{}
+		eventRepo := &MockEventRepo{}
+		pixelRepo := &MockPixelRepo{}
+		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		h := NewReplayHandler(svc, testLogger())
+
+		token := replayToken(replayTestCustomerID)
+		rr := doRequest(replayRouter(h), "GET", "/replays/event-types?pixel_id=px-unknown", nil, token)
+
+		assert.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
 	t.Run("pixel not found returns 404", func(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
@@ -555,10 +569,11 @@ func TestReplayHandler_EventTypes(t *testing.T) {
 		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
 		h := NewReplayHandler(svc, testLogger())
 
-		pixelRepo.On("GetByID", mock.Anything, "px-unknown").Return(nil, nil)
+		missingPixelID := uuid.New().String()
+		pixelRepo.On("GetByID", mock.Anything, missingPixelID).Return(nil, nil)
 
 		token := replayToken(replayTestCustomerID)
-		rr := doRequest(replayRouter(h), "GET", "/replays/event-types?pixel_id=px-unknown", nil, token)
+		rr := doRequest(replayRouter(h), "GET", "/replays/event-types?pixel_id="+missingPixelID, nil, token)
 
 		assert.Equal(t, http.StatusNotFound, rr.Code)
 	})
