@@ -139,10 +139,12 @@ export class SalePageEditorPage {
     this.addWebsiteBlockButton = page.getByRole('button', { name: 'เว็บไซต์' })
     this.addLinkBlockButton = page.getByRole('button', { name: 'ลิงก์' })
 
-    // Block delete confirmation dialog
+    // Block delete confirmation dialog (custom Dialog component — no role="dialog")
     this.deleteBlockDialogTitle = page.getByRole('heading', { name: 'ลบบล็อก' })
-    this.deleteBlockConfirmButton = page.locator('[role="dialog"]').getByRole('button', { name: 'ลบ' })
-    this.deleteBlockCancelButton = page.locator('[role="dialog"]').getByRole('button', { name: 'ยกเลิก' })
+    // The dialog is a div.rounded-lg.border.bg-card inside a fixed overlay
+    const deleteBlockDialog = page.locator('div.rounded-lg').filter({ has: page.getByRole('heading', { name: 'ลบบล็อก' }) })
+    this.deleteBlockConfirmButton = deleteBlockDialog.getByRole('button', { name: 'ลบ' })
+    this.deleteBlockCancelButton = deleteBlockDialog.getByRole('button', { name: 'ยกเลิก' })
 
     // Unsaved changes dialog
     this.unsavedChangesDialog = page.getByRole('heading', { name: 'มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก' })

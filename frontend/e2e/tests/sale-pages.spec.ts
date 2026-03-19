@@ -228,9 +228,6 @@ test.describe('Sale Page Editor Details', () => {
     await editor.heroSubtitleInput.fill('Test Hero Subtitle')
     await editor.heroImageUrlInput.fill('https://example.com/test-image.jpg')
 
-    // Add minimum content
-    await editor.addTextBlockButton.click()
-
     await editor.saveDraftButton.click()
     await expect(page).toHaveURL(/\/sale-pages$/)
     await expect(page.getByText(spName)).toBeVisible()
@@ -247,9 +244,6 @@ test.describe('Sale Page Editor Details', () => {
     // Fill description
     await editor.descriptionTextarea.fill('This is a test description for the sale page')
     await expect(editor.descriptionTextarea).toHaveValue('This is a test description for the sale page')
-
-    // Add minimum content
-    await editor.addTextBlockButton.click()
 
     await editor.saveDraftButton.click()
     await expect(page).toHaveURL(/\/sale-pages$/)
@@ -294,9 +288,6 @@ test.describe('Sale Page Editor Details', () => {
     // Verify 2 feature inputs remain
     await expect(featureInputs).toHaveCount(2)
 
-    // Add minimum content
-    await editor.addTextBlockButton.click()
-
     await editor.saveDraftButton.click()
     await expect(page).toHaveURL(/\/sale-pages$/)
     await expect(page.getByText(spName)).toBeVisible()
@@ -315,9 +306,6 @@ test.describe('Sale Page Editor Details', () => {
     await expect(editor.ctaButtonTextInput).toHaveValue('Buy Now')
     await editor.ctaButtonLinkInput.fill('https://example.com/buy')
     await expect(editor.ctaButtonLinkInput).toHaveValue('https://example.com/buy')
-
-    // Add minimum content
-    await editor.addTextBlockButton.click()
 
     await editor.saveDraftButton.click()
     await expect(page).toHaveURL(/\/sale-pages$/)
@@ -347,9 +335,6 @@ test.describe('Sale Page Editor Details', () => {
     // Currency
     await editor.trackingCurrencySelect.selectOption('USD')
     await expect(editor.trackingCurrencySelect).toHaveValue('USD')
-
-    // Add minimum content
-    await editor.addTextBlockButton.click()
 
     await editor.saveDraftButton.click()
     await expect(page).toHaveURL(/\/sale-pages$/)
@@ -390,9 +375,6 @@ test.describe('Sale Page Editor Details', () => {
 
     await editor.contactWebsiteUrlInput.fill('https://example.com')
     await expect(editor.contactWebsiteUrlInput).toHaveValue('https://example.com')
-
-    // Add minimum content
-    await editor.addTextBlockButton.click()
 
     await editor.saveDraftButton.click()
     await expect(page).toHaveURL(/\/sale-pages$/)

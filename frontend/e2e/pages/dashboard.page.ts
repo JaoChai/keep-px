@@ -41,10 +41,10 @@ export class DashboardPage {
     this.page = page
     this.heading = page.getByRole('heading', { name: 'แดชบอร์ด' })
     this.statCards = page.locator('[class*="card"]').filter({ has: page.locator('p.text-2xl') })
-    this.chartSection = page.getByText('ปริมาณอีเวนต์')
+    this.chartSection = page.getByText('ปริมาณอีเวนต์', { exact: true })
 
     // Chart time range buttons — inside the chart card's button group
-    const chartCard = page.locator('[class*="card"]').filter({ hasText: 'ปริมาณอีเวนต์' })
+    const chartCard = page.locator('[class*="card"]').filter({ has: page.getByText('ปริมาณอีเวนต์', { exact: true }) })
     this.chartRange7d = chartCard.getByRole('button', { name: '7d' })
     this.chartRange14d = chartCard.getByRole('button', { name: '14d' })
     this.chartRange30d = chartCard.getByRole('button', { name: '30d' })
@@ -52,7 +52,7 @@ export class DashboardPage {
 
     // Recent Activity feed
     this.recentActivityCard = page.locator('[class*="card"]').filter({ hasText: 'กิจกรรมล่าสุด' })
-    this.recentActivityHeading = this.recentActivityCard.getByText('กิจกรรมล่าสุด')
+    this.recentActivityHeading = this.recentActivityCard.getByText('กิจกรรมล่าสุด', { exact: true })
     this.recentActivityViewAllLink = this.recentActivityCard.getByRole('link', { name: 'ดูทั้งหมด' })
 
     // Pixel Status list

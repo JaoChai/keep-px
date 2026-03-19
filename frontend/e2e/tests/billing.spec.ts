@@ -63,7 +63,7 @@ test.describe('Billing - Manage Billing', () => {
     // For free users: "อัปเกรด" button
     // Either one should be present in the account status card
     const manageBillingVisible = await billing.manageBillingButton.isVisible().catch(() => false)
-    const upgradeButtonVisible = await page.getByRole('button', { name: 'อัปเกรด' }).isVisible().catch(() => false)
+    const upgradeButtonVisible = await page.getByRole('button', { name: 'อัปเกรด', exact: true }).isVisible().catch(() => false)
 
     // At least one action button should be present
     expect(manageBillingVisible || upgradeButtonVisible).toBeTruthy()

@@ -39,7 +39,7 @@ export class SidebarPage {
     // Notification bell — button with aria-label "Notifications" in sidebar header
     this.notificationBellButton = page.getByRole('button', { name: 'Notifications' }).first()
     // Popover content — appears after clicking the bell
-    this.notificationPopoverHeading = page.getByText('การแจ้งเตือน', { exact: false })
+    this.notificationPopoverHeading = page.getByText('การแจ้งเตือน', { exact: true })
     this.notificationPopover = page.locator('.absolute').filter({ hasText: 'การแจ้งเตือน' })
     this.notificationMarkAllReadButton = page.getByText('อ่านทั้งหมด')
     this.notificationEmptyState = page.getByText('ไม่มีการแจ้งเตือน')
