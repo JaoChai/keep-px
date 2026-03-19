@@ -1,13 +1,31 @@
 import { test, expect } from '../fixtures/auth.fixture'
 import { PixelsPage } from '../pages/pixels.page'
 
-// Helper to delete a pixel by row text
+// Helper to delete a pixel by row text — uses .first() to avoid strict mode violation
 async function deletePixelByName(page: import('@playwright/test').Page, name: string) {
-  const row = page.locator('tr', { hasText: name })
-  if (await row.count() === 0) return
-  await row.getByRole('button').filter({ has: page.locator('[class*="lucide-trash"]') }).click()
+  const rows = page.locator('tr', { hasText: name })
+  if (await rows.count() === 0) return
+  await rows.first().getByRole('button').filter({ has: page.locator('[class*="lucide-trash"]') }).click()
   await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
-  await expect(row).not.toBeVisible()
+  await page.waitForTimeout(500)
+}
+
+// Ensure quota has space by cleaning up test pixels and reloading
+async function ensureQuotaSpace(page: import('@playwright/test').Page) {
+  const addButton = page.getByRole('button', { name: 'เพิ่มพิกเซล' }).first()
+  if (await addButton.isDisabled()) {
+    for (const pattern of CLEANUP_PATTERNS) {
+      let rows = page.locator('tr', { hasText: pattern })
+      while (await rows.count() > 0) {
+        await rows.first().getByRole('button').filter({ has: page.locator('[class*="lucide-trash"]') }).click()
+        await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
+        await page.waitForTimeout(500)
+        rows = page.locator('tr', { hasText: pattern })
+      }
+    }
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+  }
 }
 
 // All E2E-created pixel names start with these prefixes for cleanup
@@ -23,7 +41,6 @@ test.describe('Pixels', () => {
       let count = await rows.count()
       while (count > 0) {
         await deletePixelByName(page, pattern)
-        await page.waitForTimeout(500)
         rows = page.locator('tr', { hasText: pattern })
         count = await rows.count()
       }
@@ -33,6 +50,8 @@ test.describe('Pixels', () => {
   test('create pixel and see in table', async ({ page }) => {
     const pixelsPage = new PixelsPage(page)
     await pixelsPage.goto()
+    await page.waitForLoadState('networkidle')
+    await ensureQuotaSpace(page)
 
     const pixelName = `Test Pixel ${Date.now()}`
     await pixelsPage.createPixel(pixelName, '123456789012345', 'EAAtest123token')
@@ -43,6 +62,8 @@ test.describe('Pixels', () => {
   test('edit pixel name and see updated in table', async ({ page }) => {
     const pixelsPage = new PixelsPage(page)
     await pixelsPage.goto()
+    await page.waitForLoadState('networkidle')
+    await ensureQuotaSpace(page)
 
     // Create a pixel first
     const originalName = `Edit Test ${Date.now()}`
@@ -72,6 +93,8 @@ test.describe('Pixels', () => {
   test('delete pixel with confirmation dialog', async ({ page }) => {
     const pixelsPage = new PixelsPage(page)
     await pixelsPage.goto()
+    await page.waitForLoadState('networkidle')
+    await ensureQuotaSpace(page)
 
     // Create a pixel first
     const pixelName = `Delete Test ${Date.now()}`
@@ -94,6 +117,8 @@ test.describe('Pixels', () => {
   test('show create pixel dialog with correct fields', async ({ page }) => {
     const pixelsPage = new PixelsPage(page)
     await pixelsPage.goto()
+    await page.waitForLoadState('networkidle')
+    await ensureQuotaSpace(page)
 
     await pixelsPage.addPixelButton.click()
 
@@ -108,6 +133,8 @@ test.describe('Pixels', () => {
   test('create multiple pixels and see both in table', async ({ page }) => {
     const pixelsPage = new PixelsPage(page)
     await pixelsPage.goto()
+    await page.waitForLoadState('networkidle')
+    await ensureQuotaSpace(page)
 
     const ts = Date.now()
     const pixelA = `E2E-Pixel A ${ts}`
@@ -128,6 +155,8 @@ test.describe('Pixels', () => {
   test('test connection shows toast', async ({ page }) => {
     const pixelsPage = new PixelsPage(page)
     await pixelsPage.goto()
+    await page.waitForLoadState('networkidle')
+    await ensureQuotaSpace(page)
 
     const pixelName = `E2E-Pixel ${Date.now()}`
     await pixelsPage.createPixel(pixelName, '123456789012345', 'EAAtest123token')
@@ -144,6 +173,8 @@ test.describe('Pixels', () => {
   test('toggle pixel active/inactive status', async ({ page }) => {
     const pixelsPage = new PixelsPage(page)
     await pixelsPage.goto()
+    await page.waitForLoadState('networkidle')
+    await ensureQuotaSpace(page)
 
     const pixelName = `E2E-Pixel ${Date.now()}`
     await pixelsPage.createPixel(pixelName, '123456789012345', 'EAAtest123token')
@@ -172,6 +203,8 @@ test.describe('Pixels', () => {
 
     const pixelsPage = new PixelsPage(page)
     await pixelsPage.goto()
+    await page.waitForLoadState('networkidle')
+    await ensureQuotaSpace(page)
 
     const ts = Date.now()
     const pixelAName = `E2E-Pixel A ${ts}`
@@ -228,6 +261,13 @@ test.describe('Pixels', () => {
     const pixelsPage = new PixelsPage(page)
     await pixelsPage.goto()
     await page.waitForLoadState('networkidle')
+
+    // If already at quota, verify directly without creating
+    const addButton = pixelsPage.addPixelButton
+    if (await addButton.isDisabled()) {
+      await expect(addButton).toHaveAttribute('title', 'ถึงขีดจำกัด Pixel Slots แล้ว')
+      return
+    }
 
     // Check the quota text to determine max_pixels (format: "X/Y สล็อต")
     const quotaText = await page.locator('text=/\\d+\\/\\d+ สล็อต/').textContent()

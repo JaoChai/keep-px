@@ -139,20 +139,22 @@ test.describe('Event Flow', () => {
       return
     }
 
-    // Click pause
+    // Click pause and wait for state change
     await pauseButton.click()
+    await page.waitForTimeout(1000)
 
-    // Should show resume button
+    // Should show resume button (CI needs more time for React state update)
     const resumeButton = page.getByRole('button', { name: /ดำเนินต่อ/ }).first()
-    await expect(resumeButton).toBeVisible({ timeout: 5000 })
+    await expect(resumeButton).toBeVisible({ timeout: 10000 })
 
     // Clear and refresh should still be visible
     await expect(eventLogPage.clearButton).toBeVisible()
     await expect(eventLogPage.refreshButton).toBeVisible()
 
-    // Resume
+    // Resume and wait for state change
     await resumeButton.click()
-    await expect(pauseButton).toBeVisible({ timeout: 5000 })
+    await page.waitForTimeout(1000)
+    await expect(pauseButton).toBeVisible({ timeout: 10000 })
   })
 
   test('mode switching works with proper URL params', async ({ page }) => {
