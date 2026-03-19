@@ -309,6 +309,34 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 	const revalidateInterval = 10 // re-check target pixel every N batches
 
 	for i := 0; i < len(events); i += batchSize {
+		// Check for server shutdown before each batch (#139)
+		select {
+		case <-ctx.Done():
+			s.logger.Warn("replay interrupted by server shutdown, saving progress",
+				"session_id", session.ID, "replayed", replayed, "failed", failed)
+			// Save progress and failed batch ranges before exiting
+			writeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if len(failedBatchRanges) > 0 {
+				if rangesJSON, err := json.Marshal(failedBatchRanges); err == nil {
+					if err := s.replayRepo.UpdateFailedBatches(writeCtx, session.ID, rangesJSON); err != nil {
+						s.logger.Warn("failed to save failed batch ranges on shutdown", "error", err, "session_id", session.ID)
+					}
+				}
+			}
+			if err := s.replayRepo.UpdateProgress(writeCtx, session.ID, int(replayed), int(failed)); err != nil {
+				s.logger.Warn("failed to update progress on shutdown", "error", err, "session_id", session.ID)
+			}
+			if err := s.replayRepo.UpdateStatusWithError(writeCtx, session.ID, domain.ReplayStatusFailed, "server shutdown during replay"); err != nil {
+				s.logger.Error("failed to mark session failed on shutdown", "error", err, "session_id", session.ID)
+			}
+			s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
+				"Replay interrupted",
+				fmt.Sprintf("Server shut down during replay. %d events replayed, %d failed. You can retry.", replayed, failed))
+			return
+		default:
+		}
+
 		// Periodically re-validate target pixel still exists (#119)
 		batchNum := i / batchSize
 		if batchNum > 0 && batchNum%revalidateInterval == 0 {
@@ -427,6 +455,27 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 			select {
 			case <-time.After(delay):
 			case <-ctx.Done():
+				// Shutdown during batch delay — save progress (#139)
+				s.logger.Warn("replay interrupted by server shutdown during batch delay",
+					"session_id", session.ID, "replayed", replayed, "failed", failed)
+				writeCtx, writeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer writeCancel()
+				if len(failedBatchRanges) > 0 {
+					if rangesJSON, err := json.Marshal(failedBatchRanges); err == nil {
+						if err := s.replayRepo.UpdateFailedBatches(writeCtx, session.ID, rangesJSON); err != nil {
+							s.logger.Warn("failed to save failed batch ranges on shutdown", "error", err, "session_id", session.ID)
+						}
+					}
+				}
+				if err := s.replayRepo.UpdateProgress(writeCtx, session.ID, int(replayed), int(failed)); err != nil {
+					s.logger.Warn("failed to update progress on shutdown", "error", err, "session_id", session.ID)
+				}
+				if err := s.replayRepo.UpdateStatusWithError(writeCtx, session.ID, domain.ReplayStatusFailed, "server shutdown during replay"); err != nil {
+					s.logger.Error("failed to mark session failed on shutdown", "error", err, "session_id", session.ID)
+				}
+				s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
+					"Replay interrupted",
+					fmt.Sprintf("Server shut down during replay. %d events replayed, %d failed. You can retry.", replayed, failed))
 				return
 			}
 		}

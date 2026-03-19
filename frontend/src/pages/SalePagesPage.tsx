@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { Plus, Pencil, Trash2, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useSalePages, useDeleteSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
@@ -47,7 +48,32 @@ export function SalePagesPage() {
       {isPixelsError && <QueryErrorAlert error={pixelsError} onRetry={refetchPixels} className="mb-6" />}
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>
+        <div className="border border-border rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-muted">
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">ชื่อ</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">URL</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">พิกเซล</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">เทมเพลต</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">สถานะ</th>
+                <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3">การดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i} className="border-b border-border last:border-0">
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-5 w-16" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-5 w-20" /></td>
+                  <td className="px-4 py-3 text-right"><Skeleton className="h-8 w-24 ml-auto" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : !salePages || salePages.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-border rounded-lg">
           <p className="text-muted-foreground mb-4">ยังไม่มีเซลเพจ</p>

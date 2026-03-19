@@ -112,6 +112,7 @@ export function SalePageEditorPage() {
   const [selectedPixelIds, setSelectedPixelIds] = useState<string[]>([])
   const [initializedId, setInitializedId] = useState<string | null>(null)
   const [hasUserEdited, setHasUserEdited] = useState(false)
+  const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor')
   const unsaved = useUnsavedChanges(isDirty || hasUserEdited)
 
   const draftKey = isEditing ? `sale-page-classic:${id}` : 'sale-page-classic:new'
@@ -395,10 +396,21 @@ export function SalePageEditorPage() {
         </div>
       ) : (
         <>
+          {/* Mobile Preview Toggle */}
+          <div className="lg:hidden mb-4">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setMobileView(mobileView === 'editor' ? 'preview' : 'editor')}
+            >
+              {mobileView === 'editor' ? 'Preview' : 'Editor'}
+            </Button>
+          </div>
+
           {/* 2-Column Layout */}
           <div className="flex gap-8">
             {/* Left Column - Form */}
-            <div className="flex-1 lg:w-2/3 space-y-6">
+            <div className={`flex-1 lg:w-2/3 space-y-6 ${mobileView === 'preview' ? 'hidden lg:block' : ''}`}>
               {/* Basic Info */}
               <Card>
                 <CardHeader>
@@ -705,7 +717,7 @@ export function SalePageEditorPage() {
             </div>
 
             {/* Right Column - Preview */}
-            <div className="hidden lg:block lg:w-1/3">
+            <div className={`lg:w-1/3 ${mobileView === 'preview' ? 'block w-full' : 'hidden lg:block'}`}>
               <div className="sticky top-8">
                 <p className="text-sm font-medium text-muted-foreground mb-3">ตัวอย่าง</p>
                 <SalePagePreview

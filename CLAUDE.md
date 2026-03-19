@@ -56,6 +56,7 @@ Run applicable reviews. **If issues found, fix and re-review.**
 | Go code | `/go-review` |
 | SQL, migrations, schema | `/database-reviewer` |
 | Auth, middleware, user input, API keys | `/security-review` |
+| Code quality, reuse, dead code | `/simplify` |
 
 ### Step 7: Commit + Push
 - Commit format: `type: short description` (lowercase, no period, max 72 chars)
@@ -98,6 +99,8 @@ Tell the user: what was done, PR link, deploy status, any follow-up needed.
 - **Ownership**: Services check `pixel.CustomerID == customerID` before operations
 - **CAPI**: Async forwarding via `go s.forwardToCAPI(...)`
 - **Replay**: Background goroutine, semaphore (5 workers), ~50 events/sec rate limit
+- **Replay credits**: `ConsumeReplayCredit` uses `SELECT ... FOR UPDATE SKIP LOCKED`. If downstream fails, caller must `RefundReplayCredit` (compensating action).
+- **API error shape**: Backend `handler.ErrorJSON()` returns `{ "error": "message" }`. Frontend extracts via `axios.isAxiosError(err) && err.response?.data?.error`.
 - **Billing**: Stripe checkout sessions → webhook → replay credits (pack system)
 - **Admin**: `is_admin` flag on customers table, admin middleware, audit logging
 - **Repository nil**: `GetByID` returns `(nil, nil)` when not found — callers check for nil
@@ -107,6 +110,7 @@ Tell the user: what was done, PR link, deploy status, any follow-up needed.
 - **Routing**: react-router v7, `ProtectedRoute` wrapper, lazy-loaded admin routes
 - **API**: Axios with auto token refresh + mutex (`src/lib/api.ts`), `@/` = `src/`
 - **UI**: shadcn/ui in `src/components/ui/`, Vite proxy `/api` → `:8080`
+- **Shared**: Reusable components in `src/components/shared/` — `StatCard`, `QueryErrorAlert`, `ProtectedRoute`, `AdminRoute`
 - **Admin**: Separate admin pages under `/admin/*`, requires `is_admin` flag
 
 ## API Routes
@@ -118,7 +122,10 @@ Tell the user: what was done, PR link, deploy status, any follow-up needed.
 | POST | `/api/v1/auth/logout` | JWT | Logout (revoke refresh token) |
 | POST | `/api/v1/events/ingest` | API Key | Batch event ingestion |
 | CRUD | `/api/v1/pixels/*` | JWT | Pixel management + test connection |
-| GET | `/api/v1/events` | JWT | Event log (paginated) |
+| GET | `/api/v1/events` | JWT | Event log (paginated, filterable by pixel_id, event_name, from, to) |
+| GET | `/api/v1/events/event-types` | JWT | Distinct event names for customer |
+| GET | `/api/v1/events/recent` | JWT | Realtime events (polling) |
+| GET | `/api/v1/events/{id}` | JWT | Event detail with ownership check |
 | CRUD | `/api/v1/sale-pages/*` | JWT | Sale page CRUD + pixel assignment |
 | GET | `/p/:slug` | Public | Public sale page rendering |
 | POST/GET | `/api/v1/replays/*` | JWT | Replay sessions |
@@ -138,3 +145,13 @@ Tell the user: what was done, PR link, deploy status, any follow-up needed.
 - **Frontend env**: `VITE_API_URL` (empty = Vite proxy)
 - **sqlc**: `cd backend && sqlc generate` — NEVER edit `db/generated/` manually.
 - **Migrations**: Auto-run on deploy via `golang-migrate` in `cmd/server/main.go` (`m.Up()` at startup). Migration files in `backend/db/migrations/` are included in the Docker image. No manual step needed.
+
+## Gotchas
+
+- **No `components.json`**: `npx shadcn add` won't work. Write shadcn components manually + `npm install @radix-ui/*` in `frontend/`.
+- **Custom Popover**: `components/ui/popover.tsx` is NOT Radix — it's a custom implementation. No `asChild` prop. Use `className` directly on `PopoverTrigger`.
+- **Mock files exist in TWO packages**: When changing a repository interface, update mocks in BOTH `service/mocks_test.go` AND `handler/testhelpers_test.go`.
+- **Recharts Tooltip name collision**: When using shadcn Tooltip alongside Recharts, alias as `Tooltip as RechartsTooltip` and `Tooltip as ShadTooltip`.
+- **Handler perPage clamp**: Always clamp `perPage` in handler (not just service) — handler uses it for `TotalPages` calculation.
+- **chi route order**: Static routes (`/events/event-types`) MUST be registered before wildcard (`/events/{id}`).
+- **LSP diagnostics can be stale**: After editing `.tsx` files, LSP may show false errors. Verify with `cd frontend && npx tsc --noEmit` before investigating.

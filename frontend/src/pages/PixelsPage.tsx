@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { usePixels, useCreatePixel, useUpdatePixel, useDeletePixel, useTestPixel } from '@/hooks/use-pixels'
@@ -130,7 +131,32 @@ export function PixelsPage() {
       {isError && <QueryErrorAlert error={error} onRetry={refetch} className="mb-6" />}
 
       {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">กำลังโหลด...</div>
+        <div className="border border-border rounded-lg overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-muted">
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">ชื่อ</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">Pixel ID</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">สถานะ</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">สำรอง</th>
+                <th className="text-left text-sm font-medium text-muted-foreground px-4 py-3">สร้างเมื่อ</th>
+                <th className="text-right text-sm font-medium text-muted-foreground px-4 py-3">การดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i} className="border-b border-border last:border-0">
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-5 w-16" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+                  <td className="px-4 py-3 text-right"><Skeleton className="h-8 w-24 ml-auto" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : !pixels || pixels.length === 0 ? (
         isAtPixelLimit ? (
           <div className="text-center py-12 border border-dashed border-border rounded-lg">
@@ -149,6 +175,7 @@ export function PixelsPage() {
           </div>
         )
       ) : (
+        <div className="overflow-x-auto">
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full">
             <thead>
@@ -214,6 +241,7 @@ export function PixelsPage() {
             </tbody>
           </table>
         </div>
+        </div>
       )}
 
       {/* Create/Edit Dialog */}
@@ -232,6 +260,7 @@ export function PixelsPage() {
               <Label htmlFor="fb_pixel_id">Facebook Pixel ID</Label>
               <Input id="fb_pixel_id" placeholder="123456789012345" {...register('fb_pixel_id')} />
               {errors.fb_pixel_id && <p className="text-sm text-red-500">{errors.fb_pixel_id.message}</p>}
+              <p className="text-xs text-muted-foreground">Found in Facebook Events Manager &rarr; Data Sources</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="fb_access_token">
@@ -239,6 +268,7 @@ export function PixelsPage() {
               </Label>
               <Input id="fb_access_token" type="password" placeholder="EAAxxxxxxx..." {...register('fb_access_token')} />
               {errors.fb_access_token && <p className="text-sm text-red-500">{errors.fb_access_token.message}</p>}
+              <p className="text-xs text-muted-foreground">Generate from Facebook Events Manager &rarr; Settings</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="test_event_code">
