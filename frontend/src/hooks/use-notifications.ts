@@ -16,7 +16,7 @@ export function useNotifications(enabled: boolean) {
       return data.data
     },
     enabled,
-    staleTime: 60_000,
+    staleTime: 15_000,
   })
 }
 
@@ -27,7 +27,7 @@ export function useUnreadCount() {
       const { data } = await api.get<{ data: { unread_count: number } }>('/notifications/unread-count')
       return data.data.unread_count
     },
-    refetchInterval: 60_000,
+    refetchInterval: 15_000,
   })
 }
 

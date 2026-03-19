@@ -11,9 +11,12 @@ import {
   X,
   ArrowRight,
   Activity,
+  Plus,
+  FileText,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   useOverviewStats,
   useEventChart,
@@ -47,9 +50,10 @@ interface StatCardProps {
   icon: React.ReactNode
   trend?: { value: number; label: string } | null
   indicator?: 'green' | 'yellow' | 'red'
+  isLoading?: boolean
 }
 
-function StatCard({ title, value, subtitle, icon, trend, indicator }: StatCardProps) {
+function StatCard({ title, value, subtitle, icon, trend, indicator, isLoading }: StatCardProps) {
   return (
     <Card>
       <CardContent className="p-6">
@@ -57,7 +61,11 @@ function StatCard({ title, value, subtitle, icon, trend, indicator }: StatCardPr
           <div>
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-2xl font-bold text-foreground">{value}</p>
+              {isLoading ? (
+                <Skeleton className="h-8 w-20" />
+              ) : (
+                <p className="text-2xl font-bold text-foreground">{value}</p>
+              )}
               {indicator && (
                 <div
                   className={`h-2.5 w-2.5 rounded-full ${
@@ -432,9 +440,10 @@ function RecentReplays() {
 // --- Dashboard Page ---
 
 export function DashboardPage() {
-  const { data: stats, isError: statsError, error: statsErr, refetch: refetchStats } = useOverviewStats()
+  const { data: stats, isLoading: statsLoading, isError: statsError, error: statsErr, refetch: refetchStats } = useOverviewStats()
   const { data: recentEvents = [], isError: eventsError, error: eventsErr, refetch: refetchEvents } = useDashboardRecentEvents(15)
   const { data: quota } = useQuota()
+  const { data: pixels } = usePixels()
 
   const capiRate = stats && stats.total_events > 0
     ? Math.round((stats.forwarded_events / stats.total_events) * 100)
@@ -478,12 +487,14 @@ export function DashboardPage() {
           value={`${stats?.active_pixels ?? 0}/${stats?.total_pixels ?? 0}`}
           subtitle={`ทั้งหมด ${stats?.total_pixels ?? 0}`}
           icon={<Radio className="h-5 w-5" />}
+          isLoading={statsLoading}
         />
         <StatCard
           title="อีเวนต์วันนี้"
           value={(stats?.events_today ?? 0).toLocaleString()}
           trend={eventsTrend}
           icon={<Zap className="h-5 w-5" />}
+          isLoading={statsLoading}
         />
         <StatCard
           title="อัตรา CAPI"
@@ -491,19 +502,54 @@ export function DashboardPage() {
           subtitle="ส่งต่อไป Facebook แล้ว"
           indicator={stats ? capiIndicator : undefined}
           icon={<Send className="h-5 w-5" />}
+          isLoading={statsLoading}
         />
         <StatCard
           title="อีเวนต์สัปดาห์นี้"
           value={(stats?.events_this_week ?? 0).toLocaleString()}
           icon={<Activity className="h-5 w-5" />}
+          isLoading={statsLoading}
         />
         <StatCard
           title="รีเพลย์ที่ทำงาน"
           value={stats?.active_replays ?? 0}
           subtitle={`ทั้งหมด ${stats?.total_replays ?? 0}`}
           icon={<RotateCcw className="h-5 w-5" />}
+          isLoading={statsLoading}
         />
       </div>
+
+      {/* Quick-action cards for empty state (#117) */}
+      {pixels && pixels.length === 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <Link to="/pixels">
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Plus className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">สร้างพิกเซลแรกของคุณ</p>
+                  <p className="text-sm text-muted-foreground">เริ่มต้นใช้งานโดยเพิ่ม Facebook Pixel</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/sale-pages">
+            <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">สร้างเซลเพจ</p>
+                  <p className="text-sm text-muted-foreground">สร้างเซลเพจเพื่อเก็บอีเวนต์พิกเซล</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
 
       {/* Event Usage */}
       {quota && (

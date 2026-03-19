@@ -299,6 +299,10 @@ export function ReplayPage() {
                     <option value="original">ต้นฉบับ (ใช้เวลาเดิมของอีเวนต์)</option>
                     <option value="current">ปัจจุบัน (ใช้เวลาปัจจุบันสำหรับทุกอีเวนต์)</option>
                   </select>
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <p><span className="font-medium text-foreground">Original:</span> Events will be sent with their original timestamps</p>
+                    <p><span className="font-medium text-foreground">Current:</span> Events will be sent with current timestamps (recommended for Facebook)</p>
+                  </div>
                   <p className="text-xs text-muted-foreground">ใช้ "ปัจจุบัน" หากอีเวนต์เก่ากว่า 7 วัน เพื่อป้องกัน Facebook ปฏิเสธ</p>
                 </div>
 
