@@ -33,16 +33,16 @@ baseTest.describe('Landing Page', () => {
     await page.goto('/')
 
     // Hero heading
-    await baseExpect(page.getByRole('heading', { name: /ปกป้องข้อมูล Facebook Pixel/ })).toBeVisible()
+    await baseExpect(page.getByRole('heading', { name: /บัญชีโฆษณาถูกแบน/ })).toBeVisible()
 
-    // CTA button "เริ่มต้นใช้งาน"
-    await baseExpect(page.getByRole('link', { name: 'เริ่มต้นใช้งาน' })).toBeVisible()
+    // CTA button "เริ่มต้นฟรี"
+    await baseExpect(page.getByRole('link', { name: 'เริ่มต้นฟรี' }).first()).toBeVisible()
 
     // Navbar brand
     await baseExpect(page.getByText('Pixlinks').first()).toBeVisible()
 
-    // "Get Started" link in navbar
-    await baseExpect(page.getByRole('link', { name: 'Get Started' })).toBeVisible()
+    // "เริ่มต้นฟรี" link in navbar
+    await baseExpect(page.getByRole('link', { name: 'เริ่มต้นฟรี' }).first()).toBeVisible()
   })
 })
 
