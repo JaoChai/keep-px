@@ -74,7 +74,6 @@ test.describe('Event Pipeline Live Mode', () => {
 
     // Initially should show "หยุด" (pause) — skip if live controls didn't render
     const pauseButton = page.getByRole('button', { name: /หยุด/ }).first()
-    const resumeButton = page.getByRole('button', { name: /ดำเนินต่อ/ }).first()
 
     const pauseVisible = await pauseButton.isVisible({ timeout: 5000 }).catch(() => false)
     if (!pauseVisible) {
@@ -82,19 +81,17 @@ test.describe('Event Pipeline Live Mode', () => {
       return
     }
 
-    // Click pause and wait for state change
+    // Click pause — the SAME button toggles text between "หยุด" and "ดำเนินต่อ"
     await pauseButton.click()
-    await page.waitForTimeout(1000)
 
-    // Button text should change to "ดำเนินต่อ" (resume) — CI needs more time
-    await expect(resumeButton).toBeVisible({ timeout: 10000 })
+    // Wait for button text to change to "ดำเนินต่อ" on the same element
+    await expect(eventLogPage.pauseResumeButton).toHaveText(/ดำเนินต่อ/, { timeout: 10000 })
 
-    // Click resume and wait for state change
-    await resumeButton.click()
-    await page.waitForTimeout(1000)
+    // Click resume — the same button again
+    await eventLogPage.pauseResumeButton.click()
 
-    // Button should go back to "หยุด" (pause)
-    await expect(pauseButton).toBeVisible({ timeout: 10000 })
+    // Button should go back to "หยุด"
+    await expect(eventLogPage.pauseResumeButton).toHaveText(/หยุด/, { timeout: 10000 })
   })
 
   test('clear button in live mode', async ({ page }) => {

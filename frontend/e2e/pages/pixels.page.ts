@@ -103,11 +103,12 @@ export class PixelsPage {
     await this.page.getByRole('heading', { name: 'แก้ไขพิกเซล' }).waitFor({ state: 'visible' })
   }
 
-  /** Delete a pixel by name using the delete button and confirmation dialog */
+  /** Delete a pixel by name using the delete button and confirmation dialog.
+   *  Uses .first() because name may appear in another row's backup column. */
   async deletePixel(name: string) {
-    const row = this.page.locator('tr', { hasText: name })
-    await row.getByRole('button').filter({ has: this.page.locator('[class*="lucide-trash"]') }).click()
+    const rows = this.page.locator('tr', { hasText: name })
+    await rows.first().getByRole('button').filter({ has: this.page.locator('[class*="lucide-trash"]') }).click()
     await this.deleteConfirmButton.click()
-    await row.waitFor({ state: 'hidden', timeout: 10000 })
+    await this.page.waitForTimeout(1000)
   }
 }

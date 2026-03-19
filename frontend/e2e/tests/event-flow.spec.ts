@@ -139,22 +139,19 @@ test.describe('Event Flow', () => {
       return
     }
 
-    // Click pause and wait for state change
+    // Click pause — the SAME button toggles text between "หยุด" and "ดำเนินต่อ"
     await pauseButton.click()
-    await page.waitForTimeout(1000)
 
-    // Should show resume button (CI needs more time for React state update)
-    const resumeButton = page.getByRole('button', { name: /ดำเนินต่อ/ }).first()
-    await expect(resumeButton).toBeVisible({ timeout: 10000 })
+    // Wait for button text to change to "ดำเนินต่อ" on the same element
+    await expect(eventLogPage.pauseResumeButton).toHaveText(/ดำเนินต่อ/, { timeout: 10000 })
 
     // Clear and refresh should still be visible
     await expect(eventLogPage.clearButton).toBeVisible()
     await expect(eventLogPage.refreshButton).toBeVisible()
 
-    // Resume and wait for state change
-    await resumeButton.click()
-    await page.waitForTimeout(1000)
-    await expect(pauseButton).toBeVisible({ timeout: 10000 })
+    // Resume — click the same button again
+    await eventLogPage.pauseResumeButton.click()
+    await expect(eventLogPage.pauseResumeButton).toHaveText(/หยุด/, { timeout: 10000 })
   })
 
   test('mode switching works with proper URL params', async ({ page }) => {
