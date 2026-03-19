@@ -22,7 +22,7 @@ git checkout -b feat/... or fix/... or chore/... or refactor/...
 ```
 
 ### Step 2: Plan → Wait for user confirm
-- Non-trivial tasks: enter plan mode, present plan, **wait for user approval**.
+- Non-trivial tasks: ECC `/plan` → present plan, **wait for user approval**.
 - Large tasks (backend + frontend together): use `TeamCreate` to spawn parallel agents.
 - Use MCP `context7` to look up library docs if unsure about APIs.
 
@@ -45,9 +45,9 @@ git checkout -b feat/... or fix/... or chore/... or refactor/...
 | Nginx, CSP, proxy | `nginx-csp` | 4-location-block inheritance |
 
 ### Step 4: Implement
-- **Backend (Go):** `/go-test` — write tests first, then implement (TDD).
-- **Frontend (React):** Use MCP `context7` for library docs.
-- **E2E tests:** Read `e2e-write` skill first → use shared fixtures → run `npm run e2e` local before push.
+- **Backend (Go):** ECC `/go-test` — write tests first, then implement (TDD).
+- **Frontend (React):** ECC `/tdd` + MCP `context7` for library docs.
+- **E2E tests:** Read `e2e-write` skill first → ECC `/e2e` to generate + run → run `npm run e2e` local before push.
 - **File co-change:** Check `dev-workflow` — แก้ interfaces.go ต้องแก้ mocks, แก้ types ต้องแก้ hooks.
 - **Database:** Use MCP `neon` to query/inspect when needed.
 
@@ -65,17 +65,19 @@ Run only gates for packages you changed. **If fail, fix and re-run. Do NOT proce
 |---------|-------|-------|
 | E2E test fail | `e2e-debug` | Root cause analysis + decision tree |
 | Go build fail | ECC `/go-build` | Surgical fix, minimal changes |
+| Frontend build/type fail | ECC `build-error-resolver` | Fix type errors, get build green |
 | CI pipeline fail | `ci-pipeline` | CI structure + common patterns |
 
 ### Step 6: Code Review → loop until clean
 Run applicable reviews. **If issues found, fix and re-review.**
 
-| Scope | Tool |
-|-------|------|
-| Go code | `/go-review` |
-| SQL, migrations, schema | `/database-reviewer` |
-| Auth, middleware, user input, API keys | `/security-review` |
-| Code quality, reuse, dead code | `/simplify` |
+| Scope | Tool | Source |
+|-------|------|--------|
+| Go code | `/go-review` | ECC |
+| General code quality | ECC `code-reviewer` | ECC |
+| SQL, migrations, schema | `/database-reviewer` | ECC |
+| Auth, middleware, user input, API keys | `/security-review` | ECC |
+| Code quality, reuse, dead code | `/simplify` | ECC |
 
 ### Step 7: Commit + Push
 - **Pre-push check:** Run `deploy-check` skill for deployment readiness.
@@ -95,8 +97,9 @@ Wait for `ci-gate` to pass. **If CI fails, go back to Step 5.**
 - CSP/proxy issues: use `nginx-csp` skill (4-location-block inheritance trap).
 - Fix and go back to Step 5.
 
-### Step 10: Report
-Tell the user: what was done, PR link, deploy status, any follow-up needed.
+### Step 10: Report + Learn
+- Tell the user: what was done, PR link, deploy status, any follow-up needed.
+- Run ECC `/learn-eval` — extract reusable patterns from this session into instincts.
 
 ## Architecture
 
