@@ -101,8 +101,8 @@ Only runs after deploy-verify succeeds:
 ```yaml
 env:
   E2E_BASE_URL: ${{ vars.FRONTEND_PROD_URL }}
-  E2E_USER_EMAIL: ${{ secrets.E2E_PROD_USER_EMAIL }}
-  E2E_USER_PASSWORD: ${{ secrets.E2E_PROD_USER_PASSWORD }}
+  E2E_ACCESS_TOKEN: ${{ secrets.E2E_ACCESS_TOKEN }}
+  E2E_REFRESH_TOKEN: ${{ secrets.E2E_REFRESH_TOKEN }}
 ```
 
 ## Debugging CI Failures
@@ -211,26 +211,30 @@ Then add a new job with `if: needs.changes.outputs.newpackage == 'true'`.
 |----------|------|---------|
 | `BACKEND_PROD_URL` | vars | deploy-verify, post-deploy-e2e |
 | `FRONTEND_PROD_URL` | vars | deploy-verify, post-deploy-e2e |
-| `E2E_PROD_USER_EMAIL` | secrets | post-deploy-e2e auth |
-| `E2E_PROD_USER_PASSWORD` | secrets | post-deploy-e2e auth |
+| `E2E_ACCESS_TOKEN` | secrets | post-deploy-e2e auth (JWT access token) |
+| `E2E_REFRESH_TOKEN` | secrets | post-deploy-e2e auth (JWT refresh token) |
 
-## E2E Auth Setup Resilience
+## E2E Auth Setup
 
-The `global-setup.ts` uses exponential backoff for production E2E:
+Auth is **token-based** (NOT password-based). Google OAuth only — no direct login.
+
+`global-setup.ts` reads tokens from env vars and writes them to localStorage in storage state:
 
 ```typescript
-// Backoff schedule: 3s → 6s → 12s → 24s → 48s (total ~93s max wait)
-const backoffMs = [3000, 6000, 12000, 24000, 48000]
-
-// Only retries 5xx errors (server not ready)
-// Does NOT retry 4xx errors (auth failure = real problem)
+// Required env vars:
+// E2E_ACCESS_TOKEN  — JWT access token for test user
+// E2E_REFRESH_TOKEN — JWT refresh token for test user
 ```
 
 **Flow:**
-1. Try `POST /auth/register` (may fail if user exists)
-2. On failure → try `POST /auth/login`
-3. Write `storageState` file with tokens
-4. Playwright tests use this state for authenticated access
+1. Read `E2E_ACCESS_TOKEN` + `E2E_REFRESH_TOKEN` from env
+2. Write `storageState` JSON with tokens in `localStorage`
+3. If tokens missing → write empty state + warn (auth tests will fail)
+4. Playwright tests load this state for authenticated access
+
+**CI secrets needed:** `E2E_ACCESS_TOKEN`, `E2E_REFRESH_TOKEN` (not email/password)
+
+See `e2e-write` skill for writing tests that work with this auth flow.
 
 ## Concurrency
 
@@ -244,6 +248,7 @@ Multiple pushes to the same branch cancel previous runs. This saves CI minutes b
 
 ## Related
 
+- `e2e-write` for proactive rules when writing new E2E tests
 - `e2e-debug` for debugging specific Playwright test failures
 - `deploy-check` for local pre-push verification
 - `railway-deploy` for Railway-specific deployment issues

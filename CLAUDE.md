@@ -155,3 +155,6 @@ Tell the user: what was done, PR link, deploy status, any follow-up needed.
 - **Handler perPage clamp**: Always clamp `perPage` in handler (not just service) — handler uses it for `TotalPages` calculation.
 - **chi route order**: Static routes (`/events/event-types`) MUST be registered before wildcard (`/events/{id}`).
 - **LSP diagnostics can be stale**: After editing `.tsx` files, LSP may show false errors. Verify with `cd frontend && npx tsc --noEmit` before investigating.
+- **E2E Thai text collisions**: `getByText` + Thai text ต้องใช้ `{ exact: true }` หรือ scope ด้วย parent locator — "สร้าง", "ยกเลิก", "จัดการ" ปรากฏใน 12-16 components
+- **E2E responsive duplicates**: Sidebar/nav ซ้ำ mobile/desktop → ใช้ `.first()` หรือ scope locator, ห้ามใช้ bare `getByRole` ที่ match หลาย element
+- **E2E sandbox empty state**: Test user อาจไม่มี data → ใช้ `test.skip()` + guard check ก่อน interact กับ empty lists

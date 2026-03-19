@@ -130,17 +130,9 @@ Change interfaces.go → Update mocks_test.go → Run tests
 - [ ] `tracking.html` updated
 - [ ] Changes are identical across all three
 
-### 8. E2E Strict Mode Violations (Duplicate Elements)
+### 8. E2E Test Writing Pitfalls
 
-**Pattern:** Responsive layouts that show different content on mobile vs desktop create duplicate DOM elements. Playwright's strict mode throws when multiple elements match a selector.
-
-**Fix:** Use `.first()`, `.nth(0)`, or scope locators with parent containers. Better: use unique `data-testid` attributes.
-
-### 9. Login Page Heading Hierarchy
-
-**Pattern:** E2E selectors for headings (`getByRole('heading', { name: ... })`) must match the actual HTML structure. Split-panel layouts with different headings per panel cause selector ambiguity.
-
-**Fix:** Ensure heading text matches what e2e page objects expect, or update page objects to use scoped locators.
+Responsive duplicates, Thai text collisions, custom dialogs, and more — see `e2e-write` skill for comprehensive rules and examples.
 
 ## Hot Files (Change Frequency)
 
