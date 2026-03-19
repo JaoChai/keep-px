@@ -123,6 +123,14 @@ func (s *BillingService) EnsureStripeCustomer(ctx context.Context, customer *dom
 	}
 
 	if err := s.customerRepo.UpdateStripeCustomerID(ctx, customer.ID, sc.ID); err != nil {
+		// Compensating action: delete the orphaned Stripe customer (#144)
+		if _, delErr := stripecustomer.Del(sc.ID, nil); delErr != nil {
+			slog.Warn("failed to clean up orphaned Stripe customer",
+				"stripe_customer_id", sc.ID,
+				"customer_id", customer.ID,
+				"cleanup_error", delErr.Error(),
+			)
+		}
 		return "", fmt.Errorf("save stripe customer id: %w", err)
 	}
 

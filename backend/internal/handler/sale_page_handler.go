@@ -280,6 +280,10 @@ func (h *SalePageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 	h.renderTemplate(w, r, data.Page, data.APIKey, data.Pixels)
 }
 
+// Preview renders a sale page preview for the owner. This handler requires JWT
+// authentication and verifies that the requesting customer owns the page via
+// salePageService.GetByID (which checks CustomerID == callerID). Unauthenticated
+// or non-owner requests are rejected before any rendering occurs.
 func (h *SalePageHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	pageID := chi.URLParam(r, "id")
@@ -381,6 +385,7 @@ func (h *SalePageHandler) renderTemplate(w http.ResponseWriter, r *http.Request,
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=30, s-maxage=60")
+	w.Header().Set("Vary", "Accept-Encoding")
 	w.Header().Set("ETag", etag)
 
 	if match := r.Header.Get("If-None-Match"); match == etag {
