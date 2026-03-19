@@ -6,12 +6,38 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
 )
+
+const platformStatsCacheTTL = 5 * time.Minute
+
+// platformStatsCache is a simple TTL cache for GetPlatformOverview results.
+type platformStatsCache struct {
+	mu        sync.RWMutex
+	stats     *domain.PlatformStats
+	expiresAt time.Time
+}
+
+func (c *platformStatsCache) get() (*domain.PlatformStats, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.stats != nil && time.Now().Before(c.expiresAt) {
+		return c.stats, true
+	}
+	return nil, false
+}
+
+func (c *platformStatsCache) set(stats *domain.PlatformStats) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.stats = stats
+	c.expiresAt = time.Now().Add(platformStatsCacheTTL)
+}
 
 var (
 	ErrAdminSelfSuspend = errors.New("cannot suspend your own account")
@@ -25,6 +51,7 @@ type AdminService struct {
 	replaySessionRepo repository.ReplaySessionRepository
 	pool              *pgxpool.Pool
 	logger            *slog.Logger
+	statsCache        platformStatsCache
 }
 
 func NewAdminService(
@@ -205,7 +232,15 @@ func (s *AdminService) GrantCredits(ctx context.Context, adminID, customerID str
 }
 
 func (s *AdminService) GetPlatformOverview(ctx context.Context) (*domain.PlatformStats, error) {
-	return s.adminRepo.GetPlatformStats(ctx)
+	if cached, ok := s.statsCache.get(); ok {
+		return cached, nil
+	}
+	stats, err := s.adminRepo.GetPlatformStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.statsCache.set(stats)
+	return stats, nil
 }
 
 func (s *AdminService) GetRevenueChart(ctx context.Context, days int) ([]*domain.RevenueChartPoint, error) {
