@@ -1,11 +1,91 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useSearchParams, Link } from 'react-router'
 import { toast } from 'sonner'
+import { Check, X } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { useBillingOverview, useQuota, useCreateCheckout, useCreatePortalSession, useUpdateSlots } from '@/hooks/use-billing'
 import { AccountStatusCard } from '@/components/billing/AccountStatusCard'
 import { PixelSlotSection } from '@/components/billing/PixelSlotSection'
 import { ReplaySection } from '@/components/billing/ReplaySection'
 import { PurchaseHistorySection } from '@/components/billing/PurchaseHistorySection'
+
+const PRICING_FEATURES = [
+  { feature: 'จำนวนพิกเซล', free: '2', paid: 'ปรับได้ตาม Slots' },
+  { feature: 'จำนวนเซลเพจ', free: '2', paid: 'ปรับได้ตาม Slots' },
+  { feature: 'อีเวนต์ต่อเดือน', free: '1,000', paid: 'ตาม Slots' },
+  { feature: 'เก็บข้อมูล', free: '7 วัน', paid: '90 วัน' },
+  { feature: 'รีเพลย์', free: false, paid: true },
+  { feature: 'Replay Credits', free: false, paid: true },
+  { feature: 'CAPI Forwarding', free: true, paid: true },
+  { feature: 'Analytics Dashboard', free: true, paid: true },
+] as const
+
+function PricingComparisonSection() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">เปรียบเทียบแพ็กเกจ</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">ฟีเจอร์</th>
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground">
+                  <Badge variant="secondary">Free</Badge>
+                </th>
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground">
+                  <Badge variant="default">Paid</Badge>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {PRICING_FEATURES.map((row) => (
+                <tr key={row.feature} className="border-b border-border last:border-0">
+                  <td className="py-3 px-4 text-foreground">{row.feature}</td>
+                  <td className="py-3 px-4 text-center">
+                    {typeof row.free === 'boolean' ? (
+                      row.free ? (
+                        <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                      ) : (
+                        <X className="h-4 w-4 text-muted-foreground mx-auto" />
+                      )
+                    ) : (
+                      <span className="text-muted-foreground">{row.free}</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    {typeof row.paid === 'boolean' ? (
+                      row.paid ? (
+                        <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                      ) : (
+                        <X className="h-4 w-4 text-muted-foreground mx-auto" />
+                      )
+                    ) : (
+                      <span className="font-medium text-foreground">{row.paid}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4 text-center">
+          <Link to="#pixel-slots">
+            <Button
+              onClick={() => document.getElementById('pixel-slots')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              อัปเกรดเลย
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export function BillingPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -80,6 +160,9 @@ export function BillingPage() {
           onCheckout={handleCheckout}
         />
       </div>
+
+      {/* Pricing Comparison */}
+      <PricingComparisonSection />
 
       {/* Purchase History */}
       <PurchaseHistorySection
