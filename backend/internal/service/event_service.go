@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -52,7 +53,7 @@ type ClientContext struct {
 
 type IngestEventInput struct {
 	PixelID   string          `json:"pixel_id" validate:"required"`
-	EventName string          `json:"event_name" validate:"required"`
+	EventName string          `json:"event_name" validate:"required,max=100"`
 	EventData json.RawMessage `json:"event_data"`
 	UserData  json.RawMessage `json:"user_data,omitempty"`
 	SourceURL string          `json:"source_url,omitempty"`
@@ -251,6 +252,15 @@ func (s *EventService) forwardToCAPI(ctx context.Context, event *domain.PixelEve
 	resp, err := facebook.SendEventWithRetry(ctx, s.capiClient, pixel.FBPixelID, pixel.FBAccessToken, testEventCode, capiEvent, maxCAPIRetries, s.logger)
 	if err != nil {
 		s.logger.Error("forward to CAPI failed", "error", err, "event_id", event.ID)
+		// Persist failure for audit trail — use HTTP status from CAPI error if available
+		failCode := 0
+		var capiErr *facebook.CAPIError
+		if errors.As(err, &capiErr) {
+			failCode = capiErr.StatusCode
+		}
+		if markErr := s.eventRepo.MarkForwarded(ctx, event.ID, failCode, 0); markErr != nil {
+			s.logger.Error("failed to persist CAPI failure", "error", markErr, "event_id", event.ID)
+		}
 		return
 	}
 

@@ -99,7 +99,7 @@ func (r *ReplayCreditRepo) IncrementUsed(ctx context.Context, id string) error {
 
 func (r *ReplayCreditRepo) RefundCredit(ctx context.Context, id string) error {
 	tag, err := r.pool.Exec(ctx,
-		`UPDATE replay_credits SET used_replays = GREATEST(0, used_replays - 1) WHERE id = $1`,
+		`UPDATE replay_credits SET used_replays = GREATEST(0, used_replays - 1) WHERE id = $1 AND used_replays > 0`,
 		id,
 	)
 	if err != nil {
