@@ -46,8 +46,8 @@ git checkout -b feat/... or fix/... or chore/... or refactor/...
 
 ### Step 4: Implement
 - **Backend (Go):** ECC `/go-test` — write tests first, then implement (TDD).
-- **Frontend (React):** ECC `/tdd` + MCP `context7` for library docs.
-- **E2E tests:** Read `e2e-write` skill first → ECC `/e2e` to generate + run → run `npm run e2e` local before push.
+- **Frontend (React):** ECC `/tdd` — write tests first + MCP `context7` for library docs.
+- **E2E tests:** Read `e2e-write` skill first (project-specific rules) → เขียน test ตาม rules → ECC `/e2e` เพื่อ **run** เท่านั้น → run `npm run e2e` local before push.
 - **File co-change:** Check `dev-workflow` — แก้ interfaces.go ต้องแก้ mocks, แก้ types ต้องแก้ hooks.
 - **Database:** Use MCP `neon` to query/inspect when needed.
 
@@ -69,15 +69,14 @@ Run only gates for packages you changed. **If fail, fix and re-run. Do NOT proce
 | CI pipeline fail | `ci-pipeline` | CI structure + common patterns |
 
 ### Step 6: Code Review → loop until clean
-Run applicable reviews. **If issues found, fix and re-review.**
+Run **only** reviews relevant to changed code. **If issues found, fix and re-review.**
 
-| Scope | Tool | Source |
-|-------|------|--------|
-| Go code | `/go-review` | ECC |
-| General code quality | ECC `code-reviewer` | ECC |
-| SQL, migrations, schema | `/database-reviewer` | ECC |
-| Auth, middleware, user input, API keys | `/security-review` | ECC |
-| Code quality, reuse, dead code | `/simplify` | ECC |
+| Scope | Tool |
+|-------|------|
+| Go code | ECC `/go-review` |
+| SQL, migrations, schema | ECC `/database-reviewer` |
+| Auth, middleware, user input, API keys | ECC `/security-review` |
+| Code quality, reuse, dead code | `/simplify` |
 
 ### Step 7: Commit + Push
 - **Pre-push check:** Run `deploy-check` skill for deployment readiness.
