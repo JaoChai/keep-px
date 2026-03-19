@@ -305,7 +305,7 @@ test.describe('Scenario 11: Full-Chain Integration', () => {
     test.skip(pixels.length === 0, 'No pixels available for event ingestion')
 
     // Use the source pixel we created — find it by name, or fall back to the first pixel
-    const sourcePixel = pixels.find((p: any) => p.name?.includes(PREFIX)) || pixels[0]
+    const sourcePixel = pixels.find((p: { name?: string }) => p.name?.includes(PREFIX)) || pixels[0]
     const pixelUUID = sourcePixel.id
 
     const events = [

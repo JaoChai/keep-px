@@ -189,7 +189,7 @@ test.describe('Scenario 13: Public Sale Page — Customer Experience', () => {
     test.skip(!publicUrl, 'No public URL from step 4')
 
     // Intercept event ingest requests
-    const capturedEvents: any[] = []
+    const capturedEvents: unknown[] = []
     await customerPage.route('**/api/v1/events/ingest', async (route) => {
       try {
         const body = route.request().postDataJSON()
