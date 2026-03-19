@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Link } from 'react-router'
 import {
   Radio,
@@ -12,9 +12,12 @@ import {
   ArrowRight,
   Activity,
   Plus,
+  Key,
   FileText,
+  Rocket,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -437,6 +440,94 @@ function RecentReplays() {
   )
 }
 
+// --- Onboarding ---
+
+const ONBOARDING_DISMISSED_KEY = 'keepx_onboarding_dismissed'
+
+const ONBOARDING_STEPS = [
+  {
+    step: 1,
+    title: 'สร้างพิกเซล',
+    description: 'เชื่อมต่อ Facebook Pixel เพื่อเริ่มเก็บข้อมูล',
+    link: '/pixels',
+    icon: Radio,
+  },
+  {
+    step: 2,
+    title: 'สร้างเซลเพจ',
+    description: 'สร้างหน้าเซลเพจสำหรับรับอีเวนต์',
+    link: '/sale-pages',
+    icon: FileText,
+  },
+  {
+    step: 3,
+    title: 'ตั้งค่า API Key',
+    description: 'ใช้ API Key สำหรับส่งข้อมูลอีเวนต์',
+    link: '/settings',
+    icon: Key,
+  },
+  {
+    step: 4,
+    title: 'ส่ง Test Event',
+    description: 'ทดสอบระบบด้วยอีเวนต์แรก',
+    link: '/events?mode=live',
+    icon: Rocket,
+  },
+] as const
+
+function OnboardingWizard() {
+  const [dismissed, setDismissed] = useState(() => {
+    return localStorage.getItem(ONBOARDING_DISMISSED_KEY) === 'true'
+  })
+
+  const handleDismiss = useCallback(() => {
+    localStorage.setItem(ONBOARDING_DISMISSED_KEY, 'true')
+    setDismissed(true)
+  }, [])
+
+  if (dismissed) return null
+
+  return (
+    <Card className="mb-6 border-blue-200 bg-blue-50/50">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg">ยินดีต้อนรับสู่ Keep-PX!</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              เริ่มต้นใช้งานด้วย 4 ขั้นตอนง่ายๆ
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleDismiss}>
+            <X className="h-4 w-4 mr-1" />
+            ซ่อน
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {ONBOARDING_STEPS.map((s) => {
+            const Icon = s.icon
+            return (
+              <Link key={s.step} to={s.link} className="block">
+                <div className="rounded-lg border border-border bg-background p-4 hover:border-blue-400 hover:shadow-sm transition-all h-full">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-sm font-bold shrink-0">
+                      {s.step}
+                    </div>
+                    <Icon className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">{s.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{s.description}</p>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 // --- Dashboard Page ---
 
 export function DashboardPage() {
@@ -444,6 +535,7 @@ export function DashboardPage() {
   const { data: recentEvents = [], isError: eventsError, error: eventsErr, refetch: refetchEvents } = useDashboardRecentEvents(15)
   const { data: quota } = useQuota()
   const { data: pixels } = usePixels()
+  const showOnboarding = pixels !== undefined && pixels.length === 0
 
   const capiRate = stats && stats.total_events > 0
     ? Math.round((stats.forwarded_events / stats.total_events) * 100)
@@ -479,6 +571,9 @@ export function DashboardPage() {
       {eventsError && (
         <QueryErrorAlert error={eventsErr} onRetry={refetchEvents} className="mb-6" />
       )}
+
+      {/* Onboarding */}
+      {showOnboarding && <OnboardingWizard />}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">

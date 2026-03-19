@@ -92,6 +92,18 @@ export function SettingsPage() {
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              สร้างเมื่อ:{' '}
+              {customer?.updated_at
+                ? new Date(customer.updated_at).toLocaleDateString('th-TH', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : 'N/A'}
+            </p>
             <div className="flex items-center justify-between mt-3">
               <p className="text-xs text-muted-foreground">
                 คีย์นี้ใช้สำหรับเทมเพลตเซลเพจเพื่อส่งอีเวนต์ไปยังพิกเซลของคุณ

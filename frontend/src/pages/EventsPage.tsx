@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -50,6 +50,7 @@ import {
   Globe,
   Monitor,
   CalendarDays,
+  Download,
 } from 'lucide-react'
 import { useRealtimeEvents } from '@/hooks/use-realtime-events'
 import { useRealtimeStats } from '@/hooks/use-realtime-stats'
@@ -166,6 +167,89 @@ function SkeletonRows({ count = 5 }: { count?: number }) {
   )
 }
 
+function escapeCSV(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
+}
+
+function exportEventsCSV(events: Array<{ event_time: string; event_name: string; pixel_id: string; source_url?: string; event_data?: Record<string, unknown> }>, pixelNameMap: Map<string, string>) {
+  const header = ['timestamp', 'event_name', 'pixel_id', 'source_url', 'event_data']
+  const rows = events.map((e) => [
+    escapeCSV(new Date(e.event_time).toISOString()),
+    escapeCSV(e.event_name),
+    escapeCSV(pixelNameMap.get(e.pixel_id) ?? e.pixel_id),
+    escapeCSV(e.source_url ?? ''),
+    escapeCSV(e.event_data ? JSON.stringify(e.event_data) : ''),
+  ].join(','))
+
+  const csv = [header.join(','), ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `events-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function syntaxHighlightJSON(json: string): string {
+  return json.replace(
+    /("(\\u[\dA-Fa-f]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+    (match) => {
+      let cls = 'text-orange-500' // number
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          cls = 'text-blue-600' // key
+        } else {
+          cls = 'text-green-600' // string
+        }
+      } else if (/true|false/.test(match)) {
+        cls = 'text-purple-500' // boolean
+      } else if (/null/.test(match)) {
+        cls = 'text-gray-400' // null
+      }
+      return `<span class="${cls}">${match}</span>`
+    }
+  )
+}
+
+function CollapsibleJSON({ data, label }: { data: unknown; label: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const jsonStr = JSON.stringify(data, null, 2)
+  const highlighted = syntaxHighlightJSON(jsonStr)
+  const lineCount = jsonStr.split('\n').length
+
+  return (
+    <div>
+      <button
+        type="button"
+        className="flex items-center gap-2 text-sm font-medium mb-2 hover:text-foreground transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        {expanded ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+        {label}
+        <span className="text-xs text-muted-foreground font-normal">
+          ({lineCount} lines)
+        </span>
+      </button>
+      {expanded && (
+        <ScrollArea className="max-h-[300px] rounded-md border border-border">
+          <pre
+            className="text-xs p-3 whitespace-pre-wrap break-all font-mono"
+            dangerouslySetInnerHTML={{ __html: highlighted }}
+          />
+        </ScrollArea>
+      )}
+    </div>
+  )
+}
+
 export function EventsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawMode = searchParams.get('mode')
@@ -247,8 +331,15 @@ export function EventsPage() {
   }, [mode, isPaused, togglePause])
 
   // History data
-  const historyEvents = historyQuery.data?.data ?? []
+  const historyData = historyQuery.data?.data
+  const historyEvents = useMemo(() => historyData ?? [], [historyData])
   const totalPages = historyQuery.data?.total_pages ?? 1
+
+  const handleExportCSV = useCallback(() => {
+    const events = mode === 'live' ? realtimeEvents : historyEvents
+    if (events.length === 0) return
+    exportEventsCSV(events, pixelNameMap)
+  }, [mode, realtimeEvents, historyEvents, pixelNameMap])
 
   // CAPI rate computed from overview stats
   const capiRate =
@@ -360,7 +451,7 @@ export function EventsPage() {
         )}
 
         {/* Filters */}
-        <div className="flex gap-3 mb-4">
+        <div className="flex flex-wrap gap-3 mb-4">
           <Select
             value={pixelId ?? 'all'}
             onValueChange={(v) => setPixelFilter(v === 'all' ? null : v)}
@@ -449,6 +540,17 @@ export function EventsPage() {
               </Popover>
             </>
           )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-auto h-9"
+            disabled={mode === 'live' ? realtimeEvents.length === 0 : historyEvents.length === 0}
+            onClick={handleExportCSV}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Export CSV
+          </Button>
         </div>
 
         {/* Stats Cards */}
@@ -765,25 +867,11 @@ export function EventsPage() {
                 </div>
 
                 {/* Event Data */}
-                <div>
-                  <p className="text-sm font-medium mb-2">Event Data</p>
-                  <ScrollArea className="h-[200px] rounded-md border border-border">
-                    <pre className="text-xs p-3 text-muted-foreground whitespace-pre-wrap break-all">
-                      {JSON.stringify(eventDetail.event_data, null, 2)}
-                    </pre>
-                  </ScrollArea>
-                </div>
+                <CollapsibleJSON data={eventDetail.event_data} label="Event Data" />
 
                 {/* User Data */}
                 {eventDetail.user_data && Object.keys(eventDetail.user_data).length > 0 && (
-                  <div>
-                    <p className="text-sm font-medium mb-2">User Data</p>
-                    <ScrollArea className="h-[200px] rounded-md border border-border">
-                      <pre className="text-xs p-3 text-muted-foreground whitespace-pre-wrap break-all">
-                        {JSON.stringify(eventDetail.user_data, null, 2)}
-                      </pre>
-                    </ScrollArea>
-                  </div>
+                  <CollapsibleJSON data={eventDetail.user_data} label="User Data" />
                 )}
               </div>
             ) : null}
