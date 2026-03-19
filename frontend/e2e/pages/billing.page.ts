@@ -57,6 +57,7 @@ export class BillingPage {
   }
 
   async goto() {
-    await this.page.goto('/billing')
+    await this.page.goto('/billing', { waitUntil: 'networkidle' })
+    await this.heading.waitFor({ state: 'visible', timeout: 15000 })
   }
 }

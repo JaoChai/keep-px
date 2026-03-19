@@ -26,7 +26,8 @@ export class SalePagesPage {
   }
 
   async goto() {
-    await this.page.goto('/sale-pages')
+    await this.page.goto('/sale-pages', { waitUntil: 'networkidle' })
+    await this.heading.waitFor({ state: 'visible', timeout: 15000 })
   }
 
   /** Click trash icon on a row matching the given text */

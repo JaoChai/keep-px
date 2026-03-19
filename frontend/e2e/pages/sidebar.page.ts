@@ -32,5 +32,6 @@ export class SidebarPage {
 
   async navigateTo(linkName: string) {
     await this.nav.getByRole('link', { name: linkName }).click()
+    await this.page.waitForLoadState('networkidle')
   }
 }
