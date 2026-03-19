@@ -42,6 +42,45 @@ test.describe('Error Handling - Authenticated', () => {
 
     expect(response.status()).toBe(401)
   })
+
+  test('pixel quota limit shows disabled button with upgrade path', async ({ page }) => {
+    await page.goto('/pixels')
+    await page.waitForLoadState('networkidle')
+
+    // Read quota info from the page (format: "X/Y สล็อต")
+    const quotaLocator = page.locator('text=/\\d+\\/\\d+ สล็อต/')
+    const hasQuota = await quotaLocator.count() > 0
+    if (!hasQuota) {
+      test.skip(true, 'Quota info not displayed — cannot verify quota limit behavior')
+      return
+    }
+
+    const quotaText = await quotaLocator.textContent()
+    const match = quotaText?.match(/(\d+)\/(\d+)/)
+    if (!match) {
+      test.skip(true, 'Could not parse quota text')
+      return
+    }
+
+    const current = parseInt(match[1])
+    const max = parseInt(match[2])
+
+    if (current < max) {
+      // Not at limit — verify button is enabled (normal state)
+      const addButton = page.getByRole('button', { name: 'เพิ่มพิกเซล' }).first()
+      await expect(addButton).toBeEnabled()
+    } else {
+      // At limit — verify button is disabled and has quota limit title
+      const addButton = page.getByRole('button', { name: 'เพิ่มพิกเซล' }).first()
+      await expect(addButton).toBeDisabled()
+
+      // When at limit with 0 pixels (edge case), the empty state shows upgrade link
+      // When at limit with pixels, the button title indicates the limit
+      const hasUpgradeLink = await page.getByRole('link', { name: 'อัปเกรด' }).count() > 0
+      const hasLimitTitle = await addButton.getAttribute('title') === 'ถึงขีดจำกัด Pixel Slots แล้ว'
+      expect(hasUpgradeLink || hasLimitTitle).toBeTruthy()
+    }
+  })
 })
 
 baseTest.describe('Error Handling - Unauthenticated', () => {

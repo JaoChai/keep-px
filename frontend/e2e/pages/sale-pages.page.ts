@@ -12,6 +12,10 @@ export class SalePagesPage {
   readonly deleteConfirmButton: Locator
   readonly deleteCancelButton: Locator
 
+  // Quota limit
+  readonly quotaLimitMessage: Locator
+  readonly upgradeButton: Locator
+
   constructor(page: Page) {
     this.page = page
     this.heading = page.getByRole('heading', { name: 'เซลเพจ' })
@@ -23,6 +27,10 @@ export class SalePagesPage {
     // The destructive button in the delete dialog (distinct from trash icon in table rows)
     this.deleteConfirmButton = page.locator('button.bg-destructive', { hasText: 'ลบ' })
     this.deleteCancelButton = page.getByRole('button', { name: 'ยกเลิก' })
+
+    // Quota limit (shows in editor when sale page limit reached)
+    this.quotaLimitMessage = page.getByText('ถึงขีดจำกัดเซลเพจแล้ว')
+    this.upgradeButton = page.getByRole('button', { name: 'อัปเกรดแพ็คเกจ' })
   }
 
   async goto() {

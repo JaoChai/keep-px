@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture'
+import { EventLogPage } from '../pages/event-log.page'
 
 test.describe('Event Flow', () => {
   test.setTimeout(60_000)
@@ -110,5 +111,80 @@ test.describe('Event Flow', () => {
     const liveWaiting = page.getByText('รอรับอีเวนต์')
     const liveMode = page.getByText('สด')
     await expect(liveWaiting.or(liveMode).first()).toBeVisible({ timeout: 10000 })
+  })
+
+  test('stat cards visible on events page', async ({ page }) => {
+    const eventLogPage = new EventLogPage(page)
+    await page.goto('/events')
+    await expect(eventLogPage.heading).toBeVisible()
+    await page.waitForLoadState('networkidle')
+
+    // Verify stat cards are present
+    await expect(eventLogPage.statEventsToday).toBeVisible({ timeout: 10000 })
+    await expect(eventLogPage.statTotalEvents).toBeVisible()
+    await expect(eventLogPage.statCapiRate).toBeVisible()
+    await expect(eventLogPage.statEventsPerMinute).toBeVisible()
+  })
+
+  test('live mode controls are functional', async ({ page }) => {
+    const eventLogPage = new EventLogPage(page)
+    await eventLogPage.gotoLive()
+    await page.waitForLoadState('networkidle')
+
+    // Pause button should be visible
+    const pauseButton = page.getByRole('button', { name: 'หยุด' })
+    await expect(pauseButton).toBeVisible()
+
+    // Click pause
+    await pauseButton.click()
+
+    // Should show resume button
+    const resumeButton = page.getByRole('button', { name: 'ดำเนินต่อ' })
+    await expect(resumeButton).toBeVisible({ timeout: 5000 })
+
+    // Clear and refresh should still be visible
+    await expect(eventLogPage.clearButton).toBeVisible()
+    await expect(eventLogPage.refreshButton).toBeVisible()
+
+    // Resume
+    await resumeButton.click()
+    await expect(pauseButton).toBeVisible({ timeout: 5000 })
+  })
+
+  test('mode switching works with proper URL params', async ({ page }) => {
+    const eventLogPage = new EventLogPage(page)
+    await eventLogPage.gotoLive()
+    await page.waitForLoadState('networkidle')
+
+    // Switch to history
+    await eventLogPage.historyModeButton.click()
+    await expect(page).toHaveURL(/mode=history/)
+    await page.waitForLoadState('networkidle')
+
+    // Filters should appear in history mode
+    await expect(eventLogPage.pixelFilter).toBeVisible()
+    await expect(eventLogPage.eventTypeFilter).toBeVisible()
+    await expect(eventLogPage.dateRangeButton).toBeVisible()
+
+    // Switch back to live
+    await eventLogPage.liveModeButton.click()
+    await expect(page).toHaveURL(/mode=live/)
+
+    // Live controls should appear
+    await expect(eventLogPage.pauseResumeButton).toBeVisible()
+  })
+
+  test('export CSV button present in both modes', async ({ page }) => {
+    const eventLogPage = new EventLogPage(page)
+
+    // Check in live mode
+    await eventLogPage.gotoLive()
+    await page.waitForLoadState('networkidle')
+    await expect(eventLogPage.exportCsvButton).toBeVisible()
+
+    // Check in history mode
+    await eventLogPage.historyModeButton.click()
+    await page.waitForLoadState('networkidle')
+    await expect(eventLogPage.exportCsvButton).toBeVisible()
   })
 })

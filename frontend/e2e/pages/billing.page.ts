@@ -51,8 +51,10 @@ export class BillingPage {
     this.replaySingleCard = page.locator('[class*="card"]').filter({ hasText: 'ครั้งเดียว' })
     this.replayMonthlyCard = page.locator('[class*="card"]').filter({ hasText: 'ไม่จำกัด' })
 
-    // Other
+    // Stripe portal / manage billing
     this.manageBillingButton = page.getByRole('button', { name: /จัดการ/ })
+
+    // Purchase history
     this.purchaseHistorySection = page.getByText(/ประวัติการซื้อ/)
   }
 
