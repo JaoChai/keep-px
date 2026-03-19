@@ -26,7 +26,8 @@ git checkout -b feat/... or fix/... or chore/... or refactor/...
 - Large tasks (backend + frontend together): use `TeamCreate` to spawn parallel agents.
 - Use MCP `context7` to look up library docs if unsure about APIs.
 
-### Step 3: Scaffold (if needed)
+### Step 3: Scaffold + Domain Context
+**สร้างใหม่:**
 | Need | Skill |
 |------|-------|
 | New backend resource | `/go-service-scaffold` |
@@ -34,10 +35,21 @@ git checkout -b feat/... or fix/... or chore/... or refactor/...
 | Database schema change | `/db-migration` + MCP `neon` to verify |
 | New frontend page | `/frontend-feature` |
 
+**แก้ไขของเดิม — อ่าน domain skill ก่อนเขียน code:**
+| Domain | Skill | ทำไม |
+|--------|-------|-------|
+| Sale pages, templates | `sale-page-editor` | 3 templates ต้อง co-change |
+| Events, CAPI pipeline | `event-pipeline` | tracking + forwarding pitfalls |
+| Auth, JWT, OAuth | `auth-flow` | token refresh + guard patterns |
+| Billing, Stripe | `stripe-webhook` | idempotency + credit system |
+| Nginx, CSP, proxy | `nginx-csp` | 4-location-block inheritance |
+
 ### Step 4: Implement
-- Go logic: `/go-test` — **write tests first**, then implement (TDD).
-- Use MCP `context7` for up-to-date library documentation.
-- Use MCP `neon` to query/inspect database when needed.
+- **Backend (Go):** `/go-test` — write tests first, then implement (TDD).
+- **Frontend (React):** Use MCP `context7` for library docs.
+- **E2E tests:** Read `e2e-write` skill first → use shared fixtures → run `npm run e2e` local before push.
+- **File co-change:** Check `dev-workflow` — แก้ interfaces.go ต้องแก้ mocks, แก้ types ต้องแก้ hooks.
+- **Database:** Use MCP `neon` to query/inspect when needed.
 
 ### Step 5: Quality Gates → loop until green
 Run only gates for packages you changed. **If fail, fix and re-run. Do NOT proceed.**
@@ -47,6 +59,13 @@ Run only gates for packages you changed. **If fail, fix and re-run. Do NOT proce
 | Backend | `cd backend && go vet ./... && go test -race ./...` |
 | Frontend | `cd frontend && npm run lint && npm run test && npm run build` |
 | E2E | `cd frontend && npm run e2e` |
+
+**ถ้า fail — ใช้ skill debug ก่อนแก้มั่ว:**
+| Failure | Skill | ทำไม |
+|---------|-------|-------|
+| E2E test fail | `e2e-debug` | Root cause analysis + decision tree |
+| Go build fail | ECC `/go-build` | Surgical fix, minimal changes |
+| CI pipeline fail | `ci-pipeline` | CI structure + common patterns |
 
 ### Step 6: Code Review → loop until clean
 Run applicable reviews. **If issues found, fix and re-review.**
@@ -59,6 +78,7 @@ Run applicable reviews. **If issues found, fix and re-review.**
 | Code quality, reuse, dead code | `/simplify` |
 
 ### Step 7: Commit + Push
+- **Pre-push check:** Run `deploy-check` skill for deployment readiness.
 - Commit format: `type: short description` (lowercase, no period, max 72 chars)
 - Git hooks run automatically: `pre-commit` (lint-staged), `commit-msg` (commitlint), `pre-push` (quality gates).
 
@@ -71,7 +91,9 @@ Wait for `ci-gate` to pass. **If CI fails, go back to Step 5.**
 ### Step 9: Verify Deploy
 - Check `deploy-verify` job in GitHub Actions.
 - `post-deploy-e2e` runs `@smoke` tests against production.
-- If failed: use MCP `railway` to check logs, fix, go back to Step 5.
+- If failed: use `railway-deploy` skill + MCP `railway` to check logs.
+- CSP/proxy issues: use `nginx-csp` skill (4-location-block inheritance trap).
+- Fix and go back to Step 5.
 
 ### Step 10: Report
 Tell the user: what was done, PR link, deploy status, any follow-up needed.
