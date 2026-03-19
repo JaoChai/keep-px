@@ -48,7 +48,7 @@ git checkout -b feat/... or fix/... or chore/... or refactor/...
 - **Backend (Go):** ECC `/go-test` — write tests first, then implement (TDD).
 - **Frontend (React):** ECC `/tdd` — write tests first + MCP `context7` for library docs.
 - **E2E tests:** Read `e2e-write` skill first (project-specific rules) → เขียน test ตาม rules → ECC `/e2e` เพื่อ **run** เท่านั้น → run `npm run e2e` local before push.
-- **File co-change:** Check `dev-workflow` — แก้ interfaces.go ต้องแก้ mocks, แก้ types ต้องแก้ hooks.
+- **File co-change:** แก้ interfaces.go → ต้องแก้ mocks ทั้ง 2 ไฟล์, แก้ types → ต้องแก้ hooks (ดู Gotchas).
 - **Database:** Use MCP `neon` to query/inspect when needed.
 
 ### Step 5: Quality Gates → loop until green
@@ -79,7 +79,7 @@ Run **only** reviews relevant to changed code. **If issues found, fix and re-rev
 | Code quality, reuse, dead code | `/simplify` |
 
 ### Step 7: Commit + Push
-- **Pre-push check:** Run `deploy-check` skill for deployment readiness.
+- **Pre-push check:** Run quality gates from Step 5 + verify no `.env` files committed, no hardcoded secrets.
 - Commit format: `type: short description` (lowercase, no period, max 72 chars)
 - Git hooks run automatically: `pre-commit` (lint-staged), `commit-msg` (commitlint), `pre-push` (quality gates).
 
@@ -172,6 +172,13 @@ Wait for `ci-gate` to pass. **If CI fails, go back to Step 5.**
 
 ## Gotchas
 
+### File Co-Change Rules
+- **Backend interface → mocks**: Change `interfaces.go` → update mocks in BOTH `service/mocks_test.go` AND `handler/testhelpers_test.go`
+- **Frontend types → hooks**: Change `types/index.ts` → update corresponding `hooks/use-*.ts`
+- **Sale page templates**: `blocks.html`, `simple.html`, `tracking.html` ALWAYS change together — forgetting one causes silent tracking failure
+- **Router hot files**: `router.go` (27/166 commits), `interfaces.go` (21), `mocks_test.go` (18) — review carefully
+
+### Code Patterns
 - **No `components.json`**: `npx shadcn add` won't work. Write shadcn components manually + `npm install @radix-ui/*` in `frontend/`.
 - **Custom Popover**: `components/ui/popover.tsx` is NOT Radix — it's a custom implementation. No `asChild` prop. Use `className` directly on `PopoverTrigger`.
 - **Mock files exist in TWO packages**: When changing a repository interface, update mocks in BOTH `service/mocks_test.go` AND `handler/testhelpers_test.go`.
