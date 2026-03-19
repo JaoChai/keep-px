@@ -369,18 +369,33 @@ func TestEventHandler_GetByID(t *testing.T) {
 		assert.Equal(t, eventID, data["id"])
 	})
 
+	t.Run("invalid UUID returns 400", func(t *testing.T) {
+		eventRepo := &MockEventRepo{}
+		pixelRepo := &MockPixelRepo{}
+		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
+		h := NewEventHandler(eventSvc, testLogger())
+
+		r := eventRouter(h)
+		token := eventToken(eventTestCustomerID)
+
+		rr := doRequest(r, "GET", "/events/nonexistent", nil, token)
+
+		assert.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
 	t.Run("not found returns 404", func(t *testing.T) {
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
-		eventRepo.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
+		missingID := uuid.New().String()
+		eventRepo.On("GetByID", mock.Anything, missingID).Return(nil, nil)
 
 		r := eventRouter(h)
 		token := eventToken(eventTestCustomerID)
 
-		rr := doRequest(r, "GET", "/events/nonexistent", nil, token)
+		rr := doRequest(r, "GET", "/events/"+missingID, nil, token)
 
 		assert.Equal(t, http.StatusNotFound, rr.Code)
 	})

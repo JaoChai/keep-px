@@ -22,7 +22,7 @@ const (
 	testCustomerID   = "cust-1"
 	testPixelID      = "px-1"
 	testPixelMissing = "px-nonexistent"
-	testSalePageID   = "sp-1"
+	testSalePageID   = "a0000000-0000-0000-0000-000000000001"
 )
 
 // testJWT generates a valid JWT token for testing with the given customerID and admin flag.

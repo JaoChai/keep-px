@@ -262,7 +262,7 @@ func TestSalePageHandler_Update(t *testing.T) {
 	t.Run("not found returns 404", func(t *testing.T) {
 		env := setupSalePageTest(t)
 		customerID := testCustomerID
-		pageID := "sp-nonexistent"
+		pageID := "a0000000-0000-0000-0000-000000000099"
 		token := testJWT(customerID, false)
 
 		env.salePageRepo.On("GetByID", mock.Anything, pageID).Return((*domain.SalePage)(nil), nil)
@@ -342,7 +342,7 @@ func TestSalePageHandler_Delete(t *testing.T) {
 	t.Run("not found returns 404", func(t *testing.T) {
 		env := setupSalePageTest(t)
 		customerID := testCustomerID
-		pageID := "sp-nonexistent"
+		pageID := "a0000000-0000-0000-0000-000000000099"
 		token := testJWT(customerID, false)
 
 		env.salePageRepo.On("GetByID", mock.Anything, pageID).Return((*domain.SalePage)(nil), nil)

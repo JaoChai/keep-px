@@ -9,12 +9,14 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
@@ -27,7 +29,10 @@ const (
 	tmplBlocks = "blocks"
 )
 
-var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
+var (
+	bufPool       = sync.Pool{New: func() any { return new(bytes.Buffer) }}
+	cssHexColorRe = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+)
 
 type SalePageHandler struct {
 	salePageService *service.SalePageService
@@ -55,6 +60,22 @@ func NewSalePageHandler(salePageService *service.SalePageService, baseURL string
 		},
 		"hasPixels": func(pixels []service.PixelPublishInfo) bool {
 			return len(pixels) > 0
+		},
+		// safeColor validates a CSS hex color at render time (defense-in-depth).
+		// Returns the color if valid, otherwise the fallback default.
+		"safeColor": func(color, fallback string) string {
+			if color != "" && cssHexColorRe.MatchString(color) {
+				return color
+			}
+			return fallback
+		},
+		// safeBgImageURL validates a background image URL for CSS url() context.
+		// Only allows https:// URLs to prevent CSS injection via url() breakout.
+		"safeBgImageURL": func(u string) string {
+			if strings.HasPrefix(u, "https://") && !strings.ContainsAny(u, "(){};<>\"'") {
+				return u
+			}
+			return ""
 		},
 	}
 
@@ -166,6 +187,11 @@ func (h *SalePageHandler) Update(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	pageID := chi.URLParam(r, "id")
 
+	if _, err := uuid.Parse(pageID); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, "id must be a valid UUID")
+		return
+	}
+
 	var input service.UpdateSalePageInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		ErrorJSON(w, http.StatusBadRequest, "invalid request body")
@@ -212,6 +238,11 @@ func (h *SalePageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	pageID := chi.URLParam(r, "id")
 
+	if _, err := uuid.Parse(pageID); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, "id must be a valid UUID")
+		return
+	}
+
 	err := h.salePageService.Delete(r.Context(), customerID, pageID)
 	if err != nil {
 		if errors.Is(err, service.ErrSalePageNotFound) {
@@ -252,6 +283,11 @@ func (h *SalePageHandler) Serve(w http.ResponseWriter, r *http.Request) {
 func (h *SalePageHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	pageID := chi.URLParam(r, "id")
+
+	if _, err := uuid.Parse(pageID); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, "id must be a valid UUID")
+		return
+	}
 
 	page, err := h.salePageService.GetByID(r.Context(), customerID, pageID)
 	if err != nil {

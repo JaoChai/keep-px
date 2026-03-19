@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -99,7 +101,22 @@ func (h *PixelHandler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	JSON(w, http.StatusCreated, APIResponse{Data: pixel})
+
+	// Best-effort CAPI token validation — warn if token appears invalid.
+	// Bounded to 5s so a slow Facebook API doesn't block the response.
+	var warning string
+	if pixel.ID != "" {
+		testCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if _, testErr := h.pixelService.TestConnection(testCtx, customerID, pixel.ID); testErr != nil {
+			if !errors.Is(testErr, service.ErrCAPINotConfigured) {
+				warning = "Pixel created successfully, but CAPI connection test failed. Please verify your access token."
+				h.logger.Warn("pixel created with failing CAPI token", "pixel_id", pixel.ID, "error", testErr)
+			}
+		}
+	}
+
+	JSON(w, http.StatusCreated, APIResponse{Data: pixel, Warning: warning})
 }
 
 func (h *PixelHandler) Update(w http.ResponseWriter, r *http.Request) {

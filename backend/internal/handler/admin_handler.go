@@ -34,7 +34,7 @@ func (h *AdminHandler) ListCustomers(w http.ResponseWriter, r *http.Request) {
 	plan := r.URL.Query().Get("plan")
 	status := r.URL.Query().Get("status")
 	page := queryInt(r, "page", 1)
-	perPage := queryInt(r, "per_page", 20)
+	perPage := queryPerPage(r)
 
 	customers, total, err := h.adminService.ListCustomers(r.Context(), search, plan, status, page, perPage)
 	if err != nil {
@@ -215,7 +215,7 @@ func (h *AdminHandler) GetGrowthChart(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) ListPurchases(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	page := queryInt(r, "page", 1)
-	perPage := queryInt(r, "per_page", 20)
+	perPage := queryPerPage(r)
 
 	purchases, total, err := h.adminService.ListAllPurchases(r.Context(), status, page, perPage)
 	if err != nil {
@@ -240,7 +240,7 @@ func (h *AdminHandler) ListPurchases(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) ListSubscriptions(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	page := queryInt(r, "page", 1)
-	perPage := queryInt(r, "per_page", 20)
+	perPage := queryPerPage(r)
 
 	subs, total, err := h.adminService.ListAllSubscriptions(r.Context(), status, page, perPage)
 	if err != nil {
@@ -264,7 +264,7 @@ func (h *AdminHandler) ListSubscriptions(w http.ResponseWriter, r *http.Request)
 
 func (h *AdminHandler) ListCreditGrants(w http.ResponseWriter, r *http.Request) {
 	page := queryInt(r, "page", 1)
-	perPage := queryInt(r, "per_page", 20)
+	perPage := queryPerPage(r)
 
 	grants, total, err := h.adminService.ListCreditGrants(r.Context(), page, perPage)
 	if err != nil {
@@ -298,6 +298,15 @@ func queryInt(r *http.Request, key string, defaultVal int) int {
 	return i
 }
 
+// queryPerPage returns a clamped per_page value (1-100, default 20).
+func queryPerPage(r *http.Request) int {
+	perPage := queryInt(r, "per_page", 20)
+	if perPage > 100 {
+		perPage = 100
+	}
+	return perPage
+}
+
 func queryBool(r *http.Request, key string) *bool {
 	v := r.URL.Query().Get(key)
 	if v == "" {
@@ -328,7 +337,7 @@ func (h *AdminHandler) ListSalePages(w http.ResponseWriter, r *http.Request) {
 	customerID := r.URL.Query().Get("customer_id")
 	published := queryBool(r, "published")
 	page := queryInt(r, "page", 1)
-	perPage := queryInt(r, "per_page", 20)
+	perPage := queryPerPage(r)
 
 	pages, total, err := h.adminService.ListAllSalePages(r.Context(), search, customerID, published, page, perPage)
 	if err != nil {
@@ -410,7 +419,7 @@ func (h *AdminHandler) ListPixels(w http.ResponseWriter, r *http.Request) {
 	customerID := r.URL.Query().Get("customer_id")
 	active := queryBool(r, "active")
 	page := queryInt(r, "page", 1)
-	perPage := queryInt(r, "per_page", 20)
+	perPage := queryPerPage(r)
 
 	pixels, total, err := h.adminService.ListAllPixels(r.Context(), search, customerID, active, page, perPage)
 	if err != nil {
@@ -475,7 +484,7 @@ func (h *AdminHandler) ListReplays(w http.ResponseWriter, r *http.Request) {
 	status := r.URL.Query().Get("status")
 	customerID := r.URL.Query().Get("customer_id")
 	page := queryInt(r, "page", 1)
-	perPage := queryInt(r, "per_page", 20)
+	perPage := queryPerPage(r)
 
 	sessions, total, err := h.adminService.ListAllReplaySessions(r.Context(), status, customerID, page, perPage)
 	if err != nil {
@@ -525,7 +534,7 @@ func (h *AdminHandler) ListEvents(w http.ResponseWriter, r *http.Request) {
 	pixelID := r.URL.Query().Get("pixel_id")
 	eventName := r.URL.Query().Get("event_name")
 	page := queryInt(r, "page", 1)
-	perPage := queryInt(r, "per_page", 20)
+	perPage := queryPerPage(r)
 
 	events, total, err := h.adminService.ListAllEvents(r.Context(), customerID, pixelID, eventName, page, perPage)
 	if err != nil {
@@ -555,7 +564,7 @@ func (h *AdminHandler) ListAuditLog(w http.ResponseWriter, r *http.Request) {
 	action := r.URL.Query().Get("action")
 	targetCustomerID := r.URL.Query().Get("target_customer_id")
 	page := queryInt(r, "page", 1)
-	perPage := queryInt(r, "per_page", 20)
+	perPage := queryPerPage(r)
 
 	var from, to *time.Time
 	if v := r.URL.Query().Get("from"); v != "" {

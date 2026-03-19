@@ -24,6 +24,7 @@ var (
 	ErrBackupPixelNotFound  = errors.New("backup pixel not found")
 	ErrBackupPixelNotOwned  = errors.New("backup pixel not owned by customer")
 	ErrInvalidFBPixelID     = errors.New("invalid Facebook Pixel ID format: must be 15-16 digits")
+	ErrCAPINotConfigured    = errors.New("CAPI client not configured")
 )
 
 type PixelService struct {
@@ -220,6 +221,10 @@ func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID s
 
 	if pixel.FBAccessToken == "" {
 		return nil, ErrPixelNoAccessToken
+	}
+
+	if s.capiClient == nil {
+		return nil, ErrCAPINotConfigured
 	}
 
 	event := facebook.CAPIEvent{

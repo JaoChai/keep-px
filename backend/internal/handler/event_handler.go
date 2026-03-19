@@ -192,6 +192,11 @@ func (h *EventHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	eventID := chi.URLParam(r, "id")
 
+	if _, err := uuid.Parse(eventID); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, "id must be a valid UUID")
+		return
+	}
+
 	event, err := h.eventService.GetByID(r.Context(), customerID, eventID)
 	if err != nil {
 		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "failed to get event", err)

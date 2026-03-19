@@ -90,7 +90,7 @@ func (c *CAPIClient) SendEvents(ctx context.Context, pixelID, accessToken, testE
 	if resp.StatusCode != http.StatusOK {
 		return nil, &CAPIError{
 			StatusCode: resp.StatusCode,
-			Message:    string(respBody),
+			Message:    parseFBErrorMessage(respBody),
 		}
 	}
 
@@ -118,6 +118,35 @@ func IsRateLimitError(err error) bool {
 		return capiErr.StatusCode == 429
 	}
 	return false
+}
+
+// parseFBErrorMessage extracts a sanitized error message from a Facebook API
+// error response. It parses the structured JSON to avoid leaking raw API internals
+// to client-facing surfaces. The raw (truncated) body may still appear in server logs.
+func parseFBErrorMessage(body []byte) string {
+	var fbErr struct {
+		Error struct {
+			Message string `json:"message"`
+			Code    int    `json:"code"`
+			Type    string `json:"type"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &fbErr); err == nil && fbErr.Error.Message != "" {
+		msg := fmt.Sprintf("[%d] %s", fbErr.Error.Code, fbErr.Error.Message)
+		return truncateUTF8(msg, 500)
+	}
+	// Fallback: truncate raw body if JSON parsing fails
+	return truncateUTF8(string(body), 500)
+}
+
+// truncateUTF8 truncates a string to at most maxRunes runes, avoiding splitting
+// multi-byte UTF-8 characters.
+func truncateUTF8(s string, maxRunes int) string {
+	runes := []rune(s)
+	if len(runes) <= maxRunes {
+		return s
+	}
+	return string(runes[:maxRunes])
 }
 
 func (c *CAPIClient) SendEvent(ctx context.Context, pixelID, accessToken, testEventCode string, event CAPIEvent) (*CAPIResponse, error) {

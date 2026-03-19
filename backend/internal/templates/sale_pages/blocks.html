@@ -15,9 +15,9 @@
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700&display=swap"></noscript>
     <style>
         :root {
-            --bg-color: {{if .Style.BgColor}}{{.Style.BgColor}}{{else}}#f8f9fa{{end}};
-            --accent-color: {{if .Style.AccentColor}}{{.Style.AccentColor}}{{else}}#4f46e5{{end}};
-            --text-color: {{if .Style.TextColor}}{{.Style.TextColor}}{{else}}#1a1a2e{{end}};
+            --bg-color: {{safeColor .Style.BgColor "#f8f9fa"}};
+            --accent-color: {{safeColor .Style.AccentColor "#4f46e5"}};
+            --text-color: {{safeColor .Style.TextColor "#1a1a2e"}};
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -27,7 +27,7 @@
             background: var(--bg-color);
             min-height: 100vh;
             {{if .Style.BgImageURL}}
-            background-image: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url({{.Style.BgImageURL}});
+            background-image: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url({{safeBgImageURL .Style.BgImageURL}});
             background-size: cover;
             background-position: center;
             background-attachment: scroll;
