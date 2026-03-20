@@ -12,7 +12,7 @@ async function cleanupTestSalePages(page: import('@playwright/test').Page) {
   await page.waitForLoadState('networkidle')
 
   for (const prefix of [TEST_PREFIX, 'E2E Updated']) {
-    const rows = page.locator('tr', { hasText: prefix })
+    const rows = page.locator('[data-testid="sale-page-card"]', { hasText: prefix })
     let count = await rows.count()
     // Delete from bottom up to avoid index shifting
     while (count > 0) {
@@ -211,7 +211,7 @@ test.describe('Sale Page Editor Details', () => {
     await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
 
     // Verify slug appears in the list
-    const row = page.locator('tr', { hasText: spName })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: spName })
     await expect(row).toContainText(`/p/${customSlug}`)
   })
 
@@ -608,9 +608,9 @@ test.describe('Sale Page Edge Cases', () => {
     await editor.goBackButton.click()
     await expect(page).toHaveURL(/\/sale-pages$/, { timeout: 15000 })
 
-    // Verify only one sale page was created (count rows matching the name)
-    const matchingRows = page.locator('tr', { hasText: spName })
-    await expect(matchingRows).toHaveCount(1)
+    // Verify only one sale page was created (count cards matching the name)
+    const matchingCards = page.locator('[data-testid="sale-page-card"]', { hasText: spName })
+    await expect(matchingCards).toHaveCount(1)
   })
 
   test('sale page quota limit shows upgrade link', async ({ page }) => {

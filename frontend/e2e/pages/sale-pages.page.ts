@@ -4,7 +4,7 @@ export class SalePagesPage {
   readonly page: Page
   readonly heading: Locator
   readonly createButton: Locator
-  readonly table: Locator
+  readonly grid: Locator
   readonly emptyState: Locator
 
   // Delete dialog
@@ -20,11 +20,11 @@ export class SalePagesPage {
     this.page = page
     this.heading = page.getByRole('heading', { name: 'เซลเพจ' })
     this.createButton = page.getByRole('button', { name: 'สร้างเซลเพจ', exact: true })
-    this.table = page.locator('table')
+    this.grid = page.locator('[data-testid="sale-page-grid"]')
     this.emptyState = page.getByText('ยังไม่มีเซลเพจ')
 
     this.deleteDialogTitle = page.getByRole('heading', { name: 'ลบเซลเพจ' })
-    // The destructive button in the delete dialog (distinct from trash icon in table rows)
+    // The destructive button in the delete dialog (distinct from delete button in cards)
     this.deleteConfirmButton = page.locator('button.bg-destructive', { hasText: 'ลบ' })
     this.deleteCancelButton = page.getByRole('button', { name: 'ยกเลิก' })
 
@@ -38,20 +38,36 @@ export class SalePagesPage {
     await this.heading.waitFor({ state: 'visible', timeout: 15000 })
   }
 
-  /** Click trash icon on a row matching the given text */
+  /** Click delete button on a card matching the given text */
+  async clickDeleteOnCard(name: string) {
+    const card = this.page.locator('[data-testid="sale-page-card"]', { hasText: name })
+    await card.getByRole('button', { name: 'ลบ' }).click()
+  }
+
+  /** Click edit button on a card matching the given text */
+  async clickEditOnCard(name: string) {
+    const card = this.page.locator('[data-testid="sale-page-card"]', { hasText: name })
+    await card.getByRole('button', { name: 'แก้ไข' }).click()
+  }
+
+  /** Get card element matching the given text */
+  getCard(name: string) {
+    return this.page.locator('[data-testid="sale-page-card"]', { hasText: name })
+  }
+
+  // Backward-compatible aliases
+  /** @deprecated Use clickDeleteOnCard */
   async clickDeleteOnRow(name: string) {
-    const row = this.page.locator('tr', { hasText: name })
-    await row.getByRole('button', { name: 'ลบ' }).click()
+    return this.clickDeleteOnCard(name)
   }
 
-  /** Click edit icon on a row matching the given text */
+  /** @deprecated Use clickEditOnCard */
   async clickEditOnRow(name: string) {
-    const row = this.page.locator('tr', { hasText: name })
-    await row.getByRole('button', { name: 'แก้ไข' }).click()
+    return this.clickEditOnCard(name)
   }
 
-  /** Get row element matching the given text */
+  /** @deprecated Use getCard */
   getRow(name: string) {
-    return this.page.locator('tr', { hasText: name })
+    return this.getCard(name)
   }
 }
