@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useSearchParams, Link } from 'react-router'
+import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { Check, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,7 +37,7 @@ function PricingComparisonSection() {
                 <th className="text-center py-3 px-4 font-medium text-muted-foreground">
                   <Badge variant="secondary">Free</Badge>
                 </th>
-                <th className="text-center py-3 px-4 font-medium text-muted-foreground">
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground bg-primary/5 rounded-t-lg">
                   <Badge variant="default">Paid</Badge>
                 </th>
               </tr>
@@ -57,7 +57,7 @@ function PricingComparisonSection() {
                       <span className="text-muted-foreground">{row.free}</span>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-center">
+                  <td className="py-3 px-4 text-center bg-primary/5">
                     {typeof row.paid === 'boolean' ? (
                       row.paid ? (
                         <Check className="h-4 w-4 text-emerald-600 mx-auto" />
@@ -70,17 +70,23 @@ function PricingComparisonSection() {
                   </td>
                 </tr>
               ))}
+              <tr>
+                <td className="py-4 px-4" />
+                <td className="py-4 px-4" />
+                <td className="py-4 px-4 bg-primary/5 rounded-b-lg">
+                  <div className="flex flex-col items-center gap-1">
+                    <Button
+                      size="lg"
+                      onClick={() => document.getElementById('pixel-slots')?.scrollIntoView({ behavior: 'smooth' })}
+                    >
+                      อัปเกรดเลย
+                    </Button>
+                    <span className="text-xs text-muted-foreground">ดู Pixel Slots ด้านล่าง</span>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
-        </div>
-        <div className="mt-4 text-center">
-          <Link to="#pixel-slots">
-            <Button
-              onClick={() => document.getElementById('pixel-slots')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              อัปเกรดเลย
-            </Button>
-          </Link>
         </div>
       </CardContent>
     </Card>
