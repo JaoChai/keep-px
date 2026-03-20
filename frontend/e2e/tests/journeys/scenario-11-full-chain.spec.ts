@@ -242,16 +242,16 @@ test.describe('Scenario 11: Full-Chain Integration', () => {
     await page.waitForLoadState('networkidle')
 
     // We need to publish again to get the dialog, but the page was already published in step 5.
-    // Instead, go to the sale pages list and extract the URL from the table row.
+    // Instead, go to the sale pages list and extract the URL from the card.
     const salePagesPage = new SalePagesPage(page)
     await salePagesPage.goto()
 
     const row = salePagesPage.getRow(SP_NAME)
     await expect(row).toBeVisible()
 
-    // Extract the public URL from the second column (slug column)
-    const urlCell = row.locator('td').nth(1)
-    const slug = (await urlCell.textContent())?.trim() ?? ''
+    // Extract the public URL from the card's URL element
+    const urlElement = row.locator('[data-testid="sale-page-url"]')
+    const slug = (await urlElement.textContent())?.trim() ?? ''
     expect(slug).toContain('/p/')
     publicUrl = slug
 
