@@ -41,11 +41,11 @@ func (r *EventUsageRepo) DecrementCount(ctx context.Context, customerID string, 
 func (r *EventUsageRepo) CheckAndIncrement(ctx context.Context, customerID string, count int64, maxAllowed int64) error {
 	tag, err := r.pool.Exec(ctx,
 		`INSERT INTO event_usage (customer_id, month, event_count)
-		 SELECT $1, date_trunc('month', CURRENT_DATE), $2
-		 WHERE $2 <= $3
+		 SELECT $1, date_trunc('month', CURRENT_DATE), $2::bigint
+		 WHERE $2::bigint <= $3::bigint
 		 ON CONFLICT (customer_id, month)
 		 DO UPDATE SET event_count = event_usage.event_count + EXCLUDED.event_count, updated_at = NOW()
-		 WHERE event_usage.event_count + EXCLUDED.event_count <= $3`,
+		 WHERE event_usage.event_count + EXCLUDED.event_count <= $3::bigint`,
 		customerID, count, maxAllowed,
 	)
 	if err != nil {
