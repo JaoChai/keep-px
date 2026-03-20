@@ -10,6 +10,7 @@ ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:alpine
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 LABEL maintainer="Keep-PX Team"
 LABEL description="Keep-PX Frontend SPA (Nginx)"
 COPY --from=build /app/dist /usr/share/nginx/html
