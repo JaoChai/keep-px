@@ -119,6 +119,9 @@ function GuideTable({ headers, rows }: { headers: string[]; rows: string[][] }) 
 // ---------------------------------------------------------------------------
 
 const guideSections: GuideSection[] = [
+  // =========================================================================
+  // 1. Getting Started
+  // =========================================================================
   {
     id: 'getting-started',
     icon: LogIn,
@@ -131,7 +134,7 @@ const guideSections: GuideSection[] = [
         content: (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              เข้าเว็บ Keep-PX แล้วกด <strong className="text-foreground">"เข้าสู่ระบบด้วย Google"</strong> ระบบจะสร้างบัญชีให้อัตโนมัติจาก Google Account เมื่อเข้าสู่ระบบสำเร็จจะถูกพาไปที่หน้าแดชบอร์ดทันที
+              เข้าเว็บ Keep-PX แล้วกด <strong className="text-foreground">&quot;เข้าสู่ระบบด้วย Google&quot;</strong> ระบบจะสร้างบัญชีให้อัตโนมัติจาก Google Account เมื่อเข้าสู่ระบบสำเร็จจะถูกพาไปที่หน้าแดชบอร์ดทันที
             </p>
           </div>
         ),
@@ -151,29 +154,58 @@ const guideSections: GuideSection[] = [
       },
     ],
   },
+
+  // =========================================================================
+  // 2. Dashboard
+  // =========================================================================
   {
     id: 'dashboard',
     icon: Eye,
     title: 'แดชบอร์ด',
     subsections: [
       {
+        id: 'dashboard-onboarding',
+        title: 'ตัวช่วยเริ่มต้น (Onboarding)',
+        content: (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              เมื่อยังไม่มี Pixel ในระบบ แดชบอร์ดจะแสดง 2 ส่วนพิเศษ:
+            </p>
+            <p className="text-sm font-medium text-foreground">Onboarding Wizard (4 ขั้นตอน)</p>
+            <FlowStep step={1} label="สร้างพิกเซล — เชื่อมต่อ Facebook Pixel" />
+            <FlowStep step={2} label="สร้างเซลเพจ — สร้างหน้ารับ Event" />
+            <FlowStep step={3} label="ตั้งค่า API Key — สำหรับส่งข้อมูล" />
+            <FlowStep step={4} label="ส่ง Test Event — ทดสอบระบบด้วย Event แรก" last />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              กดที่แต่ละขั้นตอนจะพาไปหน้าที่เกี่ยวข้องทันที กดปุ่ม &quot;ซ่อน&quot; ได้เมื่อไม่ต้องการเห็นอีก
+            </p>
+            <p className="text-sm font-medium text-foreground">Quick Action Cards</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              แสดง 2 การ์ดลัดสำหรับ &quot;สร้างพิกเซลแรก&quot; และ &quot;สร้างเซลเพจ&quot; ที่จะหายไปเมื่อสร้าง Pixel ตัวแรกแล้ว
+            </p>
+          </div>
+        ),
+      },
+      {
         id: 'dashboard-overview',
         title: 'ตัวเลขสรุป',
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">หน้าแดชบอร์ดแสดงภาพรวมทั้งหมดผ่าน 5 การ์ดหลัก:</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              หน้าแดชบอร์ดแสดงภาพรวมระบบทั้งหมด ประกอบด้วยการ์ดสถิติ 5 ใบ:
+            </p>
             <GuideTable
               headers={['การ์ด', 'ความหมาย']}
               rows={[
-                ['Active Pixels', 'จำนวน Pixel ที่เปิดใช้งาน / ทั้งหมด'],
-                ['Events Today', 'จำนวน Event วันนี้ (แสดงแนวโน้มเทียบวันก่อน)'],
-                ['CAPI Rate', 'อัตราส่ง Event ไป Facebook สำเร็จ'],
-                ['Events This Week', 'จำนวน Event สัปดาห์นี้'],
-                ['Active Replays', 'จำนวน Replay ที่กำลังทำงาน'],
+                ['พิกเซลที่ใช้งาน', 'จำนวน Pixel ที่เปิดใช้งาน / ทั้งหมด'],
+                ['อีเวนต์วันนี้', 'จำนวน Event วันนี้ (แสดง % เปลี่ยนแปลงเทียบวันก่อน)'],
+                ['อัตรา CAPI', 'เปอร์เซ็นต์ Event ที่ส่งไป Facebook สำเร็จ'],
+                ['อีเวนต์สัปดาห์นี้', 'จำนวน Event สัปดาห์นี้'],
+                ['รีเพลย์ที่ทำงาน', 'จำนวน Replay ที่กำลังทำงาน / ทั้งหมด'],
               ]}
             />
             <InfoBox type="tip">
-              การ์ด CAPI Rate แสดงสีตามสถานะ: เขียว = ดี, เหลือง = ปานกลาง, แดง = มีปัญหาควรตรวจสอบ
+              การ์ดอัตรา CAPI แสดงจุดสีตามสถานะ: เขียว (90%+) = ดี, เหลือง (70-89%) = ปานกลาง, แดง (&lt;70%) = มีปัญหาควรตรวจสอบ
             </InfoBox>
           </div>
         ),
@@ -184,24 +216,39 @@ const guideSections: GuideSection[] = [
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              แถบแสดงจำนวน Event ที่ใช้ไปเทียบกับ Limit ของแพ็กเกจ ถ้าใกล้เต็มให้พิจารณาอัปเกรดแพ็กเกจหรือซื้อ Add-on เพิ่ม
+              แถบแสดงจำนวน Event ที่ใช้ไปเทียบกับ Limit ของแพ็กเกจ แถบจะเปลี่ยนเป็นสีแดงเมื่อใกล้เต็ม ถ้าเต็มให้พิจารณาอัปเกรดเป็น Paid หรือเพิ่ม Pixel Slots
             </p>
           </div>
         ),
       },
       {
         id: 'dashboard-chart',
-        title: 'กราฟและข้อมูล',
+        title: 'กราฟและวิดเจ็ต',
         content: (
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-foreground">กราฟปริมาณอีเวนต์</p>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              กราฟ Event Volume แสดงแนวโน้มตามเวลา เลือกดูได้ 7 วัน, 14 วัน, 30 วัน, 90 วัน นอกจากนี้ยังมีกิจกรรมล่าสุด, สถานะ Pixel ทั้งหมด และ Event ยอดนิยม
+              กราฟ Area Chart แสดงจำนวน Event ตามเวลา เลือกช่วงได้ 4 ระดับ: 7 วัน, 14 วัน, 30 วัน, 90 วัน
             </p>
+            <p className="text-sm font-medium text-foreground mt-2">วิดเจ็ตข้อมูล (4 การ์ด)</p>
+            <GuideTable
+              headers={['วิดเจ็ต', 'แสดงอะไร']}
+              rows={[
+                ['กิจกรรมล่าสุด', 'Event 8 รายการล่าสุด พร้อมสถานะ CAPI (สำเร็จ/ไม่สำเร็จ)'],
+                ['สถานะพิกเซล', 'รายชื่อ Pixel ทั้งหมดพร้อมสถานะ (ใช้งาน/หยุดชั่วคราว)'],
+                ['ประเภทอีเวนต์ยอดนิยม', 'Event Type ที่เกิดมากที่สุด 5 อันดับ พร้อมแถบสัดส่วน'],
+                ['รีเพลย์ล่าสุด', 'Replay 3 รายการล่าสุด พร้อมแถบ progress และสถานะ'],
+              ]}
+            />
           </div>
         ),
       },
     ],
   },
+
+  // =========================================================================
+  // 3. Pixels
+  // =========================================================================
   {
     id: 'pixels',
     icon: Radio,
@@ -212,7 +259,7 @@ const guideSections: GuideSection[] = [
         title: 'สร้าง Pixel ใหม่',
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">กดปุ่ม "สร้าง Pixel" แล้วกรอกข้อมูลดังนี้:</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">กดปุ่ม &quot;สร้าง Pixel&quot; แล้วกรอกข้อมูลดังนี้:</p>
             <GuideTable
               headers={['ช่อง', 'คำอธิบาย', 'ตัวอย่าง']}
               rows={[
@@ -223,6 +270,9 @@ const guideSections: GuideSection[] = [
                 ['Backup Pixel', '(ไม่บังคับ) Pixel สำรอง', 'เลือกจากรายการ'],
               ]}
             />
+            <InfoBox type="important">
+              ถ้าถึงขีดจำกัด Pixel Slots แล้ว ปุ่มสร้างจะถูกปิด ต้องไปเพิ่ม Slots ที่หน้าการเงินก่อน
+            </InfoBox>
           </div>
         ),
       },
@@ -271,6 +321,10 @@ const guideSections: GuideSection[] = [
       },
     ],
   },
+
+  // =========================================================================
+  // 4. Events
+  // =========================================================================
   {
     id: 'events',
     icon: Activity,
@@ -303,18 +357,91 @@ const guideSections: GuideSection[] = [
         ),
       },
       {
+        id: 'events-stats',
+        title: 'สถิติและกราฟ',
+        content: (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              หน้า Events แสดงการ์ดสถิติ 4 ใบด้านบนตลอดเวลา:
+            </p>
+            <GuideTable
+              headers={['การ์ด', 'ความหมาย']}
+              rows={[
+                ['อีเวนต์วันนี้', 'จำนวน Event ของวันนี้'],
+                ['อีเวนต์ทั้งหมด', 'จำนวน Event ทั้งหมดตลอดการใช้งาน'],
+                ['อัตรา CAPI', 'เปอร์เซ็นต์ที่ส่งไป Facebook สำเร็จ'],
+                ['อีเวนต์/นาที', 'จำนวน Event ใน 60 วินาทีล่าสุด (เฉพาะโหมด Live)'],
+              ]}
+            />
+            <p className="text-sm font-medium text-foreground mt-2">กราฟ (เฉพาะโหมด Live)</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              เมื่อมี Event เข้ามา จะแสดง 2 กราฟ:
+            </p>
+            <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
+              <li><strong className="text-foreground">อัตราอีเวนต์ (5 นาที)</strong> — Bar Chart แสดงจำนวน Event ทุก 5 นาที</li>
+              <li><strong className="text-foreground">ประเภทอีเวนต์</strong> — สัดส่วน Event แต่ละประเภทพร้อมแถบ progress</li>
+            </ul>
+            <InfoBox type="warning">
+              โหมด Live มี buffer สูงสุด 200 events เมื่อเต็มจะแสดงคำเตือน กดปุ่ม &quot;ล้าง&quot; เพื่อรีเซ็ต
+            </InfoBox>
+          </div>
+        ),
+      },
+      {
         id: 'events-history',
         title: 'โหมด History (ย้อนหลัง)',
         content: (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              ดู Event ย้อนหลังทั้งหมด มี Filter ตาม Pixel และแบ่งหน้า (50 Event/หน้า)
+              ดู Event ย้อนหลังทั้งหมด แบ่งหน้าละ 50 รายการ รองรับ Filter หลายตัวพร้อมกัน:
             </p>
+            <GuideTable
+              headers={['ตัวกรอง', 'คำอธิบาย']}
+              rows={[
+                ['พิกเซล', 'เลือกดู Event เฉพาะ Pixel ที่ต้องการ'],
+                ['ประเภทอีเวนต์', 'กรองตามประเภท เช่น PageView, Purchase, Lead'],
+                ['ช่วงวันที่', 'กำหนดวันเริ่มต้น-สิ้นสุด'],
+              ]}
+            />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              กดปุ่ม <strong className="text-foreground">Export CSV</strong> เพื่อดาวน์โหลดข้อมูล Event เป็นไฟล์ CSV
+            </p>
+            <InfoBox type="tip">
+              คลิกที่แถว Event เพื่อเปิดแผงรายละเอียดด้านข้าง ดูข้อมูลเชิงลึกของแต่ละ Event ได้
+            </InfoBox>
+          </div>
+        ),
+      },
+      {
+        id: 'events-detail',
+        title: 'รายละเอียด Event (Event Detail)',
+        content: (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              คลิกที่แถว Event ใดก็ได้ (ทั้งโหมด Live และ History) จะเปิดแผงด้านข้างแสดงรายละเอียด:
+            </p>
+            <GuideTable
+              headers={['ข้อมูล', 'คำอธิบาย']}
+              rows={[
+                ['เวลา', 'แสดงเวลาเต็ม (วัน เดือน ปี ชั่วโมง:นาที:วินาที) พร้อมเวลาสัมพัทธ์'],
+                ['URL ต้นทาง', 'ลิงก์ของหน้าเว็บที่ Event เกิดขึ้น (กดเปิดในแท็บใหม่ได้)'],
+                ['สถานะ CAPI', 'แสดงว่า Event ถูกส่งไป Facebook แล้วหรือยัง พร้อม Response Code'],
+                ['Event Data', 'ข้อมูล Event แบบ JSON (กดเพื่อเปิด/ปิด)'],
+                ['User Data', 'ข้อมูลผู้ใช้แบบ JSON (กดเพื่อเปิด/ปิด) — แสดงเฉพาะเมื่อมีข้อมูล'],
+              ]}
+            />
+            <InfoBox type="tip">
+              JSON data แสดงแบบ syntax highlight สามารถ scroll ดูข้อมูลยาว ๆ ได้
+            </InfoBox>
           </div>
         ),
       },
     ],
   },
+
+  // =========================================================================
+  // 5. Replay Center
+  // =========================================================================
   {
     id: 'replay',
     icon: RotateCcw,
@@ -347,14 +474,14 @@ const guideSections: GuideSection[] = [
               rows={[
                 ['Source Pixel', 'Pixel ต้นทาง (ดึง Event จาก Pixel นี้)'],
                 ['Target Pixel', 'Pixel ปลายทาง (ส่ง Event ไปยัง Pixel นี้)'],
-                ['Event Type', '(ไม่บังคับ) เลือก Replay เฉพาะบางประเภท'],
+                ['Event Type', '(ไม่บังคับ) เลือกประเภท Event ที่ต้องการ — กดเลือกทีละอัน หรือกด "เลือกทั้งหมด"/"ยกเลิกทั้งหมด"'],
                 ['Date Range', '(ไม่บังคับ) กำหนดช่วงเวลา'],
                 ['Time Mode', 'Original = เวลาเดิม / Current = เวลาปัจจุบัน'],
                 ['Batch Delay', 'หน่วงเวลาระหว่างชุด (0-60,000 ms)'],
               ]}
             />
             <InfoBox type="warning">
-              Event เก่ากว่า 7 วัน ควรเลือก Time Mode = "Current" เพราะ Facebook อาจปฏิเสธ Event ที่เก่าเกินไป
+              Event เก่ากว่า 7 วัน ควรเลือก Time Mode = &quot;Current&quot; เพราะ Facebook อาจปฏิเสธ Event ที่เก่าเกินไป
             </InfoBox>
           </div>
         ),
@@ -387,13 +514,35 @@ const guideSections: GuideSection[] = [
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              การ Replay แต่ละครั้งใช้ <strong className="text-foreground">1 Credit</strong> ดูจำนวนคงเหลือได้ที่หน้า Replay หรือหน้า Billing ซื้อเพิ่มได้ที่ Billing &rarr; แท็บ Replays
+              การ Replay แต่ละครั้งใช้ <strong className="text-foreground">1 Credit</strong> ดูจำนวนคงเหลือได้ที่หน้า Replay หรือหน้าการเงิน ซื้อเพิ่มได้ที่หน้าการเงิน &rarr; ส่วน Replay
             </p>
+          </div>
+        ),
+      },
+      {
+        id: 'replay-advanced',
+        title: 'ฟีเจอร์เพิ่มเติม',
+        content: (
+          <div className="space-y-4">
+            <GuideTable
+              headers={['ฟีเจอร์', 'คำอธิบาย']}
+              rows={[
+                ['เลือกทั้งหมด / ยกเลิกทั้งหมด', 'กดลิงก์ที่มุมขวาบนของรายการ Event Type เพื่อเลือก/ยกเลิกทุกประเภทพร้อมกัน'],
+                ['ตัวนับ Event Type', 'แสดง "เลือกแล้ว X / Y" เพื่อให้รู้ว่าเลือกกี่ประเภทจากทั้งหมด'],
+                ['Preview ก่อน Replay', 'กดปุ่ม "ตัวอย่าง" เพื่อดูจำนวน Event ที่จะ Replay พร้อมตัวอย่าง Event ก่อนยืนยัน'],
+                ['Replay Config Info', 'ด้านล่าง Progress Bar แสดงโหมดเวลา (ต้นฉบับ/ปัจจุบัน) และค่า Delay'],
+                ['ไม่มีเครดิต', 'ถ้าไม่มีเครดิตจะแสดงข้อความพร้อมลิงก์ไปหน้าการเงินเพื่อซื้อเพิ่ม'],
+              ]}
+            />
           </div>
         ),
       },
     ],
   },
+
+  // =========================================================================
+  // 6. Sale Pages
+  // =========================================================================
   {
     id: 'sale-pages',
     icon: FileText,
@@ -418,10 +567,45 @@ const guideSections: GuideSection[] = [
             <GuideTable
               headers={['Template', 'คำอธิบาย']}
               rows={[
-                ['Classic', 'แบบตายตัว กรอกข้อมูลตามช่อง เรียบง่าย'],
-                ['Blocks', 'แบบลาก-วาง ปรับแต่งอิสระ ยืดหยุ่นกว่า'],
+                ['Classic', 'แบบตายตัว กรอกข้อมูลตามช่อง เรียบง่าย เหมาะสำหรับเริ่มต้น'],
+                ['Blocks', 'แบบเรียงบล็อก ปรับแต่งอิสระ เพิ่ม/ลบ/เรียงลำดับได้ ยืดหยุ่นกว่า'],
               ]}
             />
+          </div>
+        ),
+      },
+      {
+        id: 'salepage-block-editor',
+        title: 'Block Editor (เทมเพลต Blocks)',
+        content: (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              เทมเพลต Blocks ให้คุณสร้างหน้าเซลเพจแบบอิสระด้วยการเรียงบล็อก ไม่ต้องกรอกฟอร์มตามช่องแบบ Classic
+            </p>
+            <p className="text-sm font-medium text-foreground">ประเภทบล็อกที่ใช้ได้</p>
+            <GuideTable
+              headers={['ประเภท', 'คำอธิบาย']}
+              rows={[
+                ['รูปภาพ', 'อัพโหลดรูปหรือวาง URL รูปภาพ ตั้งลิงก์เมื่อกดรูปได้ (ไม่บังคับ)'],
+                ['ข้อความ', 'ช่องข้อความอิสระ พิมพ์อธิบายสินค้า หัวข้อ หรือรายละเอียดอะไรก็ได้'],
+                ['ปุ่ม LINE', 'ปุ่มกดแอดไลน์ กรอก LINE ID ของร้าน'],
+                ['ปุ่มเว็บไซต์', 'ปุ่มกดไปเว็บไซต์ กรอก URL ปลายทาง'],
+                ['ลิงก์', 'ปุ่มลิงก์อิสระ ตั้งข้อความและ URL เองได้'],
+              ]}
+            />
+            <p className="text-sm font-medium text-foreground mt-2">การจัดการบล็อก</p>
+            <GuideTable
+              headers={['การกระทำ', 'วิธีทำ']}
+              rows={[
+                ['เพิ่มบล็อก', 'กดปุ่มประเภทบล็อกในกล่อง "เพิ่มบล็อก" ด้านล่าง'],
+                ['เรียงลำดับ', 'กดลูกศรขึ้น/ลงที่มุมขวาบนของแต่ละบล็อก'],
+                ['ลบบล็อก', 'กดไอคอนถังขยะ → ยืนยันลบ'],
+                ['แก้ไขเนื้อหา', 'พิมพ์หรืออัพโหลดรูปในแต่ละบล็อกได้เลย'],
+              ]}
+            />
+            <InfoBox type="important">
+              ต้องมีบล็อกอย่างน้อย 1 อัน จึงจะบันทึกหรือเผยแพร่ได้ ถ้ายังไม่มีบล็อกระบบจะแจ้งเตือน
+            </InfoBox>
           </div>
         ),
       },
@@ -449,6 +633,39 @@ const guideSections: GuideSection[] = [
                 ['Currency', 'สกุลเงิน: THB, USD'],
               ]}
             />
+            <p className="text-sm font-medium text-foreground mt-4">ข้อมูลติดต่อ (Classic)</p>
+            <GuideTable
+              headers={['ช่อง', 'คำอธิบาย']}
+              rows={[
+                ['LINE ID', 'ไอดีไลน์ของร้าน — ลูกค้ากดแอดไลน์จากเซลเพจได้'],
+                ['เบอร์โทร', 'เบอร์โทรศัพท์ — ลูกค้ากดโทรจากเซลเพจได้'],
+                ['เว็บไซต์', 'URL เว็บไซต์หลัก'],
+              ]}
+            />
+          </div>
+        ),
+      },
+      {
+        id: 'salepage-editor-advanced',
+        title: 'ฟีเจอร์เพิ่มเติมของ Editor',
+        content: (
+          <div className="space-y-4">
+            <GuideTable
+              headers={['ฟีเจอร์', 'คำอธิบาย']}
+              rows={[
+                ['บันทึกร่างอัตโนมัติ', 'ระบบบันทึก Draft ไว้ใน Browser อัตโนมัติ ถ้าปิดหน้าไปจะถามว่าต้องการกู้คืนหรือไม่'],
+                ['คำเตือนออกจากหน้า', 'ถ้ามีการแก้ไขที่ยังไม่บันทึก ระบบจะถามยืนยันก่อนออกจากหน้า'],
+                ['รูปภาพ Hero (Classic)', 'อัพโหลดรูปหัวหน้าเพจได้ หรือวาง URL รูปภาพ'],
+                ['รูปภาพเนื้อหา (Classic)', 'เพิ่มรูปภาพในส่วนเนื้อหาได้หลายรูป เรียงเป็น Grid'],
+                ['จุดเด่น (Classic)', 'เพิ่มได้สูงสุด 10 รายการ ลบแต่ละอันได้'],
+                ['รูปแบบหน้าเพจ', 'เลือกธีมสำเร็จรูป หรือปรับสีพื้นหลัง สีปุ่ม สีตัวอักษร รูปพื้นหลังเองได้'],
+                ['Preview', 'ดูตัวอย่างหน้าเพจแบบ Realtime ที่คอลัมน์ขวา (หรือกดสลับ Editor/Preview บนมือถือ)'],
+              ]}
+            />
+            <p className="text-sm font-medium text-foreground mt-2">หลังกด &quot;เผยแพร่&quot;</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              ระบบจะแสดง Dialog สำเร็จพร้อม URL ของเพจ กดปุ่ม <strong className="text-foreground">คัดลอกลิงก์</strong> เพื่อแชร์ หรือกด &quot;เปิดเพจ&quot; เพื่อเปิดดูในแท็บใหม่
+            </p>
           </div>
         ),
       },
@@ -484,25 +701,80 @@ const guideSections: GuideSection[] = [
       },
     ],
   },
+
+  // =========================================================================
+  // 7. Billing
+  // =========================================================================
   {
     id: 'billing',
     icon: CreditCard,
     title: 'การเงิน',
     subsections: [
       {
+        id: 'billing-account-status',
+        title: 'การ์ดสถานะบัญชี',
+        content: (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              ด้านบนสุดของหน้าการเงินแสดงการ์ดสรุปบัญชีของคุณ:
+            </p>
+            <GuideTable
+              headers={['ข้อมูล', 'คำอธิบาย']}
+              rows={[
+                ['แพ็กเกจ', 'แสดงจำนวน Pixel Slots และราคาต่อเดือน (หรือ Free)'],
+                ['อีเวนต์เดือนนี้', 'จำนวนที่ใช้ไป / ขีดจำกัด พร้อมแถบ progress (แดงเมื่อใกล้เต็ม)'],
+                ['พิกเซล', 'จำนวน Pixel สูงสุดที่สร้างได้'],
+                ['รีเพลย์คงเหลือ', 'จำนวน Replay Credit ที่เหลือ หรือ "ไม่จำกัด"'],
+                ['ระยะเก็บข้อมูล', 'จำนวนวันที่เก็บ Event (7 วันสำหรับ Free, 90 วันสำหรับ Paid)'],
+              ]}
+            />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              ผู้ใช้ Free จะเห็นปุ่ม &quot;อัปเกรด&quot;, ผู้ใช้ Paid จะเห็นปุ่ม &quot;จัดการการชำระเงิน&quot; (เปิด Stripe Portal)
+            </p>
+          </div>
+        ),
+      },
+      {
         id: 'billing-plans',
         title: 'แพ็กเกจ',
         content: (
           <div className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Keep-PX ใช้ระบบ <strong className="text-foreground">Pixel Slots</strong> มี 2 ระดับหลัก:
+            </p>
             <GuideTable
-              headers={['แพ็กเกจ', 'Event/เดือน', 'คำอธิบาย']}
+              headers={['แพ็กเกจ', 'รายละเอียด']}
               rows={[
-                ['Sandbox (ฟรี)', 'จำกัด', 'ทดลองใช้งาน'],
-                ['Launch', '1M', 'สำหรับเริ่มต้น'],
-                ['Shield', '5M', 'สำหรับธุรกิจขนาดกลาง'],
-                ['Vault', 'ไม่จำกัด', 'สำหรับธุรกิจขนาดใหญ่'],
+                ['Free (ฟรี)', '2 Pixel, 2 Sale Page, 1,000 Events/เดือน, เก็บข้อมูล 7 วัน'],
+                ['Paid (฿199/slot/เดือน)', 'ปรับจำนวน Pixel Slots ได้ตามต้องการ, 100K Events/slot/เดือน, เก็บข้อมูล 90 วัน'],
               ]}
             />
+            <InfoBox type="important">
+              หน้าการเงินมีตาราง <strong>เปรียบเทียบแพ็กเกจ</strong> แสดงฟีเจอร์ของ Free vs Paid ครบทุกรายการ เช่น Replay, CAPI Forwarding, Analytics Dashboard
+            </InfoBox>
+          </div>
+        ),
+      },
+      {
+        id: 'billing-pixel-slots',
+        title: 'Pixel Slots',
+        content: (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Pixel Slots คือระบบ Subscription แบบปรับจำนวนได้ ราคา <strong className="text-foreground">฿199/slot/เดือน</strong> แต่ละ Slot ได้:
+            </p>
+            <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
+              <li>1 Pixel + 1 Sale Page</li>
+              <li>100,000 Events/เดือน (รวมกัน)</li>
+              <li>เก็บข้อมูล 90 วัน</li>
+            </ul>
+            <p className="text-sm font-medium text-foreground">วิธีใช้</p>
+            <FlowStep step={1} label="ไปที่หน้าการเงิน → ส่วน Pixel Slots" />
+            <FlowStep step={2} label="ปรับจำนวน Slot ด้วยปุ่ม +/- (ขั้นต่ำ 1)" />
+            <FlowStep step={3} label="กดปุ่ม 'สมัครสมาชิก' (ครั้งแรก) หรือ 'อัพเดทจำนวน' (ถ้ามีอยู่แล้ว)" last />
+            <InfoBox type="tip">
+              ถ้าต้องการเพิ่ม Pixel อีก 3 ตัว ให้ปรับ Slot เป็น 3 → ระบบจะคิดเงิน ฿597/เดือน (3 x ฿199)
+            </InfoBox>
           </div>
         ),
       },
@@ -510,27 +782,23 @@ const guideSections: GuideSection[] = [
         id: 'billing-replay-packs',
         title: 'ซื้อ Replay Credit',
         content: (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              ซื้อ Replay Credit เพิ่มเติมได้ที่แท็บ Replays ในหน้าการเงิน มีแพ็ก 1 ครั้ง, 3 ครั้ง, และ Unlimited กดปุ่ม "Buy Pack" แล้วชำระเงินผ่าน Stripe
-            </p>
-          </div>
-        ),
-      },
-      {
-        id: 'billing-addons',
-        title: 'Add-ons',
-        content: (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">ซื้อเพิ่มเติมเป็น Subscription รายเดือน:</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              ซื้อ Replay Credit เพิ่มเติมได้ในส่วน &quot;รีเพลย์&quot; ของหน้าการเงิน มี 2 แพ็ก:
+            </p>
             <GuideTable
-              headers={['Add-on', 'ได้อะไร']}
+              headers={['แพ็ก', 'ราคา', 'รายละเอียด']}
               rows={[
-                ['Events +1M', 'เพิ่มโควตา Event อีก 1 ล้าน/เดือน'],
-                ['Sale Pages +10', 'เพิ่มเซลเพจอีก 10 หน้า'],
-                ['Pixels +10', 'เพิ่ม Pixel อีก 10 ตัว'],
+                ['ครั้งเดียว', '฿299', '1 รีเพลย์ · หมดอายุ 90 วัน · สูงสุด 100K events'],
+                ['ไม่จำกัด', '฿1,990/เดือน', 'รีเพลย์ไม่จำกัดตลอดรอบบิล'],
               ]}
             />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              กดปุ่ม &quot;ซื้อ&quot; แล้วชำระเงินผ่าน Stripe หลังชำระเสร็จ เครดิตจะเข้าระบบทันที
+            </p>
+            <InfoBox type="tip">
+              เครดิตที่ซื้อแล้วจะแสดงในส่วน &quot;เครดิตที่มีอยู่&quot; พร้อมจำนวนใช้ไป/คงเหลือ และวันหมดอายุ
+            </InfoBox>
           </div>
         ),
       },
@@ -540,13 +808,52 @@ const guideSections: GuideSection[] = [
         content: (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              กดปุ่ม "Manage Billing" เพื่อเปิดหน้า Stripe Customer Portal สำหรับเปลี่ยนบัตรเครดิต, ดูใบเสร็จ, หรือยกเลิก Subscription
+              กดปุ่ม &quot;จัดการการชำระเงิน&quot; เพื่อเปิดหน้า Stripe Customer Portal สำหรับเปลี่ยนบัตรเครดิต, ดูใบเสร็จ, หรือยกเลิก Subscription
             </p>
+          </div>
+        ),
+      },
+      {
+        id: 'billing-checkout-flow',
+        title: 'ขั้นตอนการชำระเงิน',
+        content: (
+          <div className="space-y-4">
+            <FlowStep step={1} label="เลือกจำนวน Pixel Slots หรือแพ็ก Replay ที่ต้องการ" />
+            <FlowStep step={2} label="กดปุ่มสมัครสมาชิก/ซื้อ → ระบบจะพาไปหน้า Stripe Checkout" />
+            <FlowStep step={3} label="กรอกข้อมูลบัตรเครดิต/เดบิตแล้วชำระเงิน" />
+            <FlowStep step={4} label="ชำระสำเร็จ → กลับมาหน้าการเงินพร้อมแจ้งเตือน 'ชำระเงินสำเร็จ!'" last />
+            <InfoBox type="tip">
+              ถ้ายกเลิกระหว่างชำระเงิน ระบบจะแจ้งว่า &quot;การชำระเงินถูกยกเลิก&quot; — ยังไม่ถูกเรียกเก็บเงินใด ๆ
+            </InfoBox>
+          </div>
+        ),
+      },
+      {
+        id: 'billing-purchase-history',
+        title: 'ประวัติการซื้อ',
+        content: (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              ด้านล่างของหน้าการเงินมีส่วน &quot;ประวัติการซื้อ&quot; (กดเพื่อเปิด/ปิด) แสดงรายการซื้อทั้งหมด:
+            </p>
+            <GuideTable
+              headers={['คอลัมน์', 'คำอธิบาย']}
+              rows={[
+                ['วันที่', 'วันที่ทำรายการ'],
+                ['แพ็ก', 'ประเภทสิ่งที่ซื้อ (เช่น Pixel Slots, Replay ครั้งเดียว, Replay ไม่จำกัด)'],
+                ['จำนวนเงิน', 'ราคาที่ชำระ'],
+                ['สถานะ', 'สำเร็จ / รอดำเนินการ'],
+              ]}
+            />
           </div>
         ),
       },
     ],
   },
+
+  // =========================================================================
+  // 8. Settings
+  // =========================================================================
   {
     id: 'settings',
     icon: Settings,
@@ -579,14 +886,21 @@ const guideSections: GuideSection[] = [
                 ['Regenerate', 'สร้าง Key ใหม่ (คีย์เก่าจะใช้ไม่ได้ทันที)'],
               ]}
             />
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              ด้านล่าง API Key แสดง <strong className="text-foreground">วันที่สร้างคีย์</strong> เพื่อให้ทราบว่าคีย์ปัจจุบันสร้างเมื่อไหร่
+            </p>
             <InfoBox type="warning">
-              ถ้า Regenerate API Key เซลเพจที่ใช้คีย์เก่าจะส่ง Event ไม่ได้ ระบบจัดการให้อัตโนมัติสำหรับเซลเพจที่สร้างในระบบ
+              ถ้ากด Regenerate ระบบจะ <strong>ถามยืนยัน</strong> ก่อน เนื่องจากคีย์เก่าจะใช้ไม่ได้ทันที ระบบจัดการให้อัตโนมัติสำหรับเซลเพจที่สร้างในระบบ
             </InfoBox>
           </div>
         ),
       },
     ],
   },
+
+  // =========================================================================
+  // 9. Glossary
+  // =========================================================================
   {
     id: 'glossary',
     icon: BookOpen,
@@ -645,7 +959,8 @@ const guideSections: GuideSection[] = [
                 ['Backup Pixel', 'Pixel สำรองที่รับ Event พร้อม Pixel หลักผ่าน CAPI'],
                 ['Replay', 'ส่ง Event ซ้ำไปยัง Pixel ตัวใหม่'],
                 ['Replay Credit', 'หน่วยนับจำนวนครั้งที่ Replay ได้'],
-                ['Event Quota', 'จำนวน Event สูงสุดต่อเดือน ขึ้นกับแพ็กเกจ'],
+                ['Pixel Slot', 'หน่วยสมัครสมาชิก 1 Slot = 1 Pixel + 1 Sale Page + 100K Events/เดือน'],
+                ['Event Quota', 'จำนวน Event สูงสุดต่อเดือน ขึ้นกับแพ็กเกจและจำนวน Slots'],
               ]}
             />
           </div>
@@ -653,6 +968,10 @@ const guideSections: GuideSection[] = [
       },
     ],
   },
+
+  // =========================================================================
+  // 10. Scenarios
+  // =========================================================================
   {
     id: 'scenarios',
     icon: Globe,
@@ -894,4 +1213,3 @@ export function GuidePage() {
     </div>
   )
 }
-
