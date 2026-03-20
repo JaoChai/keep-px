@@ -66,14 +66,14 @@ test.describe('Scenario 1: First-Time Onboarding', () => {
       await page.goto('/sale-pages')
       await page.waitForLoadState('networkidle')
 
-      let spRows = page.locator('tr', { hasText: PREFIX })
+      let spRows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
       let spCount = await spRows.count()
       while (spCount > 0) {
         await spRows.first().getByRole('button', { name: 'ลบ' }).click()
         await page.getByRole('heading', { name: 'ลบเซลเพจ' }).waitFor()
         await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
         await page.waitForTimeout(1000)
-        spRows = page.locator('tr', { hasText: PREFIX })
+        spRows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
         spCount = await spRows.count()
       }
 
@@ -255,7 +255,7 @@ test.describe('Scenario 1: First-Time Onboarding', () => {
     await salePagesPage.goto()
 
     // Verify our sale page is in the table with draft status
-    const row = page.locator('tr', { hasText: SALE_PAGE_NAME })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: SALE_PAGE_NAME })
     await expect(row).toBeVisible()
     await expect(row.getByText('แบบร่าง')).toBeVisible()
   })
@@ -405,7 +405,7 @@ test.describe('Scenario 1: First-Time Onboarding', () => {
     const salePagesPage = new SalePagesPage(page)
     await salePagesPage.goto()
 
-    const spRow = page.locator('tr', { hasText: SALE_PAGE_NAME })
+    const spRow = page.locator('[data-testid="sale-page-card"]', { hasText: SALE_PAGE_NAME })
     if ((await spRow.count()) > 0) {
       await spRow.first().getByRole('button', { name: 'ลบ' }).click()
       await expect(page.getByRole('heading', { name: 'ลบเซลเพจ' })).toBeVisible()

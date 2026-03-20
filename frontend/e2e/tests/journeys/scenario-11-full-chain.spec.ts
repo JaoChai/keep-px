@@ -51,14 +51,14 @@ test.describe('Scenario 11: Full-Chain Integration', () => {
       // --- Delete sale pages with our prefix ---
       await page.goto('/sale-pages')
       await page.waitForLoadState('networkidle')
-      let rows = page.locator('tr', { hasText: PREFIX })
+      let rows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
       let count = await rows.count()
       while (count > 0) {
         await rows.first().getByRole('button', { name: 'ลบ' }).click()
         await page.getByRole('heading', { name: 'ลบเซลเพจ' }).waitFor()
         await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
         await page.waitForTimeout(1000)
-        rows = page.locator('tr', { hasText: PREFIX })
+        rows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
         count = await rows.count()
       }
 
@@ -186,14 +186,14 @@ test.describe('Scenario 11: Full-Chain Integration', () => {
     await expect(salePagesPage.heading).toBeVisible()
 
     // Clean up leftover sale pages
-    let rows = page.locator('tr', { hasText: PREFIX })
+    let rows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
     let count = await rows.count()
     while (count > 0) {
       await rows.first().getByRole('button', { name: 'ลบ' }).click()
       await page.getByRole('heading', { name: 'ลบเซลเพจ' }).waitFor()
       await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
       await page.waitForTimeout(1000)
-      rows = page.locator('tr', { hasText: PREFIX })
+      rows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
       count = await rows.count()
     }
 

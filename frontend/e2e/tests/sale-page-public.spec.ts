@@ -18,13 +18,14 @@ test.describe('Sale Page Public Serving', () => {
     try {
       await page.goto('/sale-pages')
       await page.waitForLoadState('networkidle')
-      const rows = page.locator('tr', { hasText: 'E2E Pub' })
+      let rows = page.locator('[data-testid="sale-page-card"]', { hasText: 'E2E Pub' })
       let count = await rows.count()
       while (count > 0) {
         await rows.first().getByRole('button', { name: 'ลบ' }).click()
         await page.getByRole('heading', { name: 'ลบเซลเพจ' }).waitFor()
         await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
-        await page.waitForTimeout(500)
+        await page.waitForTimeout(1000)
+        rows = page.locator('[data-testid="sale-page-card"]', { hasText: 'E2E Pub' })
         count = await rows.count()
       }
     } catch {
@@ -40,7 +41,7 @@ test.describe('Sale Page Public Serving', () => {
     await salePagesPage.goto()
     await page.waitForLoadState('networkidle')
 
-    const existing = page.locator('tr', { hasText: 'E2E Pub' })
+    const existing = page.locator('[data-testid="sale-page-card"]', { hasText: 'E2E Pub' })
     let count = await existing.count()
     while (count > 0) {
       await existing.first().getByRole('button', { name: 'ลบ' }).click()
@@ -71,19 +72,15 @@ test.describe('Sale Page Public Serving', () => {
     await editor.goBackButton.click()
     await expect(page).toHaveURL(/\/sale-pages$/)
 
-    // If we couldn't get slug from dialog, try to get it from the table
+    // If we couldn't get slug from dialog, try to get it from the card
     if (!publishedSlug) {
       await page.waitForLoadState('networkidle')
-      const row = page.locator('tr', { hasText: PUB_SP_NAME })
-      if (await row.isVisible()) {
-        // Look for slug in the row data
-        const cells = row.locator('td')
-        for (let i = 0; i < await cells.count(); i++) {
-          const text = await cells.nth(i).textContent()
-          if (text && text.match(/^[a-z0-9-]+$/) && text.length > 3) {
-            publishedSlug = text
-            break
-          }
+      const card = page.locator('[data-testid="sale-page-card"]', { hasText: PUB_SP_NAME })
+      if (await card.isVisible()) {
+        const urlEl = card.locator('[data-testid="sale-page-url"]')
+        if (await urlEl.isVisible()) {
+          const text = await urlEl.textContent()
+          publishedSlug = text?.replace('/p/', '').trim() ?? ''
         }
       }
     }
@@ -131,7 +128,7 @@ test.describe('Sale Page Public Serving', () => {
     await salePagesPage.goto()
     await page.waitForLoadState('networkidle')
 
-    const row = page.locator('tr', { hasText: 'E2E Pub' })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: 'E2E Pub' })
     if (await row.count() > 0) {
       await row.first().getByRole('button', { name: 'ลบ' }).click()
       await page.getByRole('heading', { name: 'ลบเซลเพจ' }).waitFor()
