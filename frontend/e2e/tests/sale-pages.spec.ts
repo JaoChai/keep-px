@@ -102,8 +102,7 @@ test.describe('Sale Pages @smoke', () => {
     await salePagesPage.clickEditOnRow(originalName)
     await expect(page).toHaveURL(/\/sale-pages\/.*\/edit-blocks/, { timeout: 15000 })
 
-    // Open settings collapsible (closed by default in edit mode)
-    await page.getByText('ตั้งค่าหน้าเพจ').click()
+    // Page name is always visible (no longer in collapsible)
     await expect(editor.pageNameInput).toBeVisible()
 
     // Change name
@@ -197,6 +196,9 @@ test.describe('Sale Page Editor Details', () => {
     await editor.customSlugToggle.click()
     await expect(editor.slugInput).toBeVisible()
     await editor.slugInput.fill(customSlug)
+
+    // Dismiss template selector (new page)
+    await editor.dismissTemplateSelector()
 
     // Add minimum block content
     await editor.addTextBlockButton.click()
@@ -434,6 +436,9 @@ test.describe('Block Editor Flow', () => {
     const spName = `${TEST_PREFIX} Blocks ${Date.now()}`
     await editor.pageNameInput.fill(spName)
 
+    // Dismiss template selector (new page)
+    await editor.dismissTemplateSelector()
+
     // Add a text block
     await editor.addTextBlockButton.click()
     let blockCount = await editor.getBlockCount()
@@ -466,6 +471,9 @@ test.describe('Block Editor Flow', () => {
 
     const spName = `${TEST_PREFIX} DelBlock ${Date.now()}`
     await editor.pageNameInput.fill(spName)
+
+    // Dismiss template selector (new page)
+    await editor.dismissTemplateSelector()
 
     // Add two text blocks
     await editor.addTextBlockButton.click()
@@ -536,7 +544,8 @@ test.describe('Sale Page Edge Cases', () => {
 
     // Type something to trigger unsaved changes
     await editor.pageNameInput.fill(`${TEST_PREFIX} Unsaved ${Date.now()}`)
-    // Add a block to ensure hasChanges is set
+    // Dismiss template selector then add a block to ensure hasChanges is set
+    await editor.dismissTemplateSelector()
     await editor.addTextBlockButton.click()
 
     // Try to navigate away via sidebar
@@ -563,6 +572,7 @@ test.describe('Sale Page Edge Cases', () => {
 
     // Type something to trigger unsaved changes
     await editor.pageNameInput.fill(`${TEST_PREFIX} Leave ${Date.now()}`)
+    await editor.dismissTemplateSelector()
     await editor.addTextBlockButton.click()
 
     // Try to navigate away via sidebar

@@ -65,7 +65,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
     id: crypto.randomUUID(),
     type: 'button',
     button_style: style,
-    button_text: style === 'line' ? 'แอดไลน์' : style === 'website' ? 'เยี่ยมชมเว็บไซต์' : 'คลิกที่นี่',
+    button_text: style === 'line' ? 'แอดไลน์สั่งซื้อ' : style === 'website' ? 'เยี่ยมชมเว็บไซต์' : 'คลิกที่นี่',
     button_url: '',
     button_value: '',
   })
@@ -103,32 +103,44 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
           {/* Type-specific fields */}
           {block.type === 'image' && (
             <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id={`img-upload-${block.id}`}
+                onChange={(e) => handleSingleImageUpload(index, e)}
+              />
               {block.image_url ? (
-                <img src={block.image_url} alt="" className="w-full max-h-48 object-cover rounded-md border border-border" />
+                <>
+                  <img src={block.image_url} alt="" className="w-full max-h-48 object-cover rounded-md border border-border" />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadImage.isPending}
+                      onClick={() => document.getElementById(`img-upload-${block.id}`)?.click()}
+                    >
+                      {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                      {uploadImage.isPending && uploadImage.progress > 0 ? `${uploadImage.progress}%` : 'เปลี่ยนรูป'}
+                    </Button>
+                  </div>
+                </>
               ) : (
-                <div className="w-full h-32 bg-secondary rounded-md flex items-center justify-center text-muted-foreground text-sm">
-                  ยังไม่มีรูป
-                </div>
-              )}
-              <div className="flex gap-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  id={`img-upload-${block.id}`}
-                  onChange={(e) => handleSingleImageUpload(index, e)}
-                />
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={uploadImage.isPending}
+                  className="w-full h-32 bg-secondary rounded-md flex flex-col items-center justify-center text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors cursor-pointer border-2 border-dashed border-border"
                   onClick={() => document.getElementById(`img-upload-${block.id}`)?.click()}
+                  disabled={uploadImage.isPending}
                 >
-                  {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                  {uploadImage.isPending && uploadImage.progress > 0 ? `${uploadImage.progress}%` : block.image_url ? 'เปลี่ยนรูป' : 'อัพโหลดรูป'}
-                </Button>
-              </div>
+                  {uploadImage.isPending ? (
+                    <Loader2 className="h-6 w-6 animate-spin mb-1" />
+                  ) : (
+                    <Upload className="h-6 w-6 mb-1" />
+                  )}
+                  <span className="text-sm">{uploadImage.isPending && uploadImage.progress > 0 ? `${uploadImage.progress}%` : 'กดเพื่ออัพรูปสินค้า'}</span>
+                </button>
+              )}
               <Input
                 placeholder="หรือวาง URL รูปภาพ"
                 value={block.image_url || ''}
@@ -201,7 +213,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
 
       {/* Add Block Buttons */}
       <div className="border-2 border-dashed border-border rounded-lg p-4">
-        <p className="text-xs font-medium text-muted-foreground mb-3 text-center">เพิ่มบล็อก</p>
+        <p className="text-xs font-medium text-muted-foreground mb-3 text-center">เพิ่มเนื้อหา</p>
         <div className="flex flex-wrap justify-center gap-2">
           <input ref={imageFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
           <Button
@@ -220,15 +232,15 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={() => addButtonBlock('line')}>
             <MessageCircle className="h-3.5 w-3.5" />
-            LINE
+            ปุ่ม LINE
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={() => addButtonBlock('website')}>
             <Globe className="h-3.5 w-3.5" />
-            เว็บไซต์
+            ปุ่มเว็บ
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={() => addButtonBlock('custom')}>
             <Link className="h-3.5 w-3.5" />
-            ลิงก์
+            ปุ่มลิงก์
           </Button>
         </div>
       </div>

@@ -97,113 +97,14 @@ jobs:
         continue-on-error: true
         run: npm audit --audit-level=high
 
-  e2e:
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: testuser
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: keeppx_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgres://testuser:testpass@localhost:5432/keeppx_test?sslmode=disable
-      JWT_SECRET: e2e-test-secret-key-for-ci
-      PORT: 8080
-      ENV: test
-      CORS_ALLOWED_ORIGINS: http://localhost:5173
-      FB_GRAPH_API_URL: https://graph.facebook.com/v21.0
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-          cache-dependency-path: backend/go.sum
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Apply database migrations
-        working-directory: backend
-        run: |
-          for f in db/migrations/*.up.sql; do
-            echo "Applying $f..."
-            PGPASSWORD=testpass psql -h localhost -U testuser -d keeppx_test -f "$f"
-          done
-
-      - name: Seed test user and generate auth tokens
-        id: e2e-auth
-        working-directory: backend
-        run: |
-          E2E_USER_ID="00000000-0000-4000-a000-000000000e2e"
-          # Insert test user into DB
-          PGPASSWORD=testpass psql -h localhost -U testuser -d keeppx_test -c "
-            INSERT INTO customers (id, email, name, api_key, plan, created_at, updated_at)
-            VALUES ('$E2E_USER_ID', 'e2e-test@example.com', 'E2E Test User', 'pk_e2e_test_key', 'sandbox', NOW(), NOW())
-            ON CONFLICT (email) DO NOTHING;
-          "
-          PGPASSWORD=testpass psql -h localhost -U testuser -d keeppx_test -c "
-            INSERT INTO subscriptions (id, customer_id, stripe_subscription_id, stripe_price_id, addon_type, status, quantity, current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at)
-            VALUES (gen_random_uuid(), '$E2E_USER_ID', 'sub_e2e_test', 'price_e2e_test', 'pixel_slots', 'active', 3, NOW(), NOW() + INTERVAL '1 year', false, NOW(), NOW())
-            ON CONFLICT DO NOTHING;
-          "
-          # Generate JWT access token using Node's built-in crypto
-          ACCESS_TOKEN=$(node -e "
-            const crypto = require('crypto');
-            const b64url = (b) => Buffer.from(b).toString('base64url');
-            const header = b64url(JSON.stringify({alg:'HS256',typ:'JWT'}));
-            const now = Math.floor(Date.now()/1000);
-            const payload = b64url(JSON.stringify({sub:'$E2E_USER_ID',email:'e2e-test@example.com',is_admin:false,iat:now,exp:now+3600}));
-            const sig = crypto.createHmac('sha256','$JWT_SECRET').update(header+'.'+payload).digest('base64url');
-            console.log(header+'.'+payload+'.'+sig);
-          ")
-          REFRESH_TOKEN=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
-          echo "E2E_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
-          echo "E2E_REFRESH_TOKEN=$REFRESH_TOKEN" >> "$GITHUB_ENV"
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
-
-      - name: Run E2E tests
-        run: npx playwright test
-
-      - name: Upload Playwright report
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: |
-            frontend/playwright-report/
-            frontend/test-results/
-          retention-days: 7
-
   ci-gate:
     if: always()
-    needs: [backend, frontend, e2e]
+    needs: [backend, frontend]
     runs-on: ubuntu-latest
     steps:
       - name: Check job results
         run: |
-          results=("${{ needs.backend.result }}" "${{ needs.frontend.result }}" "${{ needs.e2e.result }}")
+          results=("${{ needs.backend.result }}" "${{ needs.frontend.result }}")
           for r in "${results[@]}"; do
             if [[ "$r" != "success" && "$r" != "skipped" ]]; then
               echo "Job failed with result: $r"

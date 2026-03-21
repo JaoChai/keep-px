@@ -116,10 +116,14 @@ test.describe('Production Workflow', () => {
 
     await editor.fillMinimum(WF_SP_NAME)
 
-    // Select the pixel we created (checkbox inside collapsible that's already open)
-    const pixelCheckbox = page.locator('label', { hasText: WF_PIXEL_NAME }).locator('input[type="checkbox"]')
-    if (await pixelCheckbox.count() > 0) {
-      await pixelCheckbox.check()
+    // Select the pixel we created via chip popover
+    const addPixelBtn = page.getByRole('button', { name: 'เพิ่ม' })
+    if (await addPixelBtn.isVisible().catch(() => false)) {
+      await addPixelBtn.click()
+      const pixelOption = page.locator('button', { hasText: WF_PIXEL_NAME })
+      if (await pixelOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await pixelOption.click()
+      }
     }
 
     await editor.publish()

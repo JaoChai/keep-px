@@ -209,12 +209,8 @@ test.describe('Scenario 11: Full-Chain Integration', () => {
     // Fill minimum: page name + text block
     await editor.fillMinimum(SP_NAME)
 
-    // Select the first available pixel checkbox
-    const pixelCheckboxes = page.locator('input[type="checkbox"]')
-    const checkboxCount = await pixelCheckboxes.count()
-    if (checkboxCount > 0) {
-      await pixelCheckboxes.first().check()
-    }
+    // Select the first available pixel via chip popover
+    await editor.selectFirstPixel()
 
     // Open tracking settings and fill content name/value
     await editor.openTracking()
