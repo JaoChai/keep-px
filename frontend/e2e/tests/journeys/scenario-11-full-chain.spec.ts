@@ -51,14 +51,14 @@ test.describe('Scenario 11: Full-Chain Integration', () => {
       // --- Delete sale pages with our prefix ---
       await page.goto('/sale-pages')
       await page.waitForLoadState('networkidle')
-      let rows = page.locator('tr', { hasText: PREFIX })
+      let rows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
       let count = await rows.count()
       while (count > 0) {
         await rows.first().getByRole('button', { name: 'ลบ' }).click()
         await page.getByRole('heading', { name: 'ลบเซลเพจ' }).waitFor()
         await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
         await page.waitForTimeout(1000)
-        rows = page.locator('tr', { hasText: PREFIX })
+        rows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
         count = await rows.count()
       }
 
@@ -186,14 +186,14 @@ test.describe('Scenario 11: Full-Chain Integration', () => {
     await expect(salePagesPage.heading).toBeVisible()
 
     // Clean up leftover sale pages
-    let rows = page.locator('tr', { hasText: PREFIX })
+    let rows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
     let count = await rows.count()
     while (count > 0) {
       await rows.first().getByRole('button', { name: 'ลบ' }).click()
       await page.getByRole('heading', { name: 'ลบเซลเพจ' }).waitFor()
       await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
       await page.waitForTimeout(1000)
-      rows = page.locator('tr', { hasText: PREFIX })
+      rows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
       count = await rows.count()
     }
 
@@ -242,16 +242,16 @@ test.describe('Scenario 11: Full-Chain Integration', () => {
     await page.waitForLoadState('networkidle')
 
     // We need to publish again to get the dialog, but the page was already published in step 5.
-    // Instead, go to the sale pages list and extract the URL from the table row.
+    // Instead, go to the sale pages list and extract the URL from the card.
     const salePagesPage = new SalePagesPage(page)
     await salePagesPage.goto()
 
     const row = salePagesPage.getRow(SP_NAME)
     await expect(row).toBeVisible()
 
-    // Extract the public URL from the second column (slug column)
-    const urlCell = row.locator('td').nth(1)
-    const slug = (await urlCell.textContent())?.trim() ?? ''
+    // Extract the public URL from the card's URL element
+    const urlElement = row.locator('[data-testid="sale-page-url"]')
+    const slug = (await urlElement.textContent())?.trim() ?? ''
     expect(slug).toContain('/p/')
     publicUrl = slug
 

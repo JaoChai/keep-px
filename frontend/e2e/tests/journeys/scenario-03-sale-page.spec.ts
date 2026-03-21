@@ -26,14 +26,14 @@ test.describe('Scenario 3: Sale Page Builder', () => {
       await page.goto('/sale-pages')
       await page.waitForLoadState('networkidle')
       // Delete all sale pages with our prefix
-      let rows = page.locator('tr', { hasText: PREFIX })
+      let rows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
       let count = await rows.count()
       while (count > 0) {
         await rows.first().getByRole('button', { name: 'ลบ' }).click()
         await page.getByRole('heading', { name: 'ลบเซลเพจ' }).waitFor()
         await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
         await page.waitForTimeout(1000)
-        rows = page.locator('tr', { hasText: PREFIX })
+        rows = page.locator('[data-testid="sale-page-card"]', { hasText: PREFIX })
         count = await rows.count()
       }
     } catch {
@@ -58,15 +58,15 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     // Clean up leftover test sale pages
     const cleanupPrefixes = [PREFIX]
     for (const prefix of cleanupPrefixes) {
-      let rows = page.locator('tr', { hasText: prefix })
-      let count = await rows.count()
+      let cards = page.locator('[data-testid="sale-page-card"]', { hasText: prefix })
+      let count = await cards.count()
       while (count > 0) {
-        await rows.first().getByRole('button', { name: 'ลบ' }).click()
+        await cards.first().getByRole('button', { name: 'ลบ' }).click()
         await page.getByRole('heading', { name: 'ลบเซลเพจ' }).waitFor()
         await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
         await page.waitForTimeout(1000)
-        rows = page.locator('tr', { hasText: prefix })
-        count = await rows.count()
+        cards = page.locator('[data-testid="sale-page-card"]', { hasText: prefix })
+        count = await cards.count()
       }
     }
 
@@ -125,7 +125,7 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     await page.waitForURL(/\/sale-pages$/, { timeout: 15000 })
 
     // Verify in list with draft status
-    const row = page.locator('tr', { hasText: BLOCK_SP_NAME })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: BLOCK_SP_NAME })
     await expect(row).toBeVisible()
     await expect(row.getByText('แบบร่าง')).toBeVisible()
   })
@@ -135,7 +135,7 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     await listPage.goto()
 
     // Click edit on the draft
-    const row = page.locator('tr', { hasText: BLOCK_SP_NAME })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: BLOCK_SP_NAME })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: 'แก้ไข' }).click()
 
@@ -166,14 +166,14 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     await listPage.goto()
 
     // Find the published page row
-    const row = page.locator('tr', { hasText: BLOCK_SP_NAME })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: BLOCK_SP_NAME })
     await expect(row).toBeVisible()
 
     // Status should be "เผยแพร่แล้ว"
     await expect(row.getByText('เผยแพร่แล้ว')).toBeVisible()
 
     // Get the slug from the URL column
-    const urlCell = row.locator('td').nth(1)
+    const urlCell = row.locator('[data-testid="sale-page-url"]')
     const slug = await urlCell.textContent()
     expect(slug).toContain('/p/')
 
@@ -194,7 +194,7 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     await listPage.goto()
 
     // Edit the block page
-    const row = page.locator('tr', { hasText: BLOCK_SP_NAME })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: BLOCK_SP_NAME })
     await row.getByRole('button', { name: 'แก้ไข' }).click()
     await page.waitForLoadState('networkidle')
     // Wait for editor to load (settings collapsible is CLOSED on edit)
@@ -245,7 +245,7 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     const listPage = new SalePagesPage(page)
     await listPage.goto()
 
-    const row = page.locator('tr', { hasText: BLOCK_SP_NAME })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: BLOCK_SP_NAME })
     if (await row.count() > 0) {
       await row.getByRole('button', { name: 'ลบ' }).click()
       await expect(page.getByRole('heading', { name: 'ลบเซลเพจ' })).toBeVisible()
@@ -409,7 +409,7 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     await page.waitForURL(/\/sale-pages$/, { timeout: 15000 })
 
     // Verify in list
-    const row = page.locator('tr', { hasText: CLASSIC_SP_NAME })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: CLASSIC_SP_NAME })
     await expect(row).toBeVisible()
     await expect(row.getByText('แบบร่าง')).toBeVisible()
     // Template should show "Classic" badge
@@ -429,7 +429,7 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     await expect(page).toHaveURL(/\/sale-pages$/)
 
     // Verify published status
-    const updatedRow = page.locator('tr', { hasText: CLASSIC_SP_NAME })
+    const updatedRow = page.locator('[data-testid="sale-page-card"]', { hasText: CLASSIC_SP_NAME })
     await expect(updatedRow.getByText('เผยแพร่แล้ว')).toBeVisible()
   })
 
@@ -437,11 +437,11 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     const listPage = new SalePagesPage(page)
     await listPage.goto()
 
-    const row = page.locator('tr', { hasText: CLASSIC_SP_NAME })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: CLASSIC_SP_NAME })
     await expect(row).toBeVisible()
 
     // Get slug from URL column
-    const urlCell = row.locator('td').nth(1)
+    const urlCell = row.locator('[data-testid="sale-page-url"]')
     const slug = await urlCell.textContent()
     expect(slug).toContain('/p/')
 
@@ -515,7 +515,7 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     const listPage = new SalePagesPage(page)
     await listPage.goto()
 
-    const row = page.locator('tr', { hasText: CLASSIC_SP_NAME })
+    const row = page.locator('[data-testid="sale-page-card"]', { hasText: CLASSIC_SP_NAME })
     if (await row.count() > 0) {
       await row.getByRole('button', { name: 'ลบ' }).click()
       await expect(page.getByRole('heading', { name: 'ลบเซลเพจ' })).toBeVisible()

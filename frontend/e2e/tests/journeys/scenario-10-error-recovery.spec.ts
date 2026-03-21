@@ -233,10 +233,10 @@ test.describe(`Scenario 10: Error Recovery & Edge Cases`, () => {
     // Should see either:
     // - Table with sale pages
     // - Empty state ("ยังไม่มีเซลเพจ")
-    const hasTable = await salePagesPage.table.locator('tbody tr').first().isVisible().catch(() => false)
+    const hasCards = await page.locator('[data-testid="sale-page-card"]').first().isVisible().catch(() => false)
     const hasEmpty = await salePagesPage.emptyState.isVisible().catch(() => false)
 
-    expect(hasTable || hasEmpty).toBe(true)
+    expect(hasCards || hasEmpty).toBe(true)
   })
 
   // ============================================================

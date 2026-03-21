@@ -23,7 +23,7 @@ test.describe('Production Workflow', () => {
       await page.goto('/sale-pages')
       await page.waitForLoadState('networkidle')
       for (const prefix of ['E2E WF SP']) {
-        const rows = page.locator('tr', { hasText: prefix })
+        const rows = page.locator('[data-testid="sale-page-card"]', { hasText: prefix })
         let count = await rows.count()
         while (count > 0) {
           await rows.first().getByRole('button', { name: 'ลบ' }).click()
@@ -160,12 +160,12 @@ test.describe('Production Workflow', () => {
     await salePagesPage.goto()
     await page.waitForLoadState('networkidle')
 
-    const spRow = page.locator('tr', { hasText: 'E2E WF SP' })
-    if (await spRow.count() > 0) {
-      await salePagesPage.clickDeleteOnRow('E2E WF SP')
+    const spCard = page.locator('[data-testid="sale-page-card"]', { hasText: 'E2E WF SP' })
+    if (await spCard.count() > 0) {
+      await salePagesPage.clickDeleteOnCard('E2E WF SP')
       await expect(salePagesPage.deleteDialogTitle).toBeVisible()
       await salePagesPage.deleteConfirmButton.click()
-      await expect(spRow).not.toBeVisible()
+      await expect(spCard).not.toBeVisible()
     }
 
     // Delete pixel

@@ -276,7 +276,8 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                 )}
               </div>
               <div className="space-y-2">
-                <Label>Pixels (ไม่บังคับ)</Label>
+                <Label>เชื่อมต่อ Facebook Pixel</Label>
+                <p className="text-xs text-muted-foreground">เลือก Pixel ที่ต้องการให้เก็บข้อมูลเมื่อลูกค้าเข้าหน้านี้</p>
                 <div className="max-h-40 overflow-y-auto border border-border rounded-md p-2 space-y-1">
                   {(!pixels || pixels.length === 0) && (
                     <p className="text-xs text-muted-foreground">No pixels available</p>
@@ -316,7 +317,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
           <Collapsible title="ตั้งค่าการติดตาม">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="cta-event">เมื่อกดปุ่ม CTA ให้ยิงอีเวนต์</Label>
+                <Label htmlFor="cta-event">เมื่อลูกค้ากดปุ่ม ให้บันทึกเป็น</Label>
                 <select
                   id="cta-event"
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -365,10 +366,10 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                 <div className="flex items-start gap-2">
                   <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
                   <div className="text-xs text-blue-700 space-y-1">
-                    <p className="font-medium">อีเวนต์ที่ยิงอัตโนมัติ:</p>
+                    <p className="font-medium">ระบบบันทึกให้อัตโนมัติ:</p>
                     <ul className="space-y-0.5 ml-1">
-                      <li><code className="bg-blue-100 px-1 rounded">PageView</code> — ยิงเมื่อเปิดหน้าเพจ</li>
-                      <li><code className="bg-blue-100 px-1 rounded">ViewContent</code> — ยิงเมื่อเปิดหน้าเพจ</li>
+                      <li><code className="bg-blue-100 px-1 rounded">PageView</code> — เมื่อลูกค้าเปิดหน้าเพจ</li>
+                      <li><code className="bg-blue-100 px-1 rounded">ViewContent</code> — เมื่อลูกค้าเปิดหน้าเพจ</li>
                     </ul>
                   </div>
                 </div>
