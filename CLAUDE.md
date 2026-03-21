@@ -68,6 +68,17 @@ Run only gates for packages you changed. **If fail, fix and re-run. Do NOT proce
 | Frontend build/type fail | ECC `build-error-resolver` | Fix type errors, get build green |
 | CI pipeline fail | `ci-pipeline` | CI structure + common patterns |
 
+### Step 5.5: Functional Test → ทดสอบการใช้งานจริง
+**ทุกฟีเจอร์ ทุกการแก้ไข ต้องผ่าน functional test ก่อน commit — ไม่มีข้อยกเว้น**
+
+ใช้ Playwright MCP เปิด browser จริง → navigate → กดปุ่ม → จับภาพหน้าจอ → ยืนยันว่าทำงานตามที่ออกแบบ
+
+1. เปิด dev server: `cd frontend && npm run dev`
+2. ใช้ Playwright MCP: `browser_navigate` → `browser_snapshot` → `browser_click` → ตรวจสอบ
+3. จับภาพทุกหน้าที่แก้ไข ยืนยันว่า UI แสดงถูกต้อง
+4. ทดสอบ user flow หลัก (สร้าง, แก้ไข, ลบ) ตาม use case ที่ออกแบบไว้
+5. **ถ้าพัง → วนกลับ Step 4 แก้ไข → Step 5 quality gates → Step 5.5 test อีกรอบ**
+
 ### Step 6: Code Review → loop until clean
 Run **only** reviews relevant to changed code. **If issues found, fix and re-review.**
 
@@ -87,7 +98,7 @@ Run **only** reviews relevant to changed code. **If issues found, fix and re-rev
 ```
 gh pr create --title "type: description" --body "## Summary\n...\n## Test Plan\n..."
 ```
-Wait for `ci-gate` to pass. **If CI fails, go back to Step 5.**
+Wait for `ci-gate` to pass (~1-2 min, build check only — no E2E in CI). **If CI fails, go back to Step 5.**
 
 ### Step 9: Verify Deploy
 - Check `deploy-verify` job in GitHub Actions.
@@ -166,6 +177,7 @@ Wait for `ci-gate` to pass. **If CI fails, go back to Step 5.**
 
 - **Database**: PostgreSQL on Neon. 16 active tables: `customers`, `pixels`, `pixel_events`, `event_rules`, `replay_sessions`, `refresh_tokens`, `sale_pages`, `sale_page_pixels`, `notifications`, `purchases`, `replay_credits`, `subscriptions`, `event_usage`, `stripe_webhook_events`, `admin_credit_grants`, `admin_audit_logs`. UUIDs, `TIMESTAMPTZ`. 24 migrations.
 - **Deploy**: Railway — Backend (Go/Alpine Dockerfile) + Frontend (Node→Nginx Dockerfile, needs `VITE_API_URL` build arg).
+- **CI**: GitHub Actions — build check only (lint, test, tsc, build). **ไม่มี E2E ใน CI** — E2E ทำ local ตาม Step 5. Post-deploy smoke tests (`@smoke`) ยังรันบน main push.
 - **Backend env** (`backend/.env.example`): `DATABASE_URL`, `JWT_SECRET` (required), `PORT`, `ENV`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `FB_GRAPH_API_URL`, `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_RPS`
 - **Frontend env**: `VITE_API_URL` (empty = Vite proxy)
 - **sqlc**: `cd backend && sqlc generate` — NEVER edit `db/generated/` manually.
@@ -173,20 +185,22 @@ Wait for `ci-gate` to pass. **If CI fails, go back to Step 5.**
 
 ## Autoresearch (Autonomous Meta-Learning)
 
-4 hooks ทำงานอัตโนมัติ ไม่ต้องสั่ง:
+6 hooks ทำงานอัตโนมัติ ไม่ต้องสั่ง:
 
-| Hook | Event | ทำอะไร |
-|------|-------|--------|
-| `auto-plan.sh` | UserPromptSubmit | งานใหม่ → วิเคราะห์ domain → แนะนำ skill + gates + reviews → บังคับ plan mode |
-| `track-quality-gate.sh` | PostToolUse (Bash) | บันทึก pass/fail ของ go vet/test, npm lint/test/build, tsc, e2e |
-| `clear-session.sh` | SessionStart | Clear session data เมื่อเริ่ม session ใหม่ |
-| `post-task-meta.sh` | Stop | คำนวณ score → ตรวจ gate ที่ขาด → retrospective → revert check → snapshot → meta-learning |
+| Hook | Event | Matcher | ทำอะไร |
+|------|-------|---------|--------|
+| `auto-plan.sh` | UserPromptSubmit | — | งานใหม่ → วิเคราะห์ domain → แนะนำ skill + gates + reviews → บังคับ plan mode |
+| `track-quality-gate.sh` | PostToolUse | Bash | บันทึก pass/fail ของ go vet/test, npm lint/test/build, tsc, e2e (ตัด false positive: echo/gh/cat) |
+| `track-browser-test.sh` | PostToolUse | Playwright MCP ×3 | บันทึก functional-test gate เมื่อใช้ browser_navigate/snapshot/screenshot |
+| `track-review.sh` | PostToolUse | Skill | บันทึก code-review gate เมื่อรัน /simplify, /go-review, /security-review |
+| `clear-session.sh` | SessionStart | startup | Clear session data เมื่อเริ่ม session ใหม่ |
+| `post-task-meta.sh` | Stop | — | Weighted score → ตรวจ gate + CI status → retrospective → revert check → snapshot → meta-learning |
 
 **auto-plan บอกอะไร**: เมื่อเจอ task ใหม่ hook จะวิเคราะห์ domain จาก prompt (sale page, auth, billing, etc.) แล้วแนะนำ: skill ที่ต้องโหลด, gates ที่ต้องรัน, reviews ที่ต้องทำ — **ทำตาม hook แนะนำ ห้ามข้าม**
-**post-task-meta บอกอะไร**: เมื่อจบงาน hook จะตรวจไฟล์ที่แก้จริง แล้วเตือนถ้า gate ขาด + แนะนำ review ตามประเภทไฟล์ — **Retrospective ต้องทำก่อน meta-learning ทุกครั้ง**
-**Score** = quality gate first-pass rate (ผ่านรอบแรกกี่ %) — ดูที่ `autoresearch-eval` skill
+**post-task-meta บอกอะไร**: เมื่อจบงาน hook จะตรวจไฟล์ที่แก้จริง แล้วเตือนถ้า gate ขาด + แนะนำ review ตามประเภทไฟล์ + เช็ค CI status — **Retrospective ต้องทำก่อน meta-learning ทุกครั้ง**
+**Score** = weighted first-pass rate: critical gates (go-test, npm-build, e2e, functional-test) weight ×2, quality gates weight ×1 — ดูที่ `autoresearch-eval` skill
 **Revert** = ถ้า score ลดลง 2 รอบติด → auto-restore CLAUDE.md + skills จาก snapshot — ดูที่ `autoresearch-revert` skill
-**IMMUTABLE**: `.claude/autoresearch/eval.sh` ห้ามแก้ (เหมือน `prepare.py` ของ Karpathy)
+**IMMUTABLE**: `.claude/autoresearch/eval.sh` agent ห้ามแก้ (เหมือน `prepare.py` ของ Karpathy) — user สั่งแก้ได้
 
 ## Gotchas
 
