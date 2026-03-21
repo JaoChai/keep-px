@@ -134,6 +134,12 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 			r.Route("/auth", func(r chi.Router) {
 				r.Post("/google", authHandler.GoogleAuth)
 				r.Post("/refresh", authHandler.Refresh)
+
+				// Dev-only login (no Google OAuth required)
+				if cfg.Env == "development" {
+					r.Post("/dev-login", authHandler.DevLogin)
+					logger.Warn("dev-login endpoint enabled (development mode)")
+				}
 			})
 
 			// Event ingestion (API key auth)

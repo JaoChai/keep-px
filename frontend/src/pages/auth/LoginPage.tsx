@@ -1,10 +1,18 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
+import { useMutation } from '@tanstack/react-query'
 import { GoogleLogin } from '@react-oauth/google'
 import { Shield, RotateCcw, Zap, Database } from 'lucide-react'
 import { useGoogleAuth } from '@/hooks/use-auth'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import api from '@/lib/api'
+import { useAuthStore } from '@/stores/auth-store'
+import type { APIResponse, AuthTokens } from '@/types'
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const isDev = import.meta.env.DEV
 const LOGIN_ERROR = 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ'
 
 const features = [
@@ -30,9 +38,24 @@ const features = [
   },
 ]
 
+function storeAuthTokens(data: AuthTokens) {
+  localStorage.setItem('access_token', data.access_token)
+  localStorage.setItem('refresh_token', data.refresh_token)
+  useAuthStore.getState().setCustomer(data.customer)
+}
+
 export function LoginPage() {
   const navigate = useNavigate()
   const googleAuth = useGoogleAuth()
+  const [devEmail, setDevEmail] = useState('')
+
+  const devLogin = useMutation({
+    mutationFn: async (email: string) => {
+      const { data } = await api.post<APIResponse<AuthTokens>>('/auth/dev-login', { email })
+      return data.data!
+    },
+    onSuccess: storeAuthTokens,
+  })
 
   return (
     <div className="flex min-h-screen">
@@ -157,6 +180,45 @@ export function LoginPage() {
               <p className="text-center text-sm text-muted-foreground">
                 ยังไม่ได้ตั้งค่า Google Login
               </p>
+            )}
+
+            {/* Dev Login — development only */}
+            {isDev && (
+              <>
+                <div className="my-6 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs text-muted-foreground">Dev Login</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    if (!devEmail.trim()) return
+                    try {
+                      await devLogin.mutateAsync(devEmail.trim())
+                      toast.success('Dev login สำเร็จ')
+                      navigate('/dashboard')
+                    } catch {
+                      toast.error('ไม่พบ email นี้ในระบบ')
+                    }
+                  }}
+                  className="space-y-3"
+                >
+                  <Input
+                    type="email"
+                    placeholder="email ที่มีอยู่ใน DB"
+                    value={devEmail}
+                    onChange={(e) => setDevEmail(e.target.value)}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={devLogin.isPending}
+                    className="w-full"
+                  >
+                    {devLogin.isPending ? 'กำลังเข้าสู่ระบบ...' : 'Dev Login'}
+                  </Button>
+                </form>
+              </>
             )}
 
             <div className="my-6 flex items-center gap-3">

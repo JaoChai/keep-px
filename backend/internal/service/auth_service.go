@@ -128,6 +128,20 @@ func (s *AuthService) GoogleAuth(ctx context.Context, input GoogleAuthInput) (*A
 	return s.generateTokens(ctx, customer)
 }
 
+func (s *AuthService) DevLogin(ctx context.Context, email string) (*AuthTokens, error) {
+	customer, err := s.customerRepo.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, fmt.Errorf("get by email: %w", err)
+	}
+	if customer == nil {
+		return nil, ErrInvalidCredentials
+	}
+	if customer.SuspendedAt != nil {
+		return nil, ErrAccountSuspended
+	}
+	return s.generateTokens(ctx, customer)
+}
+
 func (s *AuthService) Logout(ctx context.Context, customerID string) error {
 	if err := s.refreshTokenRepo.DeleteByCustomerID(ctx, customerID); err != nil {
 		return fmt.Errorf("delete refresh tokens: %w", err)

@@ -9,7 +9,7 @@ import (
 
 type Config struct {
 	Port               int           `env:"PORT" envDefault:"8080"`
-	Env                string        `env:"ENV" envDefault:"development"`
+	Env                string        `env:"ENV" envDefault:"production"`
 	DatabaseURL        string        `env:"DATABASE_URL,required"`
 	JWTSecret          string        `env:"JWT_SECRET,required"`
 	JWTAccessTTL       time.Duration `env:"JWT_ACCESS_TTL" envDefault:"15m"`
@@ -55,6 +55,8 @@ type Config struct {
 }
 
 func Load() (*Config, error) {
+	// .env.local overrides .env (godotenv does NOT overwrite existing vars)
+	_ = godotenv.Load(".env.local")
 	_ = godotenv.Load()
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {

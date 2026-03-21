@@ -173,10 +173,18 @@ Wait for `ci-gate` to pass (~1-2 min, build check only — no E2E in CI). **If C
 | GET/PUT | `/api/v1/settings/*` | JWT | User settings + API key |
 | GET/PUT/POST | `/api/v1/admin/*` | JWT+Admin | Admin panel endpoints |
 
+## Local Development
+
+- **DB isolation**: Neon branch `dev-local` — copy of production, changes don't affect prod.
+- **Config override**: `backend/.env.local` overrides `backend/.env` (godotenv load order). File is gitignored.
+- **Neon direct endpoint**: Local dev MUST use direct endpoint (remove `-pooler` from hostname) — pooler doesn't support `pg_advisory_lock` needed by golang-migrate.
+- **Dev Login**: `POST /api/v1/auth/dev-login` — accepts `{ "email": "..." }`, returns JWT. Only registered when `ENV=development`. Frontend shows Dev Login form only in Vite dev mode (`import.meta.env.DEV`).
+- **Start local**: `cd backend && go run cmd/server/main.go` + `cd frontend && npm run dev`. Kill stale processes first: `lsof -i :8080`.
+
 ## Reference
 
 - **Database**: PostgreSQL on Neon. 16 active tables: `customers`, `pixels`, `pixel_events`, `event_rules`, `replay_sessions`, `refresh_tokens`, `sale_pages`, `sale_page_pixels`, `notifications`, `purchases`, `replay_credits`, `subscriptions`, `event_usage`, `stripe_webhook_events`, `admin_credit_grants`, `admin_audit_logs`. UUIDs, `TIMESTAMPTZ`. 24 migrations.
-- **Deploy**: Railway — Backend (Go/Alpine Dockerfile) + Frontend (Node→Nginx Dockerfile, needs `VITE_API_URL` build arg).
+- **Deploy**: Railway — `pixlinks-api` (Go/Alpine Dockerfile) + `pixlinks-web` (Node→Nginx Dockerfile, needs `VITE_API_URL` build arg).
 - **CI**: GitHub Actions — build check only (lint, test, tsc, build). **ไม่มี E2E ใน CI** — E2E ทำ local ตาม Step 5. Post-deploy smoke tests (`@smoke`) ยังรันบน main push.
 - **Backend env** (`backend/.env.example`): `DATABASE_URL`, `JWT_SECRET` (required), `PORT`, `ENV`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `FB_GRAPH_API_URL`, `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_RPS`
 - **Frontend env**: `VITE_API_URL` (empty = Vite proxy)
