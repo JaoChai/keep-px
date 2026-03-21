@@ -57,7 +57,7 @@ Run only gates for packages you changed. **If fail, fix and re-run. Do NOT proce
 | Package | Command |
 |---------|---------|
 | Backend | `cd backend && go vet ./... && go test -race ./...` |
-| Frontend | `cd frontend && npm run lint && npm run test && npm run build` |
+| Frontend | `cd frontend && npx tsc --noEmit && npm run lint && npm run test && npm run build` |
 | E2E | `cd frontend && npm run e2e` |
 
 **ถ้า fail — ใช้ skill debug ก่อนแก้มั่ว:**
@@ -96,8 +96,9 @@ Wait for `ci-gate` to pass. **If CI fails, go back to Step 5.**
 - CSP/proxy issues: use `nginx-csp` skill (4-location-block inheritance trap).
 - Fix and go back to Step 5.
 
-### Step 10: Report + Learn
+### Step 10: Report + Retrospective + Learn
 - Tell the user: what was done, PR link, deploy status, any follow-up needed.
+- **Retrospective**: ทบทวน — plan ทำครบไหม? gate fail ตรงไหน? โหลด domain skill ก่อน implement ไหม? ข้ามขั้นตอนไหน? รายงานสั้นๆ 3-5 บรรทัด
 - Run ECC `/learn-eval` — extract reusable patterns from this session into instincts.
 
 ## Architecture
@@ -169,6 +170,23 @@ Wait for `ci-gate` to pass. **If CI fails, go back to Step 5.**
 - **Frontend env**: `VITE_API_URL` (empty = Vite proxy)
 - **sqlc**: `cd backend && sqlc generate` — NEVER edit `db/generated/` manually.
 - **Migrations**: Auto-run on deploy via `golang-migrate` in `cmd/server/main.go` (`m.Up()` at startup). Migration files in `backend/db/migrations/` are included in the Docker image. No manual step needed.
+
+## Autoresearch (Autonomous Meta-Learning)
+
+4 hooks ทำงานอัตโนมัติ ไม่ต้องสั่ง:
+
+| Hook | Event | ทำอะไร |
+|------|-------|--------|
+| `auto-plan.sh` | UserPromptSubmit | งานใหม่ → วิเคราะห์ domain → แนะนำ skill + gates + reviews → บังคับ plan mode |
+| `track-quality-gate.sh` | PostToolUse (Bash) | บันทึก pass/fail ของ go vet/test, npm lint/test/build, tsc, e2e |
+| `clear-session.sh` | SessionStart | Clear session data เมื่อเริ่ม session ใหม่ |
+| `post-task-meta.sh` | Stop | คำนวณ score → ตรวจ gate ที่ขาด → retrospective → revert check → snapshot → meta-learning |
+
+**auto-plan บอกอะไร**: เมื่อเจอ task ใหม่ hook จะวิเคราะห์ domain จาก prompt (sale page, auth, billing, etc.) แล้วแนะนำ: skill ที่ต้องโหลด, gates ที่ต้องรัน, reviews ที่ต้องทำ — **ทำตาม hook แนะนำ ห้ามข้าม**
+**post-task-meta บอกอะไร**: เมื่อจบงาน hook จะตรวจไฟล์ที่แก้จริง แล้วเตือนถ้า gate ขาด + แนะนำ review ตามประเภทไฟล์ — **Retrospective ต้องทำก่อน meta-learning ทุกครั้ง**
+**Score** = quality gate first-pass rate (ผ่านรอบแรกกี่ %) — ดูที่ `autoresearch-eval` skill
+**Revert** = ถ้า score ลดลง 2 รอบติด → auto-restore CLAUDE.md + skills จาก snapshot — ดูที่ `autoresearch-revert` skill
+**IMMUTABLE**: `.claude/autoresearch/eval.sh` ห้ามแก้ (เหมือน `prepare.py` ของ Karpathy)
 
 ## Gotchas
 

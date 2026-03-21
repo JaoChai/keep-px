@@ -1,14 +1,17 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router'
-import { ArrowLeft, Copy, Check, ExternalLink, Info, Eye, Pencil, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Copy, Check, ExternalLink, Eye, Pencil, ChevronDown, X, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Collapsible } from '@/components/ui/collapsible'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { BlockEditor } from '@/components/sale-pages/BlockEditor'
 import { BlockPreview } from '@/components/sale-pages/BlockPreview'
 import { StyleEditor } from '@/components/sale-pages/StyleEditor'
+import { TemplateSelector } from '@/components/sale-pages/TemplateSelector'
 import { UnsavedChangesDialog } from '@/components/shared/UnsavedChangesDialog'
 import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
 import { usePixels } from '@/hooks/use-pixels'
@@ -83,6 +86,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
   const [copiedUrl, setCopiedUrl] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const unsaved = useUnsavedChanges(hasChanges)
+  const showTemplateSelector = !isEditing && blocks.length === 0
 
   const draftKey = isEditing && existingPage ? `sale-page:${existingPage.id}` : 'sale-page:new'
 
@@ -135,7 +139,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
       return
     }
     if (blocks.length === 0) {
-      setSubmitError('กรุณาเพิ่มบล็อกอย่างน้อย 1 อัน')
+      setSubmitError('กรุณาเพิ่มเนื้อหาอย่างน้อย 1 อัน')
       return
     }
     try {
@@ -177,6 +181,29 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
     setCopiedUrl(true)
     setTimeout(() => setCopiedUrl(false), 2000)
   }
+
+  const handleTemplateSelect = (templateBlocks: Block[]) => {
+    setBlocks(templateBlocks)
+    if (templateBlocks.length > 0) setHasChanges(true)
+  }
+
+  const removePixel = (pixelId: string) => {
+    setSelectedPixelIds(prev => prev.filter(id => id !== pixelId))
+    setHasChanges(true)
+  }
+
+  const addPixel = (pixelId: string) => {
+    setSelectedPixelIds(prev => [...prev, pixelId])
+    setHasChanges(true)
+  }
+
+  const { selectedPixels, unselectedPixels } = useMemo(() => {
+    if (!pixels) return { selectedPixels: [], unselectedPixels: [] }
+    return {
+      selectedPixels: pixels.filter(p => selectedPixelIds.includes(p.id)),
+      unselectedPixels: pixels.filter(p => !selectedPixelIds.includes(p.id)),
+    }
+  }, [pixels, selectedPixelIds])
 
   return (
     <div>
@@ -236,88 +263,97 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
       <div className="flex gap-8">
         {/* Left Column - Editor */}
         <div className={`flex-1 lg:w-2/3 space-y-4 ${mobileView === 'preview' ? 'hidden lg:block' : ''}`}>
-          {/* Settings */}
-          <Collapsible title="ตั้งค่าหน้าเพจ" defaultOpen={!isEditing}>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="page-name">ชื่อหน้าเพจ</Label>
-                <Input
-                  id="page-name"
-                  placeholder="เช่น โปรโมชั่นครีมหน้าใส"
-                  value={name}
-                  onChange={(e) => { setName(e.target.value); setHasChanges(true) }}
-                />
-              </div>
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => setShowCustomSlug(!showCustomSlug)}
-                >
-                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showCustomSlug ? 'rotate-0' : '-rotate-90'}`} />
-                  ตั้ง URL เอง (ไม่บังคับ)
-                </button>
-                {showCustomSlug && (
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-border bg-muted text-sm text-muted-foreground">
-                      /p/
-                    </span>
-                    <Input
-                      id="page-slug"
-                      className="rounded-l-none"
-                      placeholder="my-page"
-                      value={slug}
-                      onChange={(e) => { setSlug(e.target.value); setHasChanges(true) }}
-                    />
-                  </div>
-                )}
-                {!showCustomSlug && (
-                  <p className="text-xs text-muted-foreground">ระบบจะสร้าง URL ให้อัตโนมัติ</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>เชื่อมต่อ Facebook Pixel</Label>
-                <p className="text-xs text-muted-foreground">เลือก Pixel ที่ต้องการให้เก็บข้อมูลเมื่อลูกค้าเข้าหน้านี้</p>
-                <div className="max-h-40 overflow-y-auto border border-border rounded-md p-2 space-y-1">
-                  {(!pixels || pixels.length === 0) && (
-                    <p className="text-xs text-muted-foreground">No pixels available</p>
-                  )}
-                  {pixels?.map((pixel) => (
-                    <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-accent cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedPixelIds.includes(pixel.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedPixelIds(prev => [...prev, pixel.id])
-                          } else {
-                            setSelectedPixelIds(prev => prev.filter(id => id !== pixel.id))
-                          }
-                          setHasChanges(true)
-                        }}
-                        className="rounded border-border"
-                      />
-                      {pixel.name} ({pixel.fb_pixel_id})
-                    </label>
-                  ))}
-                </div>
-              </div>
+
+          {/* Section 1: Page Name */}
+          <div className="border border-border rounded-lg p-4 bg-card space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="page-name">ชื่อเพจ</Label>
+              <Input
+                id="page-name"
+                placeholder="เช่น โปรโมชั่นครีมหน้าใส"
+                value={name}
+                onChange={(e) => { setName(e.target.value); setHasChanges(true) }}
+              />
             </div>
-          </Collapsible>
+            <div>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setShowCustomSlug(!showCustomSlug)}
+              >
+                <ChevronDown className={`h-3 w-3 transition-transform ${showCustomSlug ? 'rotate-0' : '-rotate-90'}`} />
+                ตั้ง URL เอง
+              </button>
+              {showCustomSlug && (
+                <div className="flex mt-2">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-border bg-muted text-sm text-muted-foreground">
+                    /p/
+                  </span>
+                  <Input
+                    id="page-slug"
+                    className="rounded-l-none"
+                    placeholder="my-page"
+                    value={slug}
+                    onChange={(e) => { setSlug(e.target.value); setHasChanges(true) }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
 
-          {/* Block Editor */}
-          <BlockEditor blocks={blocks} onChange={(b) => { setBlocks(b); setHasChanges(true) }} />
+          {/* Section 2: Pixel Selection (Chips) */}
+          <div className="border border-border rounded-lg p-4 bg-card space-y-2">
+            <Label>Pixel ที่ใช้เก็บข้อมูล</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedPixels.map((pixel) => (
+                <Badge key={pixel.id} variant="default" className="gap-1 pr-1">
+                  {pixel.name}
+                  <button
+                    type="button"
+                    className="ml-0.5 rounded-full hover:bg-primary-foreground/20 p-0.5"
+                    onClick={() => removePixel(pixel.id)}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {(!pixels || pixels.length === 0) ? (
+                <Link to="/pixels" className="text-xs text-primary hover:underline">
+                  ยังไม่มี Pixel — สร้าง Pixel
+                </Link>
+              ) : unselectedPixels.length > 0 ? (
+                <Popover>
+                  <PopoverTrigger className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-dashed border-border rounded-md text-muted-foreground hover:text-foreground hover:border-foreground transition-colors">
+                    <Plus className="h-3 w-3" />
+                    เพิ่ม
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="p-2 w-64">
+                    <div className="space-y-0.5">
+                      {unselectedPixels.map((pixel) => (
+                        <button
+                          key={pixel.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
+                          onClick={() => addPixel(pixel.id)}
+                        >
+                          <span className="font-medium">{pixel.name}</span>
+                          <span className="text-muted-foreground ml-1.5 text-xs">{pixel.fb_pixel_id}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ) : selectedPixels.length === 0 ? (
+                <p className="text-xs text-muted-foreground">เลือก Pixel เพื่อเก็บข้อมูลลูกค้า</p>
+              ) : null}
+            </div>
+          </div>
 
-          {/* Page Style */}
-          <Collapsible title="รูปแบบหน้าเพจ">
-            <StyleEditor style={pageStyle} onChange={(s) => { setPageStyle(s); setHasChanges(true) }} />
-          </Collapsible>
-
-          {/* Tracking Settings */}
-          <Collapsible title="ตั้งค่าการติดตาม">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="cta-event">เมื่อลูกค้ากดปุ่ม ให้บันทึกเป็น</Label>
+          {/* Section 3: Tracking (always visible, compact) */}
+          <div className="border border-border rounded-lg p-4 bg-card space-y-3">
+            <Label>เมื่อลูกค้ากดปุ่ม</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div className="sm:col-span-1">
                 <select
                   id="cta-event"
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -329,52 +365,50 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="content-name">ชื่อสินค้า (ไม่บังคับ)</Label>
+              <div className="sm:col-span-1">
                 <Input
                   id="content-name"
-                  placeholder="เช่น ครีมหน้าใส, คอร์สออนไลน์"
+                  placeholder="ชื่อสินค้า"
                   value={trackingContentName}
                   onChange={(e) => { setTrackingContentName(e.target.value); setHasChanges(true) }}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="content-value">ราคาสินค้า (ไม่บังคับ)</Label>
-                  <Input
-                    id="content-value"
-                    type="number"
-                    placeholder="0"
-                    value={trackingContentValue}
-                    onChange={(e) => { setTrackingContentValue(Number(e.target.value) || 0); setHasChanges(true) }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="currency">สกุลเงิน</Label>
-                  <select
-                    id="currency"
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={trackingCurrency}
-                    onChange={(e) => { setTrackingCurrency(e.target.value); setHasChanges(true) }}
-                  >
-                    <option value="THB">THB (บาท)</option>
-                    <option value="USD">USD (ดอลลาร์)</option>
-                  </select>
-                </div>
+              <div className="sm:col-span-1">
+                <Input
+                  id="content-value"
+                  type="number"
+                  placeholder="ราคา"
+                  value={trackingContentValue || ''}
+                  onChange={(e) => { setTrackingContentValue(Number(e.target.value) || 0); setHasChanges(true) }}
+                />
               </div>
-              <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
-                <div className="flex items-start gap-2">
-                  <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
-                  <div className="text-xs text-blue-700 space-y-1">
-                    <p className="font-medium">ระบบบันทึกให้อัตโนมัติ:</p>
-                    <ul className="space-y-0.5 ml-1">
-                      <li><code className="bg-blue-100 px-1 rounded">PageView</code> — เมื่อลูกค้าเปิดหน้าเพจ</li>
-                      <li><code className="bg-blue-100 px-1 rounded">ViewContent</code> — เมื่อลูกค้าเปิดหน้าเพจ</li>
-                    </ul>
-                  </div>
-                </div>
+              <div className="sm:col-span-1">
+                <select
+                  id="currency"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={trackingCurrency}
+                  onChange={(e) => { setTrackingCurrency(e.target.value); setHasChanges(true) }}
+                >
+                  <option value="THB">THB (บาท)</option>
+                  <option value="USD">USD (ดอลลาร์)</option>
+                </select>
               </div>
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              <code className="bg-muted px-1 rounded text-[10px]">PageView</code> + <code className="bg-muted px-1 rounded text-[10px]">ViewContent</code> ยิงอัตโนมัติเมื่อเปิดเพจ
+            </p>
+          </div>
+
+          {/* Section 4: Template Selector or Block Editor */}
+          {showTemplateSelector ? (
+            <TemplateSelector onSelect={handleTemplateSelect} />
+          ) : (
+            <BlockEditor blocks={blocks} onChange={(b) => { setBlocks(b); setHasChanges(true) }} />
+          )}
+
+          {/* Section 5: Page Style (Collapsible — secondary) */}
+          <Collapsible title="รูปแบบหน้าเพจ">
+            <StyleEditor style={pageStyle} onChange={(s) => { setPageStyle(s); setHasChanges(true) }} />
           </Collapsible>
         </div>
 
@@ -382,7 +416,12 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
         <div className={`lg:w-1/3 ${mobileView === 'edit' ? 'hidden lg:block' : ''}`}>
           <div className="sticky top-8">
             <p className="text-sm font-medium text-muted-foreground mb-3">Preview</p>
-            <BlockPreview blocks={blocks} ctaEventName={ctaEventName} style={pageStyle} />
+            <BlockPreview
+              blocks={blocks}
+              ctaEventName={ctaEventName}
+              style={pageStyle}
+              emptyText={showTemplateSelector ? 'เลือกเทมเพลตด้านซ้ายเพื่อเริ่มต้น' : undefined}
+            />
           </div>
         </div>
       </div>

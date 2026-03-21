@@ -6,9 +6,10 @@ interface BlockPreviewProps {
   blocks: Block[]
   ctaEventName?: string
   style?: PageStyle
+  emptyText?: string
 }
 
-export const BlockPreview = memo(function BlockPreview({ blocks, ctaEventName, style }: BlockPreviewProps) {
+export const BlockPreview = memo(function BlockPreview({ blocks, ctaEventName, style, emptyText }: BlockPreviewProps) {
   const accentColor = style?.accent_color
   const bgColor = style?.bg_color
   const textColor = style?.text_color
@@ -26,7 +27,7 @@ export const BlockPreview = memo(function BlockPreview({ blocks, ctaEventName, s
       <div>
         {blocks.length === 0 && (
           <div className="px-6 py-16 text-center text-neutral-300 text-sm">
-            เพิ่มบล็อกเพื่อเริ่มสร้างหน้าเพจ
+            {emptyText || 'เพิ่มเนื้อหาด้านซ้าย'}
           </div>
         )}
         {blocks.map((block) => {
