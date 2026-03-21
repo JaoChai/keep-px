@@ -1,6 +1,6 @@
 ---
 name: event-pipeline
-description: Checklist and pitfalls for the Keep-PX event tracking pipeline — sale page templates, Meta CAPI forwarding, and template co-change rules
+description: Event tracking pipeline, sale page templates, Meta CAPI forwarding — ใช้เมื่อ: แก้หน้า event, event ไม่ขึ้น, event error, pixel ไม่ทำงาน, CAPI error, tracking พัง, อีเวนต์หาย, แก้ sale page template, pixel ไม่ส่งข้อมูล
 ---
 
 # Event Pipeline

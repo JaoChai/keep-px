@@ -1,6 +1,6 @@
 ---
 name: go-service-scaffold
-description: Scaffold a complete Go resource with all 7 clean architecture layers following Keep-PX conventions
+description: Scaffold complete Go resource with all 7 clean architecture layers — ใช้เมื่อ: สร้าง resource ใหม่, CRUD ใหม่, backend resource ใหม่, scaffold service, สร้าง service ใหม่, เพิ่ม resource
 ---
 
 # Go Service Scaffold

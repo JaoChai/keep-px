@@ -13,104 +13,41 @@ No shared workspace tooling — two independent packages.
 
 ## Development Loop
 
-**FOLLOW THIS LOOP FOR EVERY TASK.** Do not skip steps. Loop back on failure.
-
-### Step 1: Branch
+### 1. Branch
 Create feature branch from `main`. NEVER commit directly to `main`.
-```
-git checkout -b feat/... or fix/... or chore/... or refactor/...
-```
 
-### Step 2: Plan → Wait for user confirm
-- Non-trivial tasks: ECC `/plan` → present plan, **wait for user approval**.
-- Large tasks (backend + frontend together): use `TeamCreate` to spawn parallel agents.
-- Use MCP `context7` to look up library docs if unsure about APIs.
+### 2. Plan (if non-trivial)
+Present plan, **wait for user approval** before implementing.
 
-### Step 3: Scaffold + Domain Context
-**สร้างใหม่:**
-| Need | Skill |
-|------|-------|
-| New backend resource | `/go-service-scaffold` |
-| New endpoint on existing resource | `/api-endpoint` |
-| Database schema change | `/db-migration` + MCP `neon` to verify |
-| New frontend page | `/frontend-feature` |
-
-**แก้ไขของเดิม — อ่าน domain skill ก่อนเขียน code:**
-| Domain | Skill | ทำไม |
-|--------|-------|-------|
-| Sale pages, templates | `sale-page-editor` | 3 templates ต้อง co-change |
-| Events, CAPI pipeline | `event-pipeline` | tracking + forwarding pitfalls |
-| Auth, JWT, OAuth | `auth-flow` | token refresh + guard patterns |
-| Billing, Stripe | `stripe-webhook` | idempotency + credit system |
-| Nginx, CSP, proxy | `nginx-csp` | 4-location-block inheritance |
-
-### Step 4: Implement
-- **Backend (Go):** ECC `/go-test` — write tests first, then implement (TDD).
-- **Frontend (React):** ECC `/tdd` — write tests first + MCP `context7` for library docs.
-- **E2E tests:** Read `e2e-write` skill first (project-specific rules) → เขียน test ตาม rules → ECC `/e2e` เพื่อ **run** เท่านั้น → run `npm run e2e` local before push.
+### 3. Implement
+- **Domain skills**: Claude จะ invoke skill ที่เกี่ยวข้องอัตโนมัติตาม description — ดู skill list ที่ available
+- **Backend (Go):** Write tests first, then implement (TDD).
+- **Frontend (React):** Write tests first + MCP `context7` for library docs.
 - **File co-change:** แก้ interfaces.go → ต้องแก้ mocks ทั้ง 2 ไฟล์, แก้ types → ต้องแก้ hooks (ดู Gotchas).
 - **Database:** Use MCP `neon` to query/inspect when needed.
 
-### Step 5: Quality Gates → loop until green
+### 4. Quality Gates — loop until green
 Run only gates for packages you changed. **If fail, fix and re-run. Do NOT proceed.**
 
 | Package | Command |
 |---------|---------|
 | Backend | `cd backend && go vet ./... && go test -race ./...` |
-| Frontend | `cd frontend && npx tsc --noEmit && npm run lint && npm run test && npm run build` |
+| Frontend | `cd frontend && npx tsc -b --noEmit && npm run lint && npm run test && npm run build` |
 | E2E | `cd frontend && npm run e2e` |
 
-**ถ้า fail — ใช้ skill debug ก่อนแก้มั่ว:**
-| Failure | Skill | ทำไม |
-|---------|-------|-------|
-| E2E test fail | `e2e-debug` | Root cause analysis + decision tree |
-| Go build fail | ECC `/go-build` | Surgical fix, minimal changes |
-| Frontend build/type fail | ECC `build-error-resolver` | Fix type errors, get build green |
-| CI pipeline fail | `ci-pipeline` | CI structure + common patterns |
-
-### Step 5.5: Functional Test → ทดสอบการใช้งานจริง
-**ทุกฟีเจอร์ ทุกการแก้ไข ต้องผ่าน functional test ก่อน commit — ไม่มีข้อยกเว้น**
-
-ใช้ Playwright MCP เปิด browser จริง → navigate → กดปุ่ม → จับภาพหน้าจอ → ยืนยันว่าทำงานตามที่ออกแบบ
-
-1. เปิด dev server: `cd frontend && npm run dev`
-2. ใช้ Playwright MCP: `browser_navigate` → `browser_snapshot` → `browser_click` → ตรวจสอบ
-3. จับภาพทุกหน้าที่แก้ไข ยืนยันว่า UI แสดงถูกต้อง
-4. ทดสอบ user flow หลัก (สร้าง, แก้ไข, ลบ) ตาม use case ที่ออกแบบไว้
-5. **ถ้าพัง → วนกลับ Step 4 แก้ไข → Step 5 quality gates → Step 5.5 test อีกรอบ**
-
-### Step 6: Code Review → loop until clean
-Run **only** reviews relevant to changed code. **If issues found, fix and re-review.**
-
-| Scope | Tool |
-|-------|------|
-| Go code | ECC `/go-review` |
-| SQL, migrations, schema | ECC `/database-reviewer` |
-| Auth, middleware, user input, API keys | ECC `/security-review` |
-| Code quality, reuse, dead code | `/simplify` |
-
-### Step 7: Commit + Push
-- **Pre-push check:** Run quality gates from Step 5 + verify no `.env` files committed, no hardcoded secrets.
+### 5. Commit + Push
 - Commit format: `type: short description` (lowercase, no period, max 72 chars)
-- Git hooks run automatically: `pre-commit` (lint-staged), `commit-msg` (commitlint), `pre-push` (quality gates).
+- Git hooks run automatically: `pre-commit` (lint-staged), `commit-msg` (commitlint), `pre-push` (quality gates per changed package).
+- Verify no `.env` files or hardcoded secrets.
 
-### Step 8: Pull Request
+### 6. Pull Request
 ```
 gh pr create --title "type: description" --body "## Summary\n...\n## Test Plan\n..."
 ```
-Wait for `ci-gate` to pass (~1-2 min, build check only — no E2E in CI). **If CI fails, go back to Step 5.**
+Wait for CI to pass. **If CI fails, go back to Step 4.**
 
-### Step 9: Verify Deploy
-- Check `deploy-verify` job in GitHub Actions.
-- `post-deploy-e2e` runs `@smoke` tests against production.
-- If failed: use `railway-deploy` skill + MCP `railway` to check logs.
-- CSP/proxy issues: use `nginx-csp` skill (4-location-block inheritance trap).
-- Fix and go back to Step 5.
-
-### Step 10: Report + Retrospective + Learn
-- Tell the user: what was done, PR link, deploy status, any follow-up needed.
-- **Retrospective**: ทบทวน — plan ทำครบไหม? gate fail ตรงไหน? โหลด domain skill ก่อน implement ไหม? ข้ามขั้นตอนไหน? รายงานสั้นๆ 3-5 บรรทัด
-- Run ECC `/learn-eval` — extract reusable patterns from this session into instincts.
+### 7. Report
+Tell the user: what was done, PR link, deploy status, any follow-up needed.
 
 ## Architecture
 
@@ -183,32 +120,13 @@ Wait for `ci-gate` to pass (~1-2 min, build check only — no E2E in CI). **If C
 
 ## Reference
 
-- **Database**: PostgreSQL on Neon. 16 active tables: `customers`, `pixels`, `pixel_events`, `event_rules`, `replay_sessions`, `refresh_tokens`, `sale_pages`, `sale_page_pixels`, `notifications`, `purchases`, `replay_credits`, `subscriptions`, `event_usage`, `stripe_webhook_events`, `admin_credit_grants`, `admin_audit_logs`. UUIDs, `TIMESTAMPTZ`. 24 migrations.
+- **Database**: PostgreSQL on Neon. UUIDs, `TIMESTAMPTZ`.
 - **Deploy**: Railway — `pixlinks-api` (Go/Alpine Dockerfile) + `pixlinks-web` (Node→Nginx Dockerfile, needs `VITE_API_URL` build arg).
-- **CI**: GitHub Actions — build check only (lint, test, tsc, build). **ไม่มี E2E ใน CI** — E2E ทำ local ตาม Step 5. Post-deploy smoke tests (`@smoke`) ยังรันบน main push.
+- **CI**: GitHub Actions — build check only (lint, test, tsc, build). **No E2E in CI** — E2E runs locally. Post-deploy smoke tests (`@smoke`) run on main push.
 - **Backend env** (`backend/.env.example`): `DATABASE_URL`, `JWT_SECRET` (required), `PORT`, `ENV`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `FB_GRAPH_API_URL`, `CORS_ALLOWED_ORIGINS`, `RATE_LIMIT_RPS`
 - **Frontend env**: `VITE_API_URL` (empty = Vite proxy)
 - **sqlc**: `cd backend && sqlc generate` — NEVER edit `db/generated/` manually.
-- **Migrations**: Auto-run on deploy via `golang-migrate` in `cmd/server/main.go` (`m.Up()` at startup). Migration files in `backend/db/migrations/` are included in the Docker image. No manual step needed.
-
-## Autoresearch (Autonomous Meta-Learning)
-
-6 hooks ทำงานอัตโนมัติ ไม่ต้องสั่ง:
-
-| Hook | Event | Matcher | ทำอะไร |
-|------|-------|---------|--------|
-| `auto-plan.sh` | UserPromptSubmit | — | งานใหม่ → วิเคราะห์ domain → แนะนำ skill + gates + reviews → บังคับ plan mode |
-| `track-quality-gate.sh` | PostToolUse | Bash | บันทึก pass/fail ของ go vet/test, npm lint/test/build, tsc, e2e (ตัด false positive: echo/gh/cat) |
-| `track-browser-test.sh` | PostToolUse | Playwright MCP ×3 | บันทึก functional-test gate เมื่อใช้ browser_navigate/snapshot/screenshot |
-| `track-review.sh` | PostToolUse | Skill | บันทึก code-review gate เมื่อรัน /simplify, /go-review, /security-review |
-| `clear-session.sh` | SessionStart | startup | Clear session data เมื่อเริ่ม session ใหม่ |
-| `post-task-meta.sh` | Stop | — | Weighted score → ตรวจ gate + CI status → retrospective → revert check → snapshot → meta-learning |
-
-**auto-plan บอกอะไร**: เมื่อเจอ task ใหม่ hook จะวิเคราะห์ domain จาก prompt (sale page, auth, billing, etc.) แล้วแนะนำ: skill ที่ต้องโหลด, gates ที่ต้องรัน, reviews ที่ต้องทำ — **ทำตาม hook แนะนำ ห้ามข้าม**
-**post-task-meta บอกอะไร**: เมื่อจบงาน hook จะตรวจไฟล์ที่แก้จริง แล้วเตือนถ้า gate ขาด + แนะนำ review ตามประเภทไฟล์ + เช็ค CI status — **Retrospective ต้องทำก่อน meta-learning ทุกครั้ง**
-**Score** = weighted first-pass rate: critical gates (go-test, npm-build, e2e, functional-test) weight ×2, quality gates weight ×1 — ดูที่ `autoresearch-eval` skill
-**Revert** = ถ้า score ลดลง 2 รอบติด → auto-restore CLAUDE.md + skills จาก snapshot — ดูที่ `autoresearch-revert` skill
-**IMMUTABLE**: `.claude/autoresearch/eval.sh` agent ห้ามแก้ (เหมือน `prepare.py` ของ Karpathy) — user สั่งแก้ได้
+- **Migrations**: Auto-run on deploy via `golang-migrate` in `cmd/server/main.go` (`m.Up()` at startup). Files in `backend/db/migrations/`.
 
 ## Gotchas
 
@@ -216,16 +134,16 @@ Wait for `ci-gate` to pass (~1-2 min, build check only — no E2E in CI). **If C
 - **Backend interface → mocks**: Change `interfaces.go` → update mocks in BOTH `service/mocks_test.go` AND `handler/testhelpers_test.go`
 - **Frontend types → hooks**: Change `types/index.ts` → update corresponding `hooks/use-*.ts`
 - **Sale page templates**: `blocks.html`, `simple.html`, `tracking.html` ALWAYS change together — forgetting one causes silent tracking failure
-- **Router hot files**: `router.go` (27/166 commits), `interfaces.go` (21), `mocks_test.go` (18) — review carefully
 
 ### Code Patterns
+- **tsc project references**: `npx tsc --noEmit` ไม่จับ type error เมื่อ root tsconfig ใช้ `references`. ต้องใช้ `npx tsc -b --noEmit` เสมอ.
 - **No `components.json`**: `npx shadcn add` won't work. Write shadcn components manually + `npm install @radix-ui/*` in `frontend/`.
 - **Custom Popover**: `components/ui/popover.tsx` is NOT Radix — it's a custom implementation. No `asChild` prop. Use `className` directly on `PopoverTrigger`.
 - **Mock files exist in TWO packages**: When changing a repository interface, update mocks in BOTH `service/mocks_test.go` AND `handler/testhelpers_test.go`.
 - **Recharts Tooltip name collision**: When using shadcn Tooltip alongside Recharts, alias as `Tooltip as RechartsTooltip` and `Tooltip as ShadTooltip`.
 - **Handler perPage clamp**: Always clamp `perPage` in handler (not just service) — handler uses it for `TotalPages` calculation.
 - **chi route order**: Static routes (`/events/event-types`) MUST be registered before wildcard (`/events/{id}`).
-- **LSP diagnostics can be stale**: After editing `.tsx` files, LSP may show false errors. Verify with `cd frontend && npx tsc --noEmit` before investigating.
+- **LSP diagnostics can be stale**: After editing `.tsx` files, LSP may show false errors. Verify with `npx tsc -b --noEmit` before investigating.
 - **E2E Thai text collisions**: `getByText` + Thai text ต้องใช้ `{ exact: true }` หรือ scope ด้วย parent locator — "สร้าง", "ยกเลิก", "จัดการ" ปรากฏใน 12-16 components
 - **E2E responsive duplicates**: Sidebar/nav ซ้ำ mobile/desktop → ใช้ `.first()` หรือ scope locator, ห้ามใช้ bare `getByRole` ที่ match หลาย element
 - **E2E sandbox empty state**: Test user อาจไม่มี data → ใช้ `test.skip()` + guard check ก่อน interact กับ empty lists

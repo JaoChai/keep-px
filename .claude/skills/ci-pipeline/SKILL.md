@@ -1,6 +1,6 @@
 ---
 name: ci-pipeline
-description: GitHub Actions CI pipeline structure and common CI failure debugging for Keep-PX
+description: GitHub Actions CI pipeline structure and failure debugging — ใช้เมื่อ: CI แดง, CI fail, build fail, pipeline error, GitHub Actions พัง, CI ไม่ผ่าน, build ไม่ผ่าน, workflow error
 ---
 
 # CI Pipeline

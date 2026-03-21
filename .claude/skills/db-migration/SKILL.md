@@ -1,6 +1,6 @@
 ---
 name: db-migration
-description: Create numbered SQL migration files following Keep-PX conventions, with optional sqlc query generation
+description: Create SQL migration files, sqlc query generation — ใช้เมื่อ: เพิ่ม table, เพิ่ม column, สร้าง migration, แก้ schema, เพิ่มฟิลด์, สร้างตารางใหม่, แก้ database, เปลี่ยน index
 ---
 
 # Database Migration

@@ -1,6 +1,6 @@
 ---
 name: api-endpoint
-description: Add a new endpoint method to an existing Keep-PX backend resource (service + handler + route + test)
+description: Add endpoint to existing Keep-PX backend resource (service + handler + route + test) — ใช้เมื่อ: เพิ่ม API, สร้าง endpoint ใหม่, เพิ่ม route, API ใหม่, แก้ API, backend route ใหม่
 ---
 
 # API Endpoint
