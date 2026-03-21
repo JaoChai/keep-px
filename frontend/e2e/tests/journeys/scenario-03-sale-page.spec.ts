@@ -158,8 +158,8 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     // Success dialog should appear
     await expect(page.getByText(/เผยแพร่สำเร็จ/)).toBeVisible({ timeout: 15000 })
 
-    // Success dialog should contain published URL
-    const urlCode = page.locator('code')
+    // Success dialog should contain published URL (scope to dialog, avoid tracking <code> tags)
+    const urlCode = page.locator('code').filter({ hasText: '/p/' })
     await expect(urlCode).toBeVisible()
     const publishedUrl = await urlCode.textContent()
     expect(publishedUrl).toContain('/p/')

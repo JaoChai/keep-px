@@ -225,16 +225,19 @@ export class SalePageEditorPage {
     return featureRow.getByRole('button')
   }
 
-  /** Get the number of blocks in the block editor */
+  /** Get the number of blocks in the block editor (only block cards have trash icons) */
   async getBlockCount() {
-    return await this.page.locator('.border.border-border.rounded-lg.p-4.bg-card').count()
+    return await this.page.locator('.border.border-border.rounded-lg.p-4.bg-card').filter({
+      has: this.page.locator('[class*="lucide-trash"]'),
+    }).count()
   }
 
   /** Click the delete button on a specific block by index */
   async clickDeleteBlock(index: number) {
-    const blocks = this.page.locator('.border.border-border.rounded-lg.p-4.bg-card')
+    const blocks = this.page.locator('.border.border-border.rounded-lg.p-4.bg-card').filter({
+      has: this.page.locator('[class*="lucide-trash"]'),
+    })
     const block = blocks.nth(index)
-    // The delete button contains a red trash icon
     await block.locator('button').filter({ has: this.page.locator('[class*="lucide-trash"]') }).click()
   }
 
