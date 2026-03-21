@@ -113,11 +113,12 @@ func (s *AuthService) GoogleAuth(ctx context.Context, input GoogleAuthInput) (*A
 	}
 
 	customer = &domain.Customer{
-		Email:    email,
-		GoogleID: &googleID,
-		Name:     name,
-		APIKey:   apiKey,
-		Plan:     domain.PlanSandbox,
+		Email:         email,
+		GoogleID:      &googleID,
+		Name:          name,
+		APIKey:        apiKey,
+		Plan:          domain.PlanSandbox,
+		RetentionDays: 7,
 	}
 
 	if err := s.customerRepo.Create(ctx, customer); err != nil {
