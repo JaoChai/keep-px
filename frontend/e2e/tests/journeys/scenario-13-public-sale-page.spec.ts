@@ -157,16 +157,14 @@ test.describe('Scenario 13: Public Sale Page — Customer Experience', () => {
     await expect(editorPage.pageNameInput).toBeVisible()
     await editorPage.pageNameInput.fill(PAGE_NAME)
 
+    // Dismiss template selector (new page)
+    await editorPage.dismissTemplateSelector()
+
     // Add a text block
     await editorPage.addTextBlockButton.click()
 
-    // Select pixel checkbox (first available)
-    const pixelCheckboxes = page.locator('input[type="checkbox"]')
-    const checkboxCount = await pixelCheckboxes.count()
-    if (checkboxCount > 0) {
-      await pixelCheckboxes.first().check()
-      await expect(pixelCheckboxes.first()).toBeChecked()
-    }
+    // Select pixel via chip popover
+    await editorPage.selectFirstPixel()
 
     // Publish
     await editorPage.publishButton.click()

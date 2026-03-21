@@ -54,11 +54,17 @@ export class SalePageEditorPage {
   readonly copyUrlButton: Locator
 
   // Block editor specific
-  readonly settingsCollapsible: Locator
   readonly addImageBlockButton: Locator
   readonly addLineBlockButton: Locator
   readonly addWebsiteBlockButton: Locator
   readonly addLinkBlockButton: Locator
+
+  // Template selector (block editor — new pages only)
+  readonly templateBlankButton: Locator
+  readonly templateImageLineButton: Locator
+
+  // Pixel chip selector (block editor)
+  readonly addPixelButton: Locator
 
   // Block delete dialog
   readonly deleteBlockDialogTitle: Locator
@@ -70,17 +76,14 @@ export class SalePageEditorPage {
   readonly stayButton: Locator
   readonly leaveButton: Locator
 
-  // Tracking collapsible (block editor)
-  readonly trackingCollapsible: Locator
-
   // Style collapsible (block editor)
   readonly styleCollapsible: Locator
 
   constructor(page: Page) {
     this.page = page
 
-    // Block editor page name input (id="page-name")
-    this.pageNameInput = page.getByLabel('ชื่อหน้าเพจ')
+    // Block editor page name input (id="page-name", label "ชื่อเพจ")
+    this.pageNameInput = page.getByLabel('ชื่อเพจ')
     this.saveDraftButton = page.getByRole('button', { name: 'บันทึกแบบร่าง' })
     this.publishButton = page.getByRole('button', { name: 'เผยแพร่' })
     this.addTextBlockButton = page.getByRole('button', { name: 'ข้อความ' })
@@ -90,7 +93,7 @@ export class SalePageEditorPage {
     this.goBackButton = page.getByRole('button', { name: 'กลับไปหน้ารายการ' })
 
     // Custom slug
-    this.customSlugToggle = page.getByText('ตั้ง URL เอง (ไม่บังคับ)')
+    this.customSlugToggle = page.getByText('ตั้ง URL เอง')
     this.slugInput = page.locator('#page-slug, #slug')
 
     // Hero section fields (classic editor uses htmlFor ids)
@@ -108,7 +111,7 @@ export class SalePageEditorPage {
     this.ctaButtonTextInput = page.getByLabel('ข้อความปุ่ม')
     this.ctaButtonLinkInput = page.getByLabel('ลิงก์ปุ่ม')
 
-    // Tracking settings (both editors)
+    // Tracking settings (both editors — always visible in block editor)
     this.ctaEventNameSelect = page.locator('#cta_event_name, #cta-event')
     this.trackingContentNameInput = page.locator('#tracking_content_name, #content-name')
     this.trackingContentValueInput = page.locator('#tracking_content_value, #content-value')
@@ -133,11 +136,17 @@ export class SalePageEditorPage {
     })
 
     // Block editor specific add block buttons
-    this.settingsCollapsible = page.getByText('ตั้งค่าหน้าเพจ')
     this.addImageBlockButton = page.getByRole('button', { name: 'รูปภาพ' })
-    this.addLineBlockButton = page.getByRole('button', { name: 'LINE' })
-    this.addWebsiteBlockButton = page.getByRole('button', { name: 'เว็บไซต์' })
-    this.addLinkBlockButton = page.getByRole('button', { name: 'ลิงก์' })
+    this.addLineBlockButton = page.getByRole('button', { name: 'ปุ่ม LINE' })
+    this.addWebsiteBlockButton = page.getByRole('button', { name: 'ปุ่มเว็บ' })
+    this.addLinkBlockButton = page.getByRole('button', { name: 'ปุ่มลิงก์' })
+
+    // Template selector buttons (block editor — new pages only)
+    this.templateBlankButton = page.getByText('เริ่มจากหน้าว่าง')
+    this.templateImageLineButton = page.getByText('รูป + แอดไลน์')
+
+    // Pixel chip selector — "เพิ่ม" button opens popover
+    this.addPixelButton = page.getByRole('button', { name: 'เพิ่ม' })
 
     // Block delete confirmation dialog (custom Dialog component — no role="dialog")
     this.deleteBlockDialogTitle = page.getByRole('heading', { name: 'ลบบล็อก' })
@@ -151,8 +160,7 @@ export class SalePageEditorPage {
     this.stayButton = page.getByRole('button', { name: 'อยู่ต่อ' })
     this.leaveButton = page.getByRole('button', { name: 'ออกโดยไม่บันทึก' })
 
-    // Collapsible sections in block editor
-    this.trackingCollapsible = page.getByRole('button', { name: 'ตั้งค่าการติดตาม' })
+    // Style collapsible (block editor)
     this.styleCollapsible = page.getByRole('button', { name: 'รูปแบบหน้าเพจ' })
   }
 
@@ -164,10 +172,19 @@ export class SalePageEditorPage {
     await this.page.goto('/sale-pages/new-classic')
   }
 
+  /** Dismiss template selector by choosing blank template (new pages only) */
+  async dismissTemplateSelector() {
+    const isVisible = await this.templateBlankButton.isVisible({ timeout: 2000 }).catch(() => false)
+    if (isVisible) {
+      await this.templateBlankButton.click()
+    }
+  }
+
   /** Fill page name and add a text block (minimum required to save) */
   async fillMinimum(name: string) {
-    // The settings collapsible is open by default for new pages
     await this.pageNameInput.fill(name)
+    // Dismiss template selector if showing (new page)
+    await this.dismissTemplateSelector()
     // Add at least one block
     await this.addTextBlockButton.click()
   }
@@ -180,12 +197,18 @@ export class SalePageEditorPage {
     await this.publishButton.click()
   }
 
-  /** Open the settings collapsible (in block editor, settings is a collapsible section) */
-  async openSettings() {
-    // Check if the settings section is already open by looking for the name input
-    const isVisible = await this.pageNameInput.isVisible({ timeout: 1000 }).catch(() => false)
-    if (!isVisible) {
-      await this.settingsCollapsible.click()
+  /** Select a pixel via the Popover chip selector */
+  async selectFirstPixel() {
+    const addBtn = this.addPixelButton
+    const isVisible = await addBtn.isVisible({ timeout: 2000 }).catch(() => false)
+    if (isVisible) {
+      await addBtn.click()
+      // Click the first pixel option in the popover
+      const pixelOption = this.page.locator('[data-radix-popper-content-wrapper] button, [class*="popover"] button').first()
+      const optionVisible = await pixelOption.isVisible({ timeout: 2000 }).catch(() => false)
+      if (optionVisible) {
+        await pixelOption.click()
+      }
     }
   }
 
@@ -215,12 +238,11 @@ export class SalePageEditorPage {
     await block.locator('button').filter({ has: this.page.locator('[class*="lucide-trash"]') }).click()
   }
 
-  /** Open tracking settings collapsible in block editor */
+  /** Open tracking settings — in redesigned block editor, tracking is always visible */
   async openTracking() {
-    const isVisible = await this.ctaEventNameSelect.isVisible({ timeout: 1000 }).catch(() => false)
-    if (!isVisible) {
-      await this.trackingCollapsible.click()
-    }
+    // Tracking is always visible in block editor now (no collapsible)
+    // Just wait for the select to be visible
+    await this.ctaEventNameSelect.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
   }
 
   /** Open style settings collapsible in block editor */

@@ -102,8 +102,7 @@ test.describe('Sale Pages @smoke', () => {
     await salePagesPage.clickEditOnRow(originalName)
     await expect(page).toHaveURL(/\/sale-pages\/.*\/edit-blocks/, { timeout: 15000 })
 
-    // Open settings collapsible (closed by default in edit mode)
-    await page.getByText('ตั้งค่าหน้าเพจ').click()
+    // Page name is always visible (no longer in collapsible)
     await expect(editor.pageNameInput).toBeVisible()
 
     // Change name

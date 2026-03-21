@@ -80,7 +80,7 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     await page.waitForLoadState('networkidle')
 
     // Fill page name
-    const pageNameInput = page.getByLabel('ชื่อหน้าเพจ')
+    const pageNameInput = page.getByLabel('ชื่อเพจ')
     await expect(pageNameInput).toBeVisible()
     await pageNameInput.fill(BLOCK_SP_NAME)
 
@@ -97,15 +97,17 @@ test.describe('Scenario 3: Sale Page Builder', () => {
   test('step 3: block editor — select pixel', async ({ page }) => {
     await page.goto('/sale-pages/new')
     await page.waitForLoadState('networkidle')
-    await page.getByLabel('ชื่อหน้าเพจ').fill(BLOCK_SP_NAME)
+    await page.getByLabel('ชื่อเพจ').fill(BLOCK_SP_NAME)
 
-    // Pixel checkboxes should be visible in settings section
-    const pixelCheckboxes = page.locator('input[type="checkbox"]')
-    const checkboxCount = await pixelCheckboxes.count()
-    if (checkboxCount > 0) {
-      // Select the first pixel
-      await pixelCheckboxes.first().check()
-      await expect(pixelCheckboxes.first()).toBeChecked()
+    // Select pixel via chip popover (redesigned UI)
+    const addPixelBtn = page.getByRole('button', { name: 'เพิ่ม' })
+    if (await addPixelBtn.isVisible().catch(() => false)) {
+      await addPixelBtn.click()
+      // Click the first pixel option in the popover
+      const firstOption = page.locator('[data-radix-popper-content-wrapper] button, [class*="popover"] button').first()
+      if (await firstOption.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await firstOption.click()
+      }
     }
   })
 
@@ -114,7 +116,13 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     await page.waitForLoadState('networkidle')
 
     // Fill minimum
-    await page.getByLabel('ชื่อหน้าเพจ').fill(BLOCK_SP_NAME)
+    await page.getByLabel('ชื่อเพจ').fill(BLOCK_SP_NAME)
+
+    // Dismiss template selector (new page shows template selector first)
+    const blankTemplate = page.getByText('เริ่มจากหน้าว่าง')
+    if (await blankTemplate.isVisible().catch(() => false)) {
+      await blankTemplate.click()
+    }
 
     // Add a text block
     const addTextBtn = page.getByRole('button', { name: 'ข้อความ' })
@@ -460,7 +468,7 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     await page.waitForLoadState('networkidle')
 
     // Make a change to trigger dirty state
-    await page.getByLabel('ชื่อหน้าเพจ').fill('Unsaved test')
+    await page.getByLabel('ชื่อเพจ').fill('Unsaved test')
     await page.waitForTimeout(500)
 
     // Try to navigate away via sidebar link
@@ -486,8 +494,12 @@ test.describe('Scenario 3: Sale Page Builder', () => {
     await page.waitForLoadState('networkidle')
 
     // Make a change
-    await page.getByLabel('ชื่อหน้าเพจ').fill('Unsaved test leave')
-    // Add a block to ensure dirty state
+    await page.getByLabel('ชื่อเพจ').fill('Unsaved test leave')
+    // Dismiss template selector then add a block to ensure dirty state
+    const blankTemplate = page.getByText('เริ่มจากหน้าว่าง')
+    if (await blankTemplate.isVisible().catch(() => false)) {
+      await blankTemplate.click()
+    }
     const addTextBtn = page.getByRole('button', { name: 'ข้อความ' })
     if (await addTextBtn.isVisible()) {
       await addTextBtn.click()

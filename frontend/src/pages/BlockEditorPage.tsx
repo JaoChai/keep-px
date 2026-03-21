@@ -85,8 +85,9 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
   const [publishedDialog, setPublishedDialog] = useState<{ slug: string } | null>(null)
   const [copiedUrl, setCopiedUrl] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [templateSelected, setTemplateSelected] = useState(false)
   const unsaved = useUnsavedChanges(hasChanges)
-  const showTemplateSelector = !isEditing && blocks.length === 0
+  const showTemplateSelector = !isEditing && blocks.length === 0 && !templateSelected
 
   const draftKey = isEditing && existingPage ? `sale-page:${existingPage.id}` : 'sale-page:new'
 
@@ -184,6 +185,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
 
   const handleTemplateSelect = (templateBlocks: Block[]) => {
     setBlocks(templateBlocks)
+    setTemplateSelected(true)
     if (templateBlocks.length > 0) setHasChanges(true)
   }
 
