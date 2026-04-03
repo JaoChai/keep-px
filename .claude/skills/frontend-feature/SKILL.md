@@ -1,6 +1,6 @@
 ---
 name: frontend-feature
-description: Scaffold a React dashboard page with TanStack Query hook, TypeScript types, route, and sidebar entry following Keep-PX conventions
+description: Scaffold React dashboard page with TanStack Query hook, TypeScript types, route — ใช้เมื่อ: เพิ่มหน้าใหม่, สร้างหน้า dashboard, UI ใหม่, หน้า frontend ใหม่, เพิ่ม page, สร้าง component ใหม่
 ---
 
 # Frontend Feature

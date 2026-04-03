@@ -1,6 +1,6 @@
 ---
 name: nginx-csp
-description: Nginx CSP header management, security headers, and envsubst variable checklist for Keep-PX frontend deployment
+description: Nginx CSP header management, security headers, envsubst — ใช้เมื่อ: CSP error, blocked by CSP, nginx config, security header, หน้าเว็บโหลดไม่ครบ, script ถูก block, font ไม่ขึ้น, 502 error
 ---
 
 # Nginx CSP

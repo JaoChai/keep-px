@@ -1,6 +1,6 @@
 ---
 name: e2e-write
-description: Proactive rules for writing Playwright E2E tests that pass CI — Thai text selectors, custom dialogs, responsive duplicates, sandbox guards, and spec templates (159 tests, 12 page objects)
+description: Rules for writing Playwright E2E tests that pass CI — Thai text selectors, sandbox guards — ใช้เมื่อ: เขียน test ใหม่, เพิ่ม test, สร้าง e2e test, เขียน e2e, เพิ่ม test coverage, ทดสอบหน้าใหม่
 ---
 
 # E2E Write

@@ -1,6 +1,6 @@
 ---
 name: e2e-debug
-description: Debug Playwright E2E test failures in CI — root cause analysis, strict mode violations, Thai text selectors, and dialog timing patterns (159 tests, 12 page objects)
+description: Debug Playwright E2E test failures — root cause analysis, strict mode, Thai text selectors — ใช้เมื่อ: e2e fail, test พัง, CI test แดง, playwright error, timeout, test ไม่ผ่าน, e2e แดง, test ล้มเหลว
 ---
 
 # E2E Debug

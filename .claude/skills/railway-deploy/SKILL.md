@@ -1,6 +1,6 @@
 ---
 name: railway-deploy
-description: Railway deployment patterns, Nginx proxy rules, and common pitfalls for Keep-PX monorepo
+description: Railway deployment patterns, Nginx proxy, Dockerfile — ใช้เมื่อ: deploy พัง, deploy ไม่ขึ้น, Railway error, 502, Dockerfile error, build fail บน Railway, deploy ล้มเหลว, server ไม่ทำงาน
 ---
 
 # Railway Deploy

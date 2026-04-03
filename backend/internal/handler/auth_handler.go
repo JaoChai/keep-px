@@ -54,6 +54,36 @@ func (h *AuthHandler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
 	JSON(w, http.StatusOK, APIResponse{Data: tokens})
 }
 
+func (h *AuthHandler) DevLogin(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Email string `json:"email" validate:"required,email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := h.validate.Struct(body); err != nil {
+		ErrorJSON(w, http.StatusBadRequest, FormatValidationErrors(err))
+		return
+	}
+
+	tokens, err := h.authService.DevLogin(r.Context(), body.Email)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			ErrorJSON(w, http.StatusNotFound, "customer not found")
+			return
+		}
+		if errors.Is(err, service.ErrAccountSuspended) {
+			ErrorJSON(w, http.StatusForbidden, "account suspended")
+			return
+		}
+		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "dev login failed", err)
+		return
+	}
+
+	JSON(w, http.StatusOK, APIResponse{Data: tokens})
+}
+
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	customerID := middleware.GetCustomerID(r.Context())
 	customer, err := h.authService.GetCustomerByID(r.Context(), customerID)

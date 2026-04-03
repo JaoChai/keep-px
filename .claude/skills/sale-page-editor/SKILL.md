@@ -1,6 +1,6 @@
 ---
 name: sale-page-editor
-description: Sale page CRUD, block editor, template rendering, pixel assignment patterns, and co-change checklist for Keep-PX
+description: Sale page CRUD, block editor, template rendering, pixel assignment — ใช้เมื่อ: แก้เซลเพจ, เซลเพจพัง, หน้าขายไม่แสดง, sale page error, template ไม่ทำงาน, block editor, แก้เพจ, เพิ่ม block, หน้าขาย, preview ไม่ขึ้น
 ---
 
 # Sale Page Editor
