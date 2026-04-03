@@ -69,15 +69,18 @@ test.describe('Scenario 14: Real Facebook Integration', { tag: ['@critical', '@r
       // Delete pixels
       await page.goto('/pixels')
       await page.waitForLoadState('networkidle')
+      for (let i = 0; i < 3; i++) { await page.keyboard.press('Escape').catch(() => {}); await page.waitForTimeout(200) }
       rows = page.locator('tr', { hasText: PREFIX })
       count = await rows.count()
       while (count > 0) {
+        await page.keyboard.press('Escape').catch(() => {})
+        await page.waitForTimeout(200)
         await rows.first().getByRole('button').filter({ has: page.locator('[class*="lucide-trash"]') }).click()
         await page.locator('button.bg-destructive', { hasText: 'ลบ' }).waitFor()
         await page.locator('button.bg-destructive', { hasText: 'ลบ' }).click()
         await page.waitForTimeout(1000)
         const toast = page.locator('[data-sonner-toast]')
-        if (await toast.count() > 0) { await toast.first().click(); await page.waitForTimeout(500) }
+        if (await toast.count() > 0) { await toast.first().click().catch(() => {}); await page.waitForTimeout(500) }
         rows = page.locator('tr', { hasText: PREFIX })
         count = await rows.count()
       }
@@ -93,17 +96,31 @@ test.describe('Scenario 14: Real Facebook Integration', { tag: ['@critical', '@r
     await pixelsPage.goto()
     await page.waitForLoadState('networkidle')
 
+    // Force-dismiss any lingering dialogs/modals/overlays that block clicks
+    await page.evaluate(() => {
+      document.querySelectorAll('[class*="fixed"][class*="inset-0"][class*="z-50"]').forEach(el => el.remove())
+      document.querySelectorAll('[data-sonner-toast]').forEach(el => el.remove())
+    })
+    await page.waitForTimeout(500)
+
     // Cleanup leftover test data
     let rows = page.locator('tr', { hasText: PREFIX })
     let count = await rows.count()
     while (count > 0) {
+      // Remove any blocking overlays before each delete attempt
+      await page.evaluate(() => {
+        document.querySelectorAll('[class*="fixed"][class*="inset-0"][class*="z-50"]').forEach(el => el.remove())
+        document.querySelectorAll('[data-sonner-toast]').forEach(el => el.remove())
+      })
+      await page.waitForTimeout(300)
       await rows.first().getByRole('button').filter({ has: page.locator('[class*="lucide-trash"]') }).click()
       const deleteBtn = page.locator('button.bg-destructive', { hasText: 'ลบ' })
       await deleteBtn.waitFor({ state: 'visible', timeout: 5000 })
       await deleteBtn.click()
-      await page.waitForTimeout(1000)
-      const toast = page.locator('[data-sonner-toast]')
-      if (await toast.count() > 0) { await toast.first().click(); await page.waitForTimeout(500) }
+      await page.waitForTimeout(1500)
+      await page.evaluate(() => {
+        document.querySelectorAll('[data-sonner-toast]').forEach(el => el.remove())
+      })
       rows = page.locator('tr', { hasText: PREFIX })
       count = await rows.count()
     }
