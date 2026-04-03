@@ -70,6 +70,15 @@ func (c *CAPIClient) SendEvents(ctx context.Context, pixelID, accessToken, testE
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
+	// Debug: log first 500 bytes of request body for troubleshooting CAPI errors
+	if len(body) > 0 {
+		logBody := string(body)
+		if len(logBody) > 500 {
+			logBody = logBody[:500] + "..."
+		}
+		fmt.Printf("[DEBUG-CAPI] POST %s body=%s\n", url, logBody)
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
