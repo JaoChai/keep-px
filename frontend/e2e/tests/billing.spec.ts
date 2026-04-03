@@ -38,7 +38,7 @@ test.describe('Billing @smoke', () => {
 
     // Check prices
     await expect(page.getByText('฿299')).toBeVisible()
-    await expect(page.getByText('฿1,990')).toBeVisible()
+    await expect(page.getByText('฿1,990', { exact: true })).toBeVisible()
 
     // Credits section: either active credits or "no credits" message (state-agnostic)
     const hasCredits = await page.getByText('เครดิตที่มีอยู่').isVisible().catch(() => false)

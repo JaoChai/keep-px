@@ -73,10 +73,10 @@ func (r *ReplaySessionRepo) UpdateProgress(ctx context.Context, id string, repla
 func (r *ReplaySessionRepo) UpdateStatus(ctx context.Context, id string, status string) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE replay_sessions SET
-			status = $2,
-			started_at = CASE WHEN $2 = 'running' AND started_at IS NULL THEN NOW() ELSE started_at END,
-			completed_at = CASE WHEN $2 IN ('completed', 'failed', 'cancelled') THEN NOW() ELSE completed_at END,
-			cancelled_at = CASE WHEN $2 = 'cancelled' THEN NOW() ELSE cancelled_at END
+			status = $2::text,
+			started_at = CASE WHEN $2::text = 'running' AND started_at IS NULL THEN NOW() ELSE started_at END,
+			completed_at = CASE WHEN $2::text IN ('completed', 'failed', 'cancelled') THEN NOW() ELSE completed_at END,
+			cancelled_at = CASE WHEN $2::text = 'cancelled' THEN NOW() ELSE cancelled_at END
 		 WHERE id = $1`,
 		id, status,
 	)
@@ -86,11 +86,11 @@ func (r *ReplaySessionRepo) UpdateStatus(ctx context.Context, id string, status 
 func (r *ReplaySessionRepo) UpdateStatusWithError(ctx context.Context, id string, status string, errorMsg string) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE replay_sessions SET
-			status = $2,
+			status = $2::text,
 			error_message = $3,
-			started_at = CASE WHEN $2 = 'running' AND started_at IS NULL THEN NOW() ELSE started_at END,
-			completed_at = CASE WHEN $2 IN ('completed', 'failed', 'cancelled') THEN NOW() ELSE completed_at END,
-			cancelled_at = CASE WHEN $2 = 'cancelled' THEN NOW() ELSE cancelled_at END
+			started_at = CASE WHEN $2::text = 'running' AND started_at IS NULL THEN NOW() ELSE started_at END,
+			completed_at = CASE WHEN $2::text IN ('completed', 'failed', 'cancelled') THEN NOW() ELSE completed_at END,
+			cancelled_at = CASE WHEN $2::text = 'cancelled' THEN NOW() ELSE cancelled_at END
 		 WHERE id = $1`,
 		id, status, errorMsg,
 	)
