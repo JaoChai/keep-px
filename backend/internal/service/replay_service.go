@@ -296,8 +296,16 @@ func (s *ReplayService) sendBatchWithRetry(ctx context.Context, pixelID, accessT
 	return facebook.SendEventsWithRetry(ctx, s.capiClient, pixelID, accessToken, "", events, maxRetries, s.logger)
 }
 
+// dbCtx returns a context suitable for database writes that must complete
+// even when the server is shutting down (e.g. final status updates).
+func dbCtx() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 10*time.Second)
+}
+
 func (s *ReplayService) executeReplay(ctx context.Context, session *domain.ReplaySession, targetPixel *domain.Pixel, events []*domain.PixelEvent) {
-	if err := s.replayRepo.UpdateStatus(ctx, session.ID, domain.ReplayStatusRunning); err != nil {
+	dbC, dbCancel := dbCtx()
+	defer dbCancel()
+	if err := s.replayRepo.UpdateStatus(dbC, session.ID, domain.ReplayStatusRunning); err != nil {
 		s.logger.Error("failed to update replay status to running", "error", err, "session_id", session.ID)
 	}
 
@@ -442,9 +450,11 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 			replayed += int64(len(batch))
 		}
 
-		if err := s.replayRepo.UpdateProgress(ctx, session.ID, int(replayed), int(failed)); err != nil {
+		progCtx, progCancel := dbCtx()
+		if err := s.replayRepo.UpdateProgress(progCtx, session.ID, int(replayed), int(failed)); err != nil {
 			s.logger.Warn("failed to update replay progress", "error", err, "session_id", session.ID)
 		}
+		progCancel()
 
 		// Batch delay between batches (skip after the last batch)
 		delay := time.Duration(session.BatchDelayMs) * time.Millisecond
@@ -481,13 +491,22 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 		}
 	}
 
+	// Use detached context for final DB writes — must complete even during shutdown
+	finalCtx, finalCancel := dbCtx()
+	defer finalCancel()
+
 	// Save failed batch ranges if any
 	if len(failedBatchRanges) > 0 {
 		if rangesJSON, err := json.Marshal(failedBatchRanges); err == nil {
-			if err := s.replayRepo.UpdateFailedBatches(ctx, session.ID, rangesJSON); err != nil {
+			if err := s.replayRepo.UpdateFailedBatches(finalCtx, session.ID, rangesJSON); err != nil {
 				s.logger.Warn("failed to save failed batch ranges", "error", err, "session_id", session.ID)
 			}
 		}
+	}
+
+	// Final progress update
+	if err := s.replayRepo.UpdateProgress(finalCtx, session.ID, int(replayed), int(failed)); err != nil {
+		s.logger.Warn("failed to update final progress", "error", err, "session_id", session.ID)
 	}
 
 	if failed > 0 && replayed == 0 {
@@ -495,14 +514,14 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 		if lastErr != nil {
 			errMsg = sanitizeReplayError(lastErr)
 		}
-		if err := s.replayRepo.UpdateStatusWithError(ctx, session.ID, domain.ReplayStatusFailed, errMsg); err != nil {
+		if err := s.replayRepo.UpdateStatusWithError(finalCtx, session.ID, domain.ReplayStatusFailed, errMsg); err != nil {
 			s.logger.Error("failed to update replay status to failed", "error", err, "session_id", session.ID)
 		}
 		s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
 			"Replay failed",
 			fmt.Sprintf("All %d events failed to replay. You can retry from the replay history.", session.TotalEvents))
 	} else {
-		if err := s.replayRepo.UpdateStatus(ctx, session.ID, domain.ReplayStatusCompleted); err != nil {
+		if err := s.replayRepo.UpdateStatus(finalCtx, session.ID, domain.ReplayStatusCompleted); err != nil {
 			s.logger.Error("failed to update replay status to completed", "error", err, "session_id", session.ID)
 		}
 		s.createReplayNotification(session, domain.NotificationTypeReplayCompleted,
