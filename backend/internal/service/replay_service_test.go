@@ -1334,3 +1334,149 @@ func TestReplayService_GetEventTypes(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// CAPI event construction tests (fixes for [100] Invalid parameter)
+// ---------------------------------------------------------------------------
+
+func setupReplayCAPITest(t *testing.T) (*ReplayService, *MockReplaySessionRepo, *[]facebook.CAPIEvent, func()) {
+	t.Helper()
+	var captured []facebook.CAPIEvent
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req facebook.CAPIRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("decode: %v", err)
+			return
+		}
+		captured = append(captured, req.Data...)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(facebook.CAPIResponse{EventsReceived: len(req.Data)})
+	}))
+
+	replayRepo := new(MockReplaySessionRepo)
+	replayRepo.On("UpdateStatus", mock.Anything, mock.Anything, "running").Return(nil)
+	replayRepo.On("GetStatus", mock.Anything, mock.Anything).Return("running", nil)
+	replayRepo.On("UpdateProgress", mock.Anything, mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil)
+	replayRepo.On("UpdateStatus", mock.Anything, mock.Anything, "completed").Return(nil)
+
+	svc := NewReplayService(context.Background(), replayRepo, new(MockEventRepo), new(MockPixelRepo),
+		facebook.NewCAPIClient(srv.URL), slog.Default(), 5, nil, nil)
+
+	return svc, replayRepo, &captured, srv.Close
+}
+
+func baseSession() *domain.ReplaySession {
+	return &domain.ReplaySession{
+		ID: "s1", CustomerID: "c1", SourcePixelID: "p1", TargetPixelID: "p2",
+		TotalEvents: 1, TimeMode: "current",
+	}
+}
+
+func basePixel() *domain.Pixel {
+	return &domain.Pixel{ID: "p2", CustomerID: "c1", FBPixelID: "fb-2", FBAccessToken: "tok-2"}
+}
+
+func TestReplayService_ExecuteReplay_UsesOriginalEventID(t *testing.T) {
+	svc, repo, captured, cleanup := setupReplayCAPITest(t)
+	defer cleanup()
+
+	events := []*domain.PixelEvent{
+		{ID: "e1", EventName: "Purchase", EventTime: time.Now(), EventID: "original-id-123"},
+	}
+
+	svc.executeReplay(context.Background(), baseSession(), basePixel(), events)
+
+	require.Len(t, *captured, 1)
+	assert.Equal(t, "original-id-123", (*captured)[0].EventID)
+	repo.AssertExpectations(t)
+}
+
+func TestReplayService_ExecuteReplay_FallbackEventIDWhenEmpty(t *testing.T) {
+	svc, repo, captured, cleanup := setupReplayCAPITest(t)
+	defer cleanup()
+
+	events := []*domain.PixelEvent{
+		{ID: "e1", EventName: "PageView", EventTime: time.Now(), EventID: ""},
+	}
+
+	svc.executeReplay(context.Background(), baseSession(), basePixel(), events)
+
+	require.Len(t, *captured, 1)
+	assert.NotEmpty(t, (*captured)[0].EventID, "should generate fallback UUID")
+	repo.AssertExpectations(t)
+}
+
+func TestReplayService_ExecuteReplay_FallbackUserAgent(t *testing.T) {
+	svc, repo, captured, cleanup := setupReplayCAPITest(t)
+	defer cleanup()
+
+	events := []*domain.PixelEvent{
+		{ID: "e1", EventName: "PageView", EventTime: time.Now(), EventID: "eid-1",
+			ClientUserAgent: ""},
+	}
+
+	svc.executeReplay(context.Background(), baseSession(), basePixel(), events)
+
+	require.Len(t, *captured, 1)
+	ud := (*captured)[0].UserData
+	ua, ok := ud["client_user_agent"].(string)
+	assert.True(t, ok, "client_user_agent should be a string")
+	assert.Contains(t, ua, "Mozilla", "should use fallback browser UA")
+	repo.AssertExpectations(t)
+}
+
+func TestReplayService_ExecuteReplay_PreservesStoredUserAgent(t *testing.T) {
+	svc, repo, captured, cleanup := setupReplayCAPITest(t)
+	defer cleanup()
+
+	events := []*domain.PixelEvent{
+		{ID: "e1", EventName: "PageView", EventTime: time.Now(), EventID: "eid-1",
+			ClientUserAgent: "MyRealBrowser/1.0"},
+	}
+
+	svc.executeReplay(context.Background(), baseSession(), basePixel(), events)
+
+	require.Len(t, *captured, 1)
+	ud := (*captured)[0].UserData
+	assert.Equal(t, "MyRealBrowser/1.0", ud["client_user_agent"])
+	repo.AssertExpectations(t)
+}
+
+func TestReplayService_ExecuteReplay_EnrichesFBCFromSourceURL(t *testing.T) {
+	svc, repo, captured, cleanup := setupReplayCAPITest(t)
+	defer cleanup()
+
+	events := []*domain.PixelEvent{
+		{ID: "e1", EventName: "Purchase", EventTime: time.Now(), EventID: "eid-1",
+			SourceURL: "https://example.com/product?fbclid=abc123xyz"},
+	}
+
+	svc.executeReplay(context.Background(), baseSession(), basePixel(), events)
+
+	require.Len(t, *captured, 1)
+	ud := (*captured)[0].UserData
+	fbc, ok := ud["fbc"].(string)
+	assert.True(t, ok, "fbc should be a string")
+	assert.Contains(t, fbc, "fb.1.")
+	assert.Contains(t, fbc, "abc123xyz")
+	repo.AssertExpectations(t)
+}
+
+func TestReplayService_ExecuteReplay_DoesNotOverwriteExistingFBC(t *testing.T) {
+	svc, repo, captured, cleanup := setupReplayCAPITest(t)
+	defer cleanup()
+
+	existingUD, _ := json.Marshal(map[string]interface{}{"fbc": "fb.1.1234.sdk_captured"})
+	events := []*domain.PixelEvent{
+		{ID: "e1", EventName: "Purchase", EventTime: time.Now(), EventID: "eid-1",
+			UserData:  existingUD,
+			SourceURL: "https://example.com?fbclid=url_fbclid"},
+	}
+
+	svc.executeReplay(context.Background(), baseSession(), basePixel(), events)
+
+	require.Len(t, *captured, 1)
+	ud := (*captured)[0].UserData
+	assert.Equal(t, "fb.1.1234.sdk_captured", ud["fbc"])
+	repo.AssertExpectations(t)
+}

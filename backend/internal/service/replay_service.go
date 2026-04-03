@@ -32,6 +32,11 @@ const timeModeOriginal = "original"
 const (
 	maxRetries        = 3
 	defaultBatchDelay = 200 * time.Millisecond
+
+	// defaultUserAgent is a fallback UA for replay events stored without a browser
+	// user-agent. Facebook requires client_user_agent when action_source is "website";
+	// omitting it causes error [100] Invalid parameter.
+	defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
 
 type ReplayService struct {
@@ -394,12 +399,18 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 				eventTime = time.Now().Unix()
 			}
 
+			// Use original event_id; fall back to new UUID for legacy events without one
+			eventID := evt.EventID
+			if eventID == "" {
+				eventID = uuid.New().String()
+			}
+
 			capiEvt := facebook.CAPIEvent{
 				EventName:             evt.EventName,
 				EventTime:             eventTime,
 				EventSourceURL:        evt.SourceURL,
 				ActionSource:          "website",
-				EventID:               uuid.New().String(),
+				EventID:               eventID,
 				DataProcessingOptions: []string{},
 			}
 
@@ -421,7 +432,17 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 			}
 			if evt.ClientUserAgent != "" {
 				userData["client_user_agent"] = evt.ClientUserAgent
+			} else {
+				userData["client_user_agent"] = defaultUserAgent
 			}
+
+			// Enrich fbc from SourceURL fbclid (matches ingest path in event_service.go)
+			if _, exists := userData["fbc"]; !exists {
+				if fbclid := extractFBClid(evt.SourceURL); fbclid != "" {
+					userData["fbc"] = fmt.Sprintf("fb.1.%d.%s", evt.EventTime.UnixMilli(), fbclid)
+				}
+			}
+
 			capiEvt.UserData = facebook.HashUserData(userData)
 
 			capiEvents = append(capiEvents, capiEvt)
