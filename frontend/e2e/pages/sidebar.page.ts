@@ -26,14 +26,14 @@ export class SidebarPage {
     // Scope all locators to the sidebar nav to avoid conflicts with page content
     this.nav = page.locator('nav')
     this.brand = page.getByRole('heading', { name: 'Pixlinks' })
-    this.dashboardLink = this.nav.getByRole('link', { name: 'แดชบอร์ด' })
-    this.pixelsLink = this.nav.getByRole('link', { name: 'พิกเซล' })
-    this.salePagesLink = this.nav.getByRole('link', { name: 'เซลเพจ' })
-    this.eventsLink = this.nav.getByRole('link', { name: 'อีเวนต์' })
-    this.replayCenterLink = this.nav.getByRole('link', { name: 'รีเพลย์' })
-    this.billingLink = this.nav.getByRole('link', { name: 'การเงิน' })
-    this.settingsLink = this.nav.getByRole('link', { name: 'ตั้งค่า' })
-    this.guideLink = this.nav.getByRole('link', { name: 'คู่มือ' })
+    this.dashboardLink = this.nav.getByRole('link', { name: 'แดชบอร์ด' }).first()
+    this.pixelsLink = this.nav.getByRole('link', { name: 'พิกเซล' }).first()
+    this.salePagesLink = this.nav.getByRole('link', { name: 'เซลเพจ' }).first()
+    this.eventsLink = this.nav.getByRole('link', { name: 'อีเวนต์' }).first()
+    this.replayCenterLink = this.nav.getByRole('link', { name: 'รีเพลย์' }).first()
+    this.billingLink = this.nav.getByRole('link', { name: 'การเงิน' }).first()
+    this.settingsLink = this.nav.getByRole('link', { name: 'ตั้งค่า' }).first()
+    this.guideLink = this.nav.getByRole('link', { name: 'คู่มือ' }).first()
     this.logoutButton = page.getByRole('button', { name: 'ออกจากระบบ' })
 
     // Notification bell — button with aria-label "Notifications" in sidebar header
