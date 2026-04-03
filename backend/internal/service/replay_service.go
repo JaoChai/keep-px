@@ -416,13 +416,19 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 
 			if evt.EventData != nil {
 				var cd map[string]interface{}
-				_ = json.Unmarshal(evt.EventData, &cd)
+				if err := json.Unmarshal(evt.EventData, &cd); err != nil {
+					s.logger.Warn("malformed event_data on replay event, skipping custom_data",
+						"error", err, "event_id", evt.ID)
+				}
 				capiEvt.CustomData = cd
 			}
 
 			userData := make(map[string]interface{})
 			if evt.UserData != nil {
-				_ = json.Unmarshal(evt.UserData, &userData)
+				if err := json.Unmarshal(evt.UserData, &userData); err != nil {
+					s.logger.Warn("malformed user_data on replay event, using empty map",
+						"error", err, "event_id", evt.ID)
+				}
 			}
 			if _, exists := userData["country"]; !exists {
 				userData["country"] = defaultCountry
