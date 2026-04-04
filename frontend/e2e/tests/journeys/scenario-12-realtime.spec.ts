@@ -1,22 +1,19 @@
 /**
- * Scenario 12: Notification & Real-Time Updates
+ * Scenario 12: Real-Time Updates
  *
- * Tests live event mode, pause/resume/clear controls, event ingestion
- * visibility, and the notification bell popover.
+ * Tests live event mode, pause/resume/clear controls, and event ingestion visibility.
  *
  * Flow:
  *   Part A — Setup: get API key + pixel UUID (steps 1-2)
  *   Part B — Live Mode: open live view, ingest event, check updates (steps 3-7)
  *   Part C — Pause/Resume/Clear controls (steps 8-10)
- *   Part D — Notifications: bell popover interaction (steps 11-14)
  */
 import { test, expect } from '../../fixtures/auth.fixture'
 import { EventLogPage } from '../../pages/event-log.page'
-import { SidebarPage } from '../../pages/sidebar.page'
 
 const PREFIX = 'E2E-S12'
 
-test.describe(`Scenario 12: Notification & Real-Time Updates`, () => {
+test.describe(`Scenario 12: Real-Time Updates`, () => {
   test.describe.configure({ mode: 'serial' })
   test.setTimeout(120_000)
 
@@ -264,97 +261,4 @@ test.describe(`Scenario 12: Notification & Real-Time Updates`, () => {
     }
   })
 
-  // ============================================================
-  // Part D: Notifications
-  // ============================================================
-
-  test(`${PREFIX} step 11: click notification bell → popover opens`, async ({ page }) => {
-    const sidebar = new SidebarPage(page)
-
-    // Navigate to a page first
-    await page.goto('/dashboard')
-    await page.waitForLoadState('networkidle')
-
-    // Click the notification bell
-    await expect(sidebar.notificationBellButton).toBeVisible({ timeout: 10000 })
-    await sidebar.notificationBellButton.click()
-
-    // Popover heading should appear
-    await expect(sidebar.notificationPopoverHeading).toBeVisible({ timeout: 5000 })
-  })
-
-  test(`${PREFIX} step 12: see notification heading "การแจ้งเตือน"`, async ({ page }) => {
-    const sidebar = new SidebarPage(page)
-
-    await page.goto('/dashboard')
-    await page.waitForLoadState('networkidle')
-
-    await sidebar.notificationBellButton.click()
-    await expect(sidebar.notificationPopoverHeading).toBeVisible({ timeout: 5000 })
-
-    // Verify the exact text
-    const headingText = await sidebar.notificationPopoverHeading.textContent()
-    expect(headingText).toContain('การแจ้งเตือน')
-  })
-
-  test(`${PREFIX} step 13: if has notifications → click "อ่านทั้งหมด"`, async ({ page }) => {
-    const sidebar = new SidebarPage(page)
-
-    await page.goto('/dashboard')
-    await page.waitForLoadState('networkidle')
-
-    await sidebar.notificationBellButton.click()
-    await expect(sidebar.notificationPopoverHeading).toBeVisible({ timeout: 5000 })
-
-    // Check if there are notifications or empty state
-    const hasEmpty = await sidebar.notificationEmptyState.isVisible().catch(() => false)
-    const hasMarkAllRead = await sidebar.notificationMarkAllReadButton.isVisible().catch(() => false)
-
-    if (hasEmpty) {
-      // No notifications — nothing to mark as read
-      console.log(`${PREFIX} no notifications to mark as read`)
-      return
-    }
-
-    if (hasMarkAllRead) {
-      await sidebar.notificationMarkAllReadButton.click()
-      await page.waitForTimeout(500)
-
-      // After clicking, either:
-      // - Empty state appears (all read)
-      // - The mark-all-read button disappears
-      // - Notifications are still listed but marked as read
-      const afterEmpty = await sidebar.notificationEmptyState.isVisible().catch(() => false)
-      const popoverStillOpen = await sidebar.notificationPopoverHeading.isVisible().catch(() => false)
-
-      // Popover should still be open after marking as read
-      expect(afterEmpty || popoverStillOpen).toBe(true)
-    }
-  })
-
-  test(`${PREFIX} step 14: close notification popover`, async ({ page }) => {
-    const sidebar = new SidebarPage(page)
-
-    await page.goto('/dashboard')
-    await page.waitForLoadState('networkidle')
-
-    await sidebar.notificationBellButton.click()
-    await expect(sidebar.notificationPopoverHeading).toBeVisible({ timeout: 5000 })
-
-    // Close by pressing Escape
-    await page.keyboard.press('Escape')
-    await page.waitForTimeout(500)
-
-    // Popover should be closed — heading no longer visible
-    const stillOpen = await sidebar.notificationPopoverHeading.isVisible().catch(() => false)
-
-    if (stillOpen) {
-      // Some popovers need a click outside instead of Escape
-      await page.locator('main').first().click()
-      await page.waitForTimeout(500)
-    }
-
-    // Verify the popover is closed (or at least that the page is still functional)
-    await expect(page.locator('body')).toBeVisible()
-  })
 })

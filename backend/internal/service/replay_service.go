@@ -45,7 +45,6 @@ type ReplayService struct {
 	pixelRepo    repository.PixelRepository
 	capiClient   *facebook.CAPIClient
 	logger       *slog.Logger
-	notifService *NotificationService
 	quotaService *QuotaService
 	shutdownCtx  context.Context
 	wg           sync.WaitGroup
@@ -60,7 +59,6 @@ func NewReplayService(
 	capiClient *facebook.CAPIClient,
 	logger *slog.Logger,
 	maxConcurrentReplays int,
-	notifService *NotificationService,
 	quotaService *QuotaService,
 ) *ReplayService {
 	if maxConcurrentReplays <= 0 {
@@ -72,7 +70,6 @@ func NewReplayService(
 		pixelRepo:    pixelRepo,
 		capiClient:   capiClient,
 		logger:       logger,
-		notifService: notifService,
 		quotaService: quotaService,
 		shutdownCtx:  shutdownCtx,
 		sem:          make(chan struct{}, maxConcurrentReplays),
@@ -82,31 +79,6 @@ func NewReplayService(
 // Shutdown waits for all background replay goroutines to finish.
 func (s *ReplayService) Shutdown() {
 	s.wg.Wait()
-}
-
-// createReplayNotification creates a notification for the replay session owner.
-// It is nil-safe (no-op if notifService is nil) and uses a background context
-// so that notifications are still created even when the request context is done.
-func (s *ReplayService) createReplayNotification(session *domain.ReplaySession, notifType, title, body string) {
-	if s.notifService == nil {
-		return
-	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		metadata, _ := json.Marshal(map[string]string{"session_id": session.ID})
-		n := &domain.Notification{
-			CustomerID: session.CustomerID,
-			Type:       notifType,
-			Title:      title,
-			Body:       body,
-			Metadata:   metadata,
-		}
-		if err := s.notifService.CreateNotification(ctx, n); err != nil {
-			s.logger.Error("failed to create replay notification", "error", err, "session_id", session.ID, "type", notifType)
-		}
-	}()
 }
 
 type CreateReplayInput struct {
@@ -288,9 +260,6 @@ func (s *ReplayService) Create(ctx context.Context, customerID string, input Cre
 			if err := s.replayRepo.UpdateStatusWithError(writeCtx, session.ID, domain.ReplayStatusFailed, "server shutdown before replay started"); err != nil {
 				s.logger.Error("failed to mark session failed on shutdown", "error", err, "session_id", session.ID)
 			}
-			s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
-				"Replay failed",
-				"Server shut down before your replay could start. Please retry.")
 		}
 	}()
 
@@ -343,9 +312,6 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 			if err := s.replayRepo.UpdateStatusWithError(writeCtx, session.ID, domain.ReplayStatusFailed, "server shutdown during replay"); err != nil {
 				s.logger.Error("failed to mark session failed on shutdown", "error", err, "session_id", session.ID)
 			}
-			s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
-				"Replay interrupted",
-				fmt.Sprintf("Server shut down during replay. %d events replayed, %d failed. You can retry.", replayed, failed))
 			return
 		default:
 		}
@@ -360,9 +326,6 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 				if err := s.replayRepo.UpdateStatusWithError(ctx, session.ID, domain.ReplayStatusFailed, errMsg); err != nil {
 					s.logger.Error("failed to update replay status", "error", err, "session_id", session.ID)
 				}
-				s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
-					"Replay failed",
-					"Target pixel was deleted or deactivated during replay.")
 				return
 			}
 			targetPixel = refreshed
@@ -465,9 +428,6 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 				if err := s.replayRepo.UpdateStatusWithError(ctx, session.ID, domain.ReplayStatusFailed, sanitizeReplayError(err)); err != nil {
 					s.logger.Error("failed to update replay status to failed", "error", err, "session_id", session.ID)
 				}
-				s.createReplayNotification(session, domain.NotificationTypeCAPIAuthError,
-					"Replay failed — authentication error",
-					fmt.Sprintf("Facebook rejected the access token for your replay session. %d events were not replayed.", session.TotalEvents))
 				return
 			}
 			failed += int64(len(batch))
@@ -510,9 +470,6 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 				if err := s.replayRepo.UpdateStatusWithError(writeCtx, session.ID, domain.ReplayStatusFailed, "server shutdown during replay"); err != nil {
 					s.logger.Error("failed to mark session failed on shutdown", "error", err, "session_id", session.ID)
 				}
-				s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
-					"Replay interrupted",
-					fmt.Sprintf("Server shut down during replay. %d events replayed, %d failed. You can retry.", replayed, failed))
 				return
 			}
 		}
@@ -544,16 +501,10 @@ func (s *ReplayService) executeReplay(ctx context.Context, session *domain.Repla
 		if err := s.replayRepo.UpdateStatusWithError(finalCtx, session.ID, domain.ReplayStatusFailed, errMsg); err != nil {
 			s.logger.Error("failed to update replay status to failed", "error", err, "session_id", session.ID)
 		}
-		s.createReplayNotification(session, domain.NotificationTypeReplayFailed,
-			"Replay failed",
-			fmt.Sprintf("All %d events failed to replay. You can retry from the replay history.", session.TotalEvents))
 	} else {
 		if err := s.replayRepo.UpdateStatus(finalCtx, session.ID, domain.ReplayStatusCompleted); err != nil {
 			s.logger.Error("failed to update replay status to completed", "error", err, "session_id", session.ID)
 		}
-		s.createReplayNotification(session, domain.NotificationTypeReplayCompleted,
-			"Replay completed",
-			fmt.Sprintf("Successfully replayed %d events (%d failed).", replayed, failed))
 	}
 
 	s.logger.Info("replay completed",
@@ -845,9 +796,6 @@ func (s *ReplayService) Retry(ctx context.Context, customerID, sessionID string)
 			if err := s.replayRepo.UpdateStatusWithError(writeCtx, newSession.ID, domain.ReplayStatusFailed, "server shutdown before replay started"); err != nil {
 				s.logger.Error("failed to mark session failed on shutdown", "error", err, "session_id", newSession.ID)
 			}
-			s.createReplayNotification(newSession, domain.NotificationTypeReplayFailed,
-				"Replay failed",
-				"Server shut down before your replay could start. Please retry.")
 		}
 	}()
 

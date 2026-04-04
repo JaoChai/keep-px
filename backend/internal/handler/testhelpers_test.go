@@ -400,33 +400,6 @@ func (m *MockSalePageRepo) SlugExists(ctx context.Context, slug string) (bool, e
 	return args.Bool(0), args.Error(1)
 }
 
-// MockNotificationRepo implements repository.NotificationRepository.
-type MockNotificationRepo struct{ mock.Mock }
-
-func (m *MockNotificationRepo) Create(ctx context.Context, n *domain.Notification) error {
-	args := m.Called(ctx, n)
-	return args.Error(0)
-}
-func (m *MockNotificationRepo) ListByCustomerID(ctx context.Context, customerID string, limit int) ([]*domain.Notification, error) {
-	args := m.Called(ctx, customerID, limit)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*domain.Notification), args.Error(1)
-}
-func (m *MockNotificationRepo) CountUnread(ctx context.Context, customerID string) (int, error) {
-	args := m.Called(ctx, customerID)
-	return args.Int(0), args.Error(1)
-}
-func (m *MockNotificationRepo) MarkRead(ctx context.Context, id, customerID string) error {
-	args := m.Called(ctx, id, customerID)
-	return args.Error(0)
-}
-func (m *MockNotificationRepo) MarkAllRead(ctx context.Context, customerID string) error {
-	args := m.Called(ctx, customerID)
-	return args.Error(0)
-}
-
 // MockPurchaseRepo implements repository.PurchaseRepository.
 type MockPurchaseRepo struct{ mock.Mock }
 
@@ -751,11 +724,6 @@ func newTestEventService(eventRepo *MockEventRepo, pixelRepo *MockPixelRepo, quo
 	return service.NewEventService(eventRepo, pixelRepo, nil, testLogger(), quotaService)
 }
 
-// newTestNotificationService creates a NotificationService with a mock repo.
-func newTestNotificationService(notifRepo *MockNotificationRepo) *service.NotificationService {
-	return service.NewNotificationService(notifRepo)
-}
-
 // newTestSalePageService creates a SalePageService with mock repos.
 func newTestSalePageService(
 	salePageRepo *MockSalePageRepo,
@@ -771,7 +739,6 @@ func newTestReplayService(
 	replayRepo *MockReplaySessionRepo,
 	eventRepo *MockEventRepo,
 	pixelRepo *MockPixelRepo,
-	notifService *service.NotificationService,
 	quotaService *service.QuotaService,
 ) *service.ReplayService {
 	return service.NewReplayService(
@@ -782,7 +749,6 @@ func newTestReplayService(
 		nil, // capiClient
 		testLogger(),
 		5, // maxConcurrentReplays
-		notifService,
 		quotaService,
 	)
 }

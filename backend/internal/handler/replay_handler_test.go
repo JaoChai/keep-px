@@ -107,9 +107,8 @@ func newTestReplayServiceWithCAPI(
 		pixelRepo,
 		capiClient,
 		slog.Default(),
-		5,   // maxConcurrentReplays
-		nil, // notifService
-		nil, // quotaService
+		5, // maxConcurrentReplays
+		nil,
 	)
 }
 
@@ -165,7 +164,7 @@ func TestReplayHandler_Create(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		pixelRepo.On("GetByID", mock.Anything, "px-src").Return(replaySourcePixel(), nil)
@@ -185,7 +184,7 @@ func TestReplayHandler_Create(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		pixelRepo.On("GetByID", mock.Anything, "px-src").Return(replaySourcePixel(), nil)
@@ -206,7 +205,7 @@ func TestReplayHandler_Create(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		pixelRepo.On("GetByID", mock.Anything, "px-missing").Return(nil, nil)
@@ -224,7 +223,7 @@ func TestReplayHandler_Create(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		token := replayToken(replayTestCustomerID)
@@ -243,7 +242,7 @@ func TestReplayHandler_List(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		sessions := []*domain.ReplaySession{
@@ -265,7 +264,7 @@ func TestReplayHandler_List(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		sessionRepo.On("ListByCustomerID", mock.Anything, replayTestCustomerID).Return(nil, nil)
@@ -291,7 +290,7 @@ func TestReplayHandler_GetByID(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		session := &domain.ReplaySession{
@@ -317,7 +316,7 @@ func TestReplayHandler_GetByID(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		sessionRepo.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
@@ -332,7 +331,7 @@ func TestReplayHandler_GetByID(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		session := &domain.ReplaySession{
@@ -359,7 +358,7 @@ func TestReplayHandler_Cancel(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		session := &domain.ReplaySession{
@@ -388,7 +387,7 @@ func TestReplayHandler_Cancel(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		session := &domain.ReplaySession{
@@ -412,7 +411,7 @@ func TestReplayHandler_Cancel(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		sessionRepo.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
@@ -470,7 +469,7 @@ func TestReplayHandler_Retry(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		runningSession := &domain.ReplaySession{
@@ -492,7 +491,7 @@ func TestReplayHandler_Retry(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		sessionRepo.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
@@ -515,7 +514,7 @@ func TestReplayHandler_EventTypes(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		pixelRepo.On("GetByID", mock.Anything, pixelID).Return(&domain.Pixel{
@@ -538,7 +537,7 @@ func TestReplayHandler_EventTypes(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		token := replayToken(replayTestCustomerID)
@@ -553,7 +552,7 @@ func TestReplayHandler_EventTypes(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		token := replayToken(replayTestCustomerID)
@@ -566,7 +565,7 @@ func TestReplayHandler_EventTypes(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		missingPixelID := uuid.New().String()
@@ -588,7 +587,7 @@ func TestReplayHandler_Preview(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		pixelRepo.On("GetByID", mock.Anything, "px-src").Return(replaySourcePixel(), nil)
@@ -618,7 +617,7 @@ func TestReplayHandler_Preview(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		pixelRepo.On("GetByID", mock.Anything, "px-src").Return(replaySourcePixel(), nil)
@@ -636,7 +635,7 @@ func TestReplayHandler_Preview(t *testing.T) {
 		sessionRepo := &MockReplaySessionRepo{}
 		eventRepo := &MockEventRepo{}
 		pixelRepo := &MockPixelRepo{}
-		svc := newTestReplayService(sessionRepo, eventRepo, pixelRepo, nil, nil)
+		svc := newTestReplayServiceWithCAPI(sessionRepo, eventRepo, pixelRepo)
 		h := NewReplayHandler(svc, testLogger())
 
 		token := replayToken(replayTestCustomerID)
