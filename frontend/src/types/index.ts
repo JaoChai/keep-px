@@ -178,23 +178,6 @@ export interface AuthTokens {
   customer: Customer
 }
 
-export interface AppNotification {
-  id: string
-  customer_id: string
-  type: 'replay_completed' | 'replay_failed' | 'capi_auth_error' | 'system'
-  title: string
-  body: string
-  metadata?: Record<string, unknown>
-  is_read: boolean
-  created_at: string
-  read_at?: string
-}
-
-export interface NotificationListResult {
-  notifications: AppNotification[]
-  unread_count: number
-}
-
 // Billing types
 export interface Purchase {
   id: string

@@ -62,7 +62,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	eventRepo := postgres.NewEventRepo(pool)
 	replaySessionRepo := postgres.NewReplaySessionRepo(pool)
 	salePageRepo := postgres.NewSalePageRepo(pool)
-	notifRepo := postgres.NewNotificationRepo(pool)
 	purchaseRepo := postgres.NewPurchaseRepo(pool)
 	creditRepo := postgres.NewReplayCreditRepo(pool)
 	subRepo := postgres.NewSubscriptionRepo(pool)
@@ -81,8 +80,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	quotaService := service.NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger, quotaService)
 	eventService := service.NewEventService(eventRepo, pixelRepo, capiClient, logger, quotaService)
-	notifService := service.NewNotificationService(notifRepo)
-	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, notifService, quotaService)
+	replayService := service.NewReplayService(shutdownCtx, replaySessionRepo, eventRepo, pixelRepo, capiClient, logger, 5, quotaService)
 	analyticsService := service.NewAnalyticsService(pool)
 	salePageService := service.NewSalePageService(shutdownCtx, salePageRepo, customerRepo, pixelRepo, quotaService, cfg.SalePageCacheTTL)
 	adminService := service.NewAdminService(adminRepo, customerRepo, creditRepo, replaySessionRepo, pool, logger)
@@ -97,7 +95,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	eventHandler := handler.NewEventHandler(eventService, logger)
 	replayHandler := handler.NewReplayHandler(replayService, logger)
 	analyticsHandler := handler.NewAnalyticsHandler(analyticsService, logger)
-	notifHandler := handler.NewNotificationHandler(notifService, logger)
 	salePageHandler := handler.NewSalePageHandler(salePageService, cfg.BaseURL, logger)
 	uploadHandler := handler.NewUploadHandler(storageService)
 	billingHandler := handler.NewBillingHandler(billingService, quotaService, cfg, logger)
@@ -192,14 +189,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 					r.Put("/{id}", salePageHandler.Update)
 					r.Delete("/{id}", salePageHandler.Delete)
 					r.Get("/{id}/preview", salePageHandler.Preview)
-				})
-
-				// Notification routes
-				r.Route("/notifications", func(r chi.Router) {
-					r.Get("/", notifHandler.List)
-					r.Get("/unread-count", notifHandler.UnreadCount)
-					r.Post("/{id}/read", notifHandler.MarkRead)
-					r.Post("/read-all", notifHandler.MarkAllRead)
 				})
 
 				// Billing routes

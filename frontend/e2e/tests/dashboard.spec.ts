@@ -1,7 +1,6 @@
 import { test, expect } from '../fixtures/auth.fixture'
 import { test as baseTest, expect as baseExpect } from '@playwright/test'
 import { DashboardPage } from '../pages/dashboard.page'
-import { SidebarPage } from '../pages/sidebar.page'
 
 test.describe('Dashboard @smoke', () => {
   test('5 stats cards visible', async ({ page }) => {
@@ -189,49 +188,3 @@ test.describe('Dashboard - Monthly Event Usage', () => {
   })
 })
 
-// --- Scenario 6: Notification Bell ---
-
-test.describe('Dashboard - Notifications', () => {
-  test('notification bell opens popover', async ({ page }) => {
-    await page.goto('/dashboard')
-    const sidebar = new SidebarPage(page)
-
-    await expect(sidebar.notificationBellButton).toBeVisible()
-
-    // Click notification bell
-    await sidebar.notificationBellButton.click()
-
-    // Popover should show with heading "การแจ้งเตือน"
-    await expect(sidebar.notificationPopoverHeading).toBeVisible()
-
-    // Should show either notification items or empty state
-    const hasEmptyState = await sidebar.notificationEmptyState.isVisible().catch(() => false)
-    if (hasEmptyState) {
-      await expect(sidebar.notificationEmptyState).toBeVisible()
-    }
-    // Either way the popover heading confirms it opened
-  })
-
-  test('mark all read button appears when notifications exist', async ({ page }) => {
-    await page.goto('/dashboard')
-    const sidebar = new SidebarPage(page)
-
-    // Click notification bell
-    await sidebar.notificationBellButton.click()
-    await expect(sidebar.notificationPopoverHeading).toBeVisible()
-
-    // "อ่านทั้งหมด" button only shows when there are unread notifications
-    const markAllVisible = await sidebar.notificationMarkAllReadButton.isVisible().catch(() => false)
-    if (!markAllVisible) {
-      // No unread notifications — skip gracefully
-      test.skip()
-      return
-    }
-
-    await expect(sidebar.notificationMarkAllReadButton).toBeVisible()
-    await sidebar.notificationMarkAllReadButton.click()
-
-    // After marking all as read, the button should disappear
-    await expect(sidebar.notificationMarkAllReadButton).not.toBeVisible({ timeout: 5000 })
-  })
-})

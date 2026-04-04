@@ -133,11 +133,6 @@ authTest.describe('Production Smoke — Authenticated @smoke', () => {
     await expect(sidebar.guideLink).toBeVisible()
   })
 
-  authTest('notification bell is visible', async ({ page }) => {
-    await page.goto('/dashboard', { waitUntil: 'networkidle' })
-    await expect(page.getByRole('button', { name: 'Notifications' })).toBeVisible()
-  })
-
   // ============================================================
   // Part 5: API Response Check (GET only)
   // ============================================================

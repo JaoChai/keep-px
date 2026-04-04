@@ -2,14 +2,13 @@
  * Scenario 8: Dashboard Deep Dive
  *
  * จำลอง user สำรวจแดชบอร์ดอย่างละเอียด: stat cards, chart, time ranges,
- * recent activity, pixel status, notifications
+ * recent activity, and pixel status.
  * Flow: open dashboard → stat cards → active pixels → events today →
  *       monthly usage → chart → range buttons → recent activity → view all →
- *       pixel status → manage → notification bell → close
+ *       pixel status → manage
  */
 import { test, expect } from '../../fixtures/auth.fixture'
 import { DashboardPage } from '../../pages/dashboard.page'
-import { SidebarPage } from '../../pages/sidebar.page'
 
 // const PREFIX = 'E2E-S08'
 
@@ -238,53 +237,4 @@ test.describe('Scenario 8: Dashboard Deep Dive', () => {
     await expect(page).toHaveURL(/\/pixels/)
   })
 
-  // --- Step 14: Go back to /dashboard → notification bell visible ---
-  test('step 14: back to dashboard → notification bell visible', async ({ page }) => {
-    const dashboardPage = new DashboardPage(page)
-    await dashboardPage.goto()
-    await page.waitForLoadState('networkidle')
-
-    await expect(dashboardPage.heading).toBeVisible({ timeout: 15000 })
-
-    // Notification bell in sidebar
-    const sidebar = new SidebarPage(page)
-    await expect(sidebar.notificationBellButton).toBeVisible({ timeout: 10000 })
-  })
-
-  // --- Step 15: Click notification bell → popover opens → close it ---
-  test('step 15: click notification bell → popover opens → close', async ({ page }) => {
-    const dashboardPage = new DashboardPage(page)
-    await dashboardPage.goto()
-    await page.waitForLoadState('networkidle')
-
-    await expect(dashboardPage.heading).toBeVisible({ timeout: 15000 })
-
-    const sidebar = new SidebarPage(page)
-    await expect(sidebar.notificationBellButton).toBeVisible({ timeout: 10000 })
-
-    // Click notification bell
-    await sidebar.notificationBellButton.click()
-    await page.waitForTimeout(500)
-
-    // Popover should open — check for heading or content
-    const popoverVisible = await sidebar.notificationPopoverHeading.isVisible().catch(() => false)
-    const popoverContainerVisible = await sidebar.notificationPopover.isVisible().catch(() => false)
-    const emptyStateVisible = await sidebar.notificationEmptyState.isVisible().catch(() => false)
-
-    // At least one of these should be visible after clicking the bell
-    expect(popoverVisible || popoverContainerVisible || emptyStateVisible).toBe(true)
-
-    // Close the popover by clicking elsewhere
-    await dashboardPage.heading.click()
-    await page.waitForTimeout(300)
-
-    // Popover heading should no longer be visible (or at least the popover should collapse)
-    // Some implementations keep popover in DOM but hidden — soft check
-    const stillVisible = await sidebar.notificationPopoverHeading.isVisible().catch(() => false)
-    // If still visible, try pressing Escape
-    if (stillVisible) {
-      await page.keyboard.press('Escape')
-      await page.waitForTimeout(300)
-    }
-  })
 })
