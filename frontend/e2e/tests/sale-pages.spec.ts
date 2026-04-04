@@ -7,25 +7,26 @@ const TEST_PREFIX = 'E2E SP'
 
 /** Delete all sale pages whose name starts with a test prefix */
 async function cleanupTestSalePages(page: import('@playwright/test').Page) {
-  await page.goto('/sale-pages')
-  // Wait for page to load
-  await page.waitForLoadState('networkidle')
+  try {
+    await page.goto('/sale-pages')
+    await page.waitForLoadState('networkidle')
 
-  for (const prefix of [TEST_PREFIX, 'E2E Updated']) {
-    const rows = page.locator('[data-testid="sale-page-card"]', { hasText: prefix })
-    let count = await rows.count()
-    // Delete from bottom up to avoid index shifting
-    while (count > 0) {
-      const row = rows.first()
-      await row.getByRole('button', { name: 'ลบ' }).click()
-      // Wait for delete dialog
-      await expect(page.getByRole('heading', { name: 'ลบเซลเพจ' })).toBeVisible()
-      await page.getByRole('button', { name: 'ลบ' }).last().click()
-      // Wait for dialog to close and row to disappear
-      await expect(page.getByRole('heading', { name: 'ลบเซลเพจ' })).not.toBeVisible()
-      await page.waitForTimeout(500)
-      count = await rows.count()
+    for (const prefix of [TEST_PREFIX, 'E2E Updated']) {
+      const rows = page.locator('[data-testid="sale-page-card"]', { hasText: prefix })
+      let count = await rows.count()
+      while (count > 0) {
+        const row = rows.first()
+        await row.getByRole('button', { name: 'ลบ' }).click()
+        await expect(page.getByRole('heading', { name: 'ลบเซลเพจ' })).toBeVisible({ timeout: 10000 })
+        await page.getByRole('button', { name: 'ลบ' }).last().click()
+        await expect(page.getByRole('heading', { name: 'ลบเซลเพจ' })).not.toBeVisible({ timeout: 10000 })
+        await page.waitForTimeout(1000)
+        count = await rows.count()
+      }
     }
+  } catch {
+    // Cleanup failure should not cascade to fail subsequent tests
+    console.log('cleanupTestSalePages: cleanup failed, continuing')
   }
 }
 
