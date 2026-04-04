@@ -1,10 +1,9 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { useMutation } from '@tanstack/react-query'
 import { GoogleLogin } from '@react-oauth/google'
 import { Shield, RotateCcw, Zap, Database } from 'lucide-react'
-import { useGoogleAuth } from '@/hooks/use-auth'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import api from '@/lib/api'
@@ -13,7 +12,6 @@ import type { APIResponse, AuthTokens } from '@/types'
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const isDev = import.meta.env.DEV
-const LOGIN_ERROR = 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ'
 
 const features = [
   {
@@ -46,7 +44,7 @@ function storeAuthTokens(data: AuthTokens) {
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const googleAuth = useGoogleAuth()
+  const [searchParams] = useSearchParams()
   const [devEmail, setDevEmail] = useState('')
 
   const devLogin = useMutation({
@@ -56,6 +54,19 @@ export function LoginPage() {
     },
     onSuccess: storeAuthTokens,
   })
+
+  // Handle Google OAuth errors from query params (one-shot)
+  useEffect(() => {
+    const error = searchParams.get('error')
+    if (!error) return
+    if (error === 'suspended') {
+      toast.error('บัญชีถูกระงับ')
+    } else {
+      toast.error('เข้าสู่ระบบด้วย Google ไม่สำเร็จ')
+    }
+    // Clear error param to prevent re-firing
+    navigate('/login', { replace: true })
+  }, [searchParams, navigate])
 
   return (
     <div className="flex min-h-screen">
@@ -155,20 +166,11 @@ export function LoginPage() {
             {googleClientId ? (
               <div className="flex justify-center">
                 <GoogleLogin
-                  onSuccess={async (response) => {
-                    if (response.credential) {
-                      try {
-                        await googleAuth.mutateAsync(response.credential)
-                        toast.success('เข้าสู่ระบบสำเร็จ')
-                        navigate('/dashboard')
-                      } catch {
-                        toast.error(LOGIN_ERROR)
-                      }
-                    }
-                  }}
-                  onError={() => {
-                    toast.error(LOGIN_ERROR)
-                  }}
+                  onSuccess={() => {/* redirect mode — handled by backend callback */}}
+                  ux_mode="redirect"
+                  login_uri={
+                    (import.meta.env.VITE_API_URL || window.location.origin) + '/api/v1/auth/google/callback'
+                  }
                   theme="filled_black"
                   size="large"
                   shape="rectangular"

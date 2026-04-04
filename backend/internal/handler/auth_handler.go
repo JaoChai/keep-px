@@ -5,8 +5,10 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
@@ -15,13 +17,15 @@ type AuthHandler struct {
 	authService *service.AuthService
 	validate    *validator.Validate
 	logger      *slog.Logger
+	cfg         *config.Config
 }
 
-func NewAuthHandler(authService *service.AuthService, logger *slog.Logger) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, cfg *config.Config, logger *slog.Logger) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 		validate:    newValidator(),
 		logger:      logger,
+		cfg:         cfg,
 	}
 }
 
@@ -142,4 +146,52 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSON(w, http.StatusOK, APIResponse{Data: tokens})
+}
+
+func (h *AuthHandler) GoogleAuthCallback(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, h.cfg.FrontendURL+"/login?error=auth_failed", http.StatusFound)
+		return
+	}
+
+	credential := r.FormValue("credential")
+	if credential == "" {
+		http.Redirect(w, r, h.cfg.FrontendURL+"/login?error=auth_failed", http.StatusFound)
+		return
+	}
+
+	// Verify CSRF token
+	csrfFormToken := r.FormValue("g_csrf_token")
+	csrfCookie, err := r.Cookie("g_csrf_token")
+	if err != nil || csrfFormToken == "" || csrfCookie.Value == "" || csrfFormToken != csrfCookie.Value {
+		http.Redirect(w, r, h.cfg.FrontendURL+"/login?error=auth_failed", http.StatusFound)
+		return
+	}
+
+	// Call existing service method
+	tokens, err := h.authService.GoogleAuth(r.Context(), service.GoogleAuthInput{IDToken: credential})
+	if err != nil {
+		if errors.Is(err, service.ErrAccountSuspended) {
+			h.logger.Warn("google auth callback: account suspended")
+			http.Redirect(w, r, h.cfg.FrontendURL+"/login?error=suspended", http.StatusFound)
+			return
+		}
+		h.logger.Error("google auth callback failed", "error", err)
+		http.Redirect(w, r, h.cfg.FrontendURL+"/login?error=auth_failed", http.StatusFound)
+		return
+	}
+
+	// Marshal customer to JSON
+	customerJSON, err := json.Marshal(tokens.Customer)
+	if err != nil {
+		http.Redirect(w, r, h.cfg.FrontendURL+"/login?error=auth_failed", http.StatusFound)
+		return
+	}
+
+	// Build redirect URL with hash fragment
+	redirectURL := h.cfg.FrontendURL + "/auth/callback#access_token=" + url.QueryEscape(tokens.AccessToken) +
+		"&refresh_token=" + url.QueryEscape(tokens.RefreshToken) +
+		"&customer=" + url.QueryEscape(string(customerJSON))
+
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
