@@ -71,6 +71,7 @@ func testConfig() *config.Config {
 		JWTSecret:     testJWTSecret,
 		JWTAccessTTL:  15 * time.Minute,
 		JWTRefreshTTL: 7 * 24 * time.Hour,
+		FrontendURL:   "http://localhost:5173",
 	}
 }
 

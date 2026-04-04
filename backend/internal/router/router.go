@@ -92,7 +92,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 	// Handlers
 	healthHandler := handler.NewHealthHandler(pool)
-	authHandler := handler.NewAuthHandler(authService, logger)
+	authHandler := handler.NewAuthHandler(authService, cfg, logger)
 	pixelHandler := handler.NewPixelHandler(pixelService, logger)
 	eventHandler := handler.NewEventHandler(eventService, logger)
 	replayHandler := handler.NewReplayHandler(replayService, logger)
@@ -133,6 +133,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 			// Auth routes (public)
 			r.Route("/auth", func(r chi.Router) {
 				r.Post("/google", authHandler.GoogleAuth)
+				r.Post("/google/callback", authHandler.GoogleAuthCallback)
 				r.Post("/refresh", authHandler.Refresh)
 
 				// Dev-only login (no Google OAuth required)

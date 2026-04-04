@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -71,7 +74,7 @@ func TestAuthHandler_Me(t *testing.T) {
 			}
 
 			authService := newTestAuthService(customerRepo, refreshTokenRepo)
-			h := NewAuthHandler(authService, testLogger())
+			h := NewAuthHandler(authService, testConfig(), testLogger())
 
 			r := chi.NewRouter()
 			r.Use(middleware.JWTAuth(testJWTSecret))
@@ -138,7 +141,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 			}
 
 			authService := newTestAuthService(customerRepo, refreshTokenRepo)
-			h := NewAuthHandler(authService, testLogger())
+			h := NewAuthHandler(authService, testConfig(), testLogger())
 
 			r := chi.NewRouter()
 			r.Use(middleware.JWTAuth(testJWTSecret))
@@ -248,7 +251,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 			}
 
 			authService := newTestAuthService(customerRepo, refreshTokenRepo)
-			h := NewAuthHandler(authService, testLogger())
+			h := NewAuthHandler(authService, testConfig(), testLogger())
 
 			// Refresh is a public endpoint — no JWT middleware.
 			r := chi.NewRouter()
@@ -275,6 +278,78 @@ func TestAuthHandler_Refresh(t *testing.T) {
 
 			customerRepo.AssertExpectations(t)
 			refreshTokenRepo.AssertExpectations(t)
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestAuthHandler_GoogleAuthCallback
+// ---------------------------------------------------------------------------
+
+func TestAuthHandler_GoogleAuthCallback(t *testing.T) {
+	tests := []struct {
+		name            string
+		formValue       map[string]string
+		csrfCookie      string
+		wantStatusCode  int
+		wantRedirectURL string
+	}{
+		{
+			name:            "missing credential — redirects to /login?error=auth_failed",
+			formValue:       map[string]string{},
+			wantStatusCode:  http.StatusFound,
+			wantRedirectURL: "http://localhost:5173/login?error=auth_failed",
+		},
+		{
+			name:            "missing csrf token in form — redirects to /login?error=auth_failed",
+			formValue:       map[string]string{"credential": "test-cred"},
+			csrfCookie:      "abc123",
+			wantStatusCode:  http.StatusFound,
+			wantRedirectURL: "http://localhost:5173/login?error=auth_failed",
+		},
+		{
+			name:            "csrf token mismatch — redirects to /login?error=auth_failed",
+			formValue:       map[string]string{"credential": "test-cred", "g_csrf_token": "xyz789"},
+			csrfCookie:      "abc123",
+			wantStatusCode:  http.StatusFound,
+			wantRedirectURL: "http://localhost:5173/login?error=auth_failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			customerRepo := &MockCustomerRepo{}
+			refreshTokenRepo := &MockRefreshTokenRepo{}
+
+			authService := newTestAuthService(customerRepo, refreshTokenRepo)
+			h := NewAuthHandler(authService, testConfig(), testLogger())
+
+			// Create request with form data
+			body := ""
+			for k, v := range tt.formValue {
+				if body != "" {
+					body += "&"
+				}
+				body += k + "=" + url.QueryEscape(v)
+			}
+
+			req := httptest.NewRequest("POST", "/api/v1/auth/google/callback", bytes.NewBufferString(body))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+			// Set CSRF cookie if provided
+			if tt.csrfCookie != "" {
+				req.AddCookie(&http.Cookie{
+					Name:  "g_csrf_token",
+					Value: tt.csrfCookie,
+				})
+			}
+
+			rec := httptest.NewRecorder()
+			h.GoogleAuthCallback(rec, req)
+
+			assert.Equal(t, tt.wantStatusCode, rec.Code)
+			location := rec.Header().Get("Location")
+			assert.Equal(t, tt.wantRedirectURL, location)
 		})
 	}
 }
@@ -322,7 +397,7 @@ func TestAuthHandler_RegenerateAPIKey(t *testing.T) {
 			}
 
 			authService := newTestAuthService(customerRepo, refreshTokenRepo)
-			h := NewAuthHandler(authService, testLogger())
+			h := NewAuthHandler(authService, testConfig(), testLogger())
 
 			r := chi.NewRouter()
 			r.Use(middleware.JWTAuth(testJWTSecret))
