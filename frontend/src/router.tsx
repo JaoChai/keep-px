@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute'
 import { AdminRoute } from '@/components/shared/AdminRoute'
 import { LoginPage } from '@/pages/auth/LoginPage'
+import { AuthCallbackPage } from '@/pages/auth/AuthCallbackPage'
 import { HomePage } from '@/pages/HomePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { PixelsPage } from '@/pages/PixelsPage'
@@ -37,6 +38,10 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/auth/callback',
+    element: <AuthCallbackPage />,
   },
   {
     path: '/register',
