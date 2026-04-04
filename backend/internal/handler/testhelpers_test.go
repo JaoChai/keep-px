@@ -734,21 +734,3 @@ func newTestSalePageService(
 	return service.NewSalePageService(context.Background(), salePageRepo, customerRepo, pixelRepo, quotaService, 60*time.Second)
 }
 
-// newTestReplayService creates a ReplayService with mock repos.
-func newTestReplayService(
-	replayRepo *MockReplaySessionRepo,
-	eventRepo *MockEventRepo,
-	pixelRepo *MockPixelRepo,
-	quotaService *service.QuotaService,
-) *service.ReplayService {
-	return service.NewReplayService(
-		context.Background(),
-		replayRepo,
-		eventRepo,
-		pixelRepo,
-		nil, // capiClient
-		testLogger(),
-		5, // maxConcurrentReplays
-		quotaService,
-	)
-}
