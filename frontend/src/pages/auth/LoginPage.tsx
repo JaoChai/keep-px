@@ -169,7 +169,7 @@ export function LoginPage() {
                   onSuccess={() => {/* redirect mode — handled by backend callback */}}
                   ux_mode="redirect"
                   login_uri={
-                    (import.meta.env.VITE_API_URL || window.location.origin) + '/api/v1/auth/google/callback'
+                    window.location.origin + '/api/v1/auth/google/callback'
                   }
                   theme="filled_black"
                   size="large"
