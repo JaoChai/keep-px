@@ -13,21 +13,22 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
 func newTestBillingService() (
 	*BillingService,
-	*MockPurchaseRepo,
-	*MockReplayCreditRepo,
-	*MockSubscriptionRepo,
-	*MockCustomerRepo,
-	*MockWebhookEventRepo,
+	*mocks.MockPurchaseRepo,
+	*mocks.MockReplayCreditRepo,
+	*mocks.MockSubscriptionRepo,
+	*mocks.MockCustomerRepo,
+	*mocks.MockWebhookEventRepo,
 ) {
-	purchaseRepo := new(MockPurchaseRepo)
-	creditRepo := new(MockReplayCreditRepo)
-	subRepo := new(MockSubscriptionRepo)
-	customerRepo := new(MockCustomerRepo)
-	webhookRepo := new(MockWebhookEventRepo)
+	purchaseRepo := new(mocks.MockPurchaseRepo)
+	creditRepo := new(mocks.MockReplayCreditRepo)
+	subRepo := new(mocks.MockSubscriptionRepo)
+	customerRepo := new(mocks.MockCustomerRepo)
+	webhookRepo := new(mocks.MockWebhookEventRepo)
 
 	cfg := &config.Config{
 		StripeSecretKey:          "", // empty to avoid real Stripe calls
@@ -45,7 +46,7 @@ func TestBillingService_HandleCheckoutCompleted(t *testing.T) {
 	tests := []struct {
 		name    string
 		sess    *stripe.CheckoutSession
-		setup   func(*MockPurchaseRepo, *MockReplayCreditRepo)
+		setup   func(*mocks.MockPurchaseRepo, *mocks.MockReplayCreditRepo)
 		wantErr bool
 	}{
 		{
@@ -57,7 +58,7 @@ func TestBillingService_HandleCheckoutCompleted(t *testing.T) {
 					"pack_type":   domain.PackReplaySingle,
 				},
 			},
-			setup: func(pr *MockPurchaseRepo, cr *MockReplayCreditRepo) {
+			setup: func(pr *mocks.MockPurchaseRepo, cr *mocks.MockReplayCreditRepo) {
 				pr.On("GetByID", mock.Anything, "purch-1").Return(&domain.Purchase{
 					ID:         "purch-1",
 					CustomerID: "cust-1",
@@ -75,7 +76,7 @@ func TestBillingService_HandleCheckoutCompleted(t *testing.T) {
 					"customer_id": "cust-1",
 				},
 			},
-			setup:   func(pr *MockPurchaseRepo, cr *MockReplayCreditRepo) {},
+			setup:   func(pr *mocks.MockPurchaseRepo, cr *mocks.MockReplayCreditRepo) {},
 			wantErr: false,
 		},
 		{
@@ -85,7 +86,7 @@ func TestBillingService_HandleCheckoutCompleted(t *testing.T) {
 					"purchase_id": "purch-missing",
 				},
 			},
-			setup: func(pr *MockPurchaseRepo, cr *MockReplayCreditRepo) {
+			setup: func(pr *mocks.MockPurchaseRepo, cr *mocks.MockReplayCreditRepo) {
 				pr.On("GetByID", mock.Anything, "purch-missing").Return(nil, nil)
 			},
 			wantErr: true,
@@ -97,7 +98,7 @@ func TestBillingService_HandleCheckoutCompleted(t *testing.T) {
 					"purchase_id": "purch-err",
 				},
 			},
-			setup: func(pr *MockPurchaseRepo, cr *MockReplayCreditRepo) {
+			setup: func(pr *mocks.MockPurchaseRepo, cr *mocks.MockReplayCreditRepo) {
 				pr.On("GetByID", mock.Anything, "purch-err").Return(nil, errors.New("db error"))
 			},
 			wantErr: true,
@@ -164,7 +165,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 		name      string
 		eventType string
 		sub       *stripe.Subscription
-		setup     func(*MockSubscriptionRepo, *MockCustomerRepo, *MockReplayCreditRepo)
+		setup     func(*mocks.MockSubscriptionRepo, *mocks.MockCustomerRepo, *mocks.MockReplayCreditRepo)
 		wantErr   bool
 	}{
 		{
@@ -185,7 +186,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 					},
 				},
 			},
-			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
+			setup: func(sr *mocks.MockSubscriptionRepo, cr *mocks.MockCustomerRepo, credR *mocks.MockReplayCreditRepo) {
 				cr.On("GetByStripeCustomerID", mock.Anything, "stripe_cust_1").Return(&domain.Customer{
 					ID:   "cust-1",
 					Plan: domain.PlanSandbox,
@@ -217,7 +218,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 					},
 				},
 			},
-			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
+			setup: func(sr *mocks.MockSubscriptionRepo, cr *mocks.MockCustomerRepo, credR *mocks.MockReplayCreditRepo) {
 				cr.On("GetByStripeCustomerID", mock.Anything, "stripe_cust_1").Return(&domain.Customer{
 					ID:   "cust-1",
 					Plan: domain.PlanPaid,
@@ -251,7 +252,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 					},
 				},
 			},
-			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
+			setup: func(sr *mocks.MockSubscriptionRepo, cr *mocks.MockCustomerRepo, credR *mocks.MockReplayCreditRepo) {
 				cr.On("GetByStripeCustomerID", mock.Anything, "stripe_cust_1").Return(&domain.Customer{
 					ID:   "cust-1",
 					Plan: domain.PlanPaid,
@@ -276,7 +277,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 				Status:   stripe.SubscriptionStatusCanceled,
 				Items:    &stripe.SubscriptionItemList{},
 			},
-			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
+			setup: func(sr *mocks.MockSubscriptionRepo, cr *mocks.MockCustomerRepo, credR *mocks.MockReplayCreditRepo) {
 				sr.On("GetByStripeSubscriptionID", mock.Anything, "sub_slot_del").Return(&domain.Subscription{
 					ID:                   "local-sub-slot",
 					CustomerID:           "cust-2",
@@ -306,7 +307,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 				Status:   stripe.SubscriptionStatusCanceled,
 				Items:    &stripe.SubscriptionItemList{},
 			},
-			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
+			setup: func(sr *mocks.MockSubscriptionRepo, cr *mocks.MockCustomerRepo, credR *mocks.MockReplayCreditRepo) {
 				sr.On("GetByStripeSubscriptionID", mock.Anything, "sub_replay_del").Return(&domain.Subscription{
 					ID:                   "local-sub-replay",
 					CustomerID:           "cust-3",
@@ -328,7 +329,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 				Customer: &stripe.Customer{ID: "stripe_cust_x"},
 				Items:    &stripe.SubscriptionItemList{},
 			},
-			setup: func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {
+			setup: func(sr *mocks.MockSubscriptionRepo, cr *mocks.MockCustomerRepo, credR *mocks.MockReplayCreditRepo) {
 				sr.On("GetByStripeSubscriptionID", mock.Anything, "sub_ghost").Return(nil, nil)
 			},
 			wantErr: false,
@@ -341,7 +342,7 @@ func TestBillingService_HandleSubscriptionEvent(t *testing.T) {
 				Customer: &stripe.Customer{ID: "stripe_cust_y"},
 				Items:    &stripe.SubscriptionItemList{},
 			},
-			setup:   func(sr *MockSubscriptionRepo, cr *MockCustomerRepo, credR *MockReplayCreditRepo) {},
+			setup:   func(sr *mocks.MockSubscriptionRepo, cr *mocks.MockCustomerRepo, credR *mocks.MockReplayCreditRepo) {},
 			wantErr: false,
 		},
 	}
@@ -452,11 +453,11 @@ func TestBillingService_CreateReplayCheckout(t *testing.T) {
 	t.Run("invalid replay type returns ErrInvalidCheckoutType", func(t *testing.T) {
 		// Create a service with a non-empty Stripe key so EnsureStripeCustomer
 		// does not short-circuit before the type switch is reached.
-		purchaseRepo := new(MockPurchaseRepo)
-		creditRepo := new(MockReplayCreditRepo)
-		subRepo := new(MockSubscriptionRepo)
-		customerRepo := new(MockCustomerRepo)
-		webhookRepo := new(MockWebhookEventRepo)
+		purchaseRepo := new(mocks.MockPurchaseRepo)
+		creditRepo := new(mocks.MockReplayCreditRepo)
+		subRepo := new(mocks.MockSubscriptionRepo)
+		customerRepo := new(mocks.MockCustomerRepo)
+		webhookRepo := new(mocks.MockWebhookEventRepo)
 
 		cfg := &config.Config{
 			StripeSecretKey:          "sk_test_fake", // non-empty to pass EnsureStripeCustomer guard

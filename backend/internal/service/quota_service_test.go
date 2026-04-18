@@ -12,30 +12,31 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
 func newTestQuotaService() (
 	*QuotaService,
-	*MockReplayCreditRepo,
-	*MockSubscriptionRepo,
-	*MockEventUsageRepo,
-	*MockPixelRepo,
-	*MockSalePageRepo,
-	*MockCustomerRepo,
+	*mocks.MockReplayCreditRepo,
+	*mocks.MockSubscriptionRepo,
+	*mocks.MockEventUsageRepo,
+	*mocks.MockPixelRepo,
+	*mocks.MockSalePageRepo,
+	*mocks.MockCustomerRepo,
 ) {
-	creditRepo := new(MockReplayCreditRepo)
-	subRepo := new(MockSubscriptionRepo)
-	usageRepo := new(MockEventUsageRepo)
-	pixelRepo := new(MockPixelRepo)
-	salePageRepo := new(MockSalePageRepo)
-	customerRepo := new(MockCustomerRepo)
+	creditRepo := new(mocks.MockReplayCreditRepo)
+	subRepo := new(mocks.MockSubscriptionRepo)
+	usageRepo := new(mocks.MockEventUsageRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
+	salePageRepo := new(mocks.MockSalePageRepo)
+	customerRepo := new(mocks.MockCustomerRepo)
 
 	svc := NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 	return svc, creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo
 }
 
 // setupSlotMocks sets up mocks for a customer with a given slot count, no credits, and optional usage.
-func setupSlotMocks(customerRepo *MockCustomerRepo, subRepo *MockSubscriptionRepo, creditRepo *MockReplayCreditRepo, usageRepo *MockEventUsageRepo, plan string, retentionDays int, slots int, usage *domain.EventUsage) {
+func setupSlotMocks(customerRepo *mocks.MockCustomerRepo, subRepo *mocks.MockSubscriptionRepo, creditRepo *mocks.MockReplayCreditRepo, usageRepo *mocks.MockEventUsageRepo, plan string, retentionDays int, slots int, usage *domain.EventUsage) {
 	customerRepo.On("GetByID", mock.Anything, mock.Anything).Return(&domain.Customer{
 		ID:            "cust-1",
 		Plan:          plan,

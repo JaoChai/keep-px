@@ -6,11 +6,12 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 	"github.com/stretchr/testify/mock"
 )
 
-func newTestCleanupService() (*CleanupService, *MockEventRepo) {
-	repo := new(MockEventRepo)
+func newTestCleanupService() (*CleanupService, *mocks.MockEventRepo) {
+	repo := new(mocks.MockEventRepo)
 	svc := NewCleanupService(repo, slog.Default())
 	return svc, repo
 }

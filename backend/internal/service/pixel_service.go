@@ -17,14 +17,14 @@ import (
 var fbPixelIDRegex = regexp.MustCompile(`^\d{15,16}$`)
 
 var (
-	ErrPixelNotFound        = errors.New("pixel not found")
-	ErrPixelNotOwned        = errors.New("pixel not owned by customer")
-	ErrPixelNoAccessToken   = errors.New("pixel has no access token configured")
-	ErrBackupPixelSelf      = errors.New("cannot set pixel as its own backup")
-	ErrBackupPixelNotFound  = errors.New("backup pixel not found")
-	ErrBackupPixelNotOwned  = errors.New("backup pixel not owned by customer")
-	ErrInvalidFBPixelID     = errors.New("invalid Facebook Pixel ID format: must be 15-16 digits")
-	ErrCAPINotConfigured    = errors.New("CAPI client not configured")
+	ErrPixelNotFound       = errors.New("pixel not found")
+	ErrPixelNotOwned       = errors.New("pixel not owned by customer")
+	ErrPixelNoAccessToken  = errors.New("pixel has no access token configured")
+	ErrBackupPixelSelf     = errors.New("cannot set pixel as its own backup")
+	ErrBackupPixelNotFound = errors.New("backup pixel not found")
+	ErrBackupPixelNotOwned = errors.New("backup pixel not owned by customer")
+	ErrInvalidFBPixelID    = errors.New("invalid Facebook Pixel ID format: must be 15-16 digits")
+	ErrCAPINotConfigured   = errors.New("CAPI client not configured")
 )
 
 type PixelService struct {

@@ -13,13 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
-func newTestSalePageService(t *testing.T) (*SalePageService, *MockSalePageRepo, *MockCustomerRepo, *MockPixelRepo) {
+func newTestSalePageService(t *testing.T) (*SalePageService, *mocks.MockSalePageRepo, *mocks.MockCustomerRepo, *mocks.MockPixelRepo) {
 	t.Helper()
-	salePageRepo := new(MockSalePageRepo)
-	customerRepo := new(MockCustomerRepo)
-	pixelRepo := new(MockPixelRepo)
+	salePageRepo := new(mocks.MockSalePageRepo)
+	customerRepo := new(mocks.MockCustomerRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	svc := NewSalePageService(ctx, salePageRepo, customerRepo, pixelRepo, nil, 60*time.Second)
@@ -27,23 +28,23 @@ func newTestSalePageService(t *testing.T) (*SalePageService, *MockSalePageRepo, 
 }
 
 type quotaMocks struct {
-	salePageRepo *MockSalePageRepo
-	customerRepo *MockCustomerRepo
-	pixelRepo    *MockPixelRepo
-	subRepo      *MockSubscriptionRepo
-	creditRepo   *MockReplayCreditRepo
-	usageRepo    *MockEventUsageRepo
+	salePageRepo *mocks.MockSalePageRepo
+	customerRepo *mocks.MockCustomerRepo
+	pixelRepo    *mocks.MockPixelRepo
+	subRepo      *mocks.MockSubscriptionRepo
+	creditRepo   *mocks.MockReplayCreditRepo
+	usageRepo    *mocks.MockEventUsageRepo
 }
 
 func newTestSalePageServiceWithQuota(t *testing.T) (*SalePageService, *quotaMocks) {
 	t.Helper()
 	m := &quotaMocks{
-		salePageRepo: new(MockSalePageRepo),
-		customerRepo: new(MockCustomerRepo),
-		pixelRepo:    new(MockPixelRepo),
-		subRepo:      new(MockSubscriptionRepo),
-		creditRepo:   new(MockReplayCreditRepo),
-		usageRepo:    new(MockEventUsageRepo),
+		salePageRepo: new(mocks.MockSalePageRepo),
+		customerRepo: new(mocks.MockCustomerRepo),
+		pixelRepo:    new(mocks.MockPixelRepo),
+		subRepo:      new(mocks.MockSubscriptionRepo),
+		creditRepo:   new(mocks.MockReplayCreditRepo),
+		usageRepo:    new(mocks.MockEventUsageRepo),
 	}
 
 	quotaService := NewQuotaService(m.creditRepo, m.subRepo, m.usageRepo, m.pixelRepo, m.salePageRepo, m.customerRepo)
@@ -63,7 +64,7 @@ func TestSalePageService_Create(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   CreateSalePageInput
-		setup   func(*MockSalePageRepo, *MockPixelRepo)
+		setup   func(*mocks.MockSalePageRepo, *mocks.MockPixelRepo)
 		wantErr error
 		errMsg  string
 		check   func(*testing.T, *domain.SalePage)
@@ -75,7 +76,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      validV1Content,
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("SlugExists", mock.Anything, mock.AnythingOfType("string")).Return(false, nil).Once()
 				sp.On("Create", mock.Anything, mock.AnythingOfType("*domain.SalePage")).Return(nil)
 			},
@@ -94,7 +95,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      validV1Content,
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("SlugExists", mock.Anything, "my-page").Return(false, nil)
 				sp.On("Create", mock.Anything, mock.AnythingOfType("*domain.SalePage")).Return(nil)
 			},
@@ -111,7 +112,7 @@ func TestSalePageService_Create(t *testing.T) {
 				Content:      validV1Content,
 				PixelIDs:     []string{"pixel-1", "pixel-2"},
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("SlugExists", mock.Anything, "pixel-page").Return(false, nil)
 				pr.On("GetByIDs", mock.Anything, []string{"pixel-1", "pixel-2"}).Return([]*domain.Pixel{
 					{ID: "pixel-1", CustomerID: "cust-1"},
@@ -131,7 +132,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "blocks",
 				Content:      validV2Content,
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("SlugExists", mock.Anything, "v2-page").Return(false, nil)
 				sp.On("Create", mock.Anything, mock.AnythingOfType("*domain.SalePage")).Return(nil)
 			},
@@ -147,7 +148,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      validV1Content,
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("SlugExists", mock.Anything, "taken-slug").Return(true, nil)
 			},
 			wantErr: ErrSlugTaken,
@@ -160,7 +161,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      validV1Content,
 			},
-			setup:   func(sp *MockSalePageRepo, pr *MockPixelRepo) {},
+			setup:   func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {},
 			wantErr: ErrSlugTaken,
 		},
 		{
@@ -171,7 +172,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      validV1Content,
 			},
-			setup:   func(sp *MockSalePageRepo, pr *MockPixelRepo) {},
+			setup:   func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {},
 			wantErr: ErrSlugTaken,
 		},
 		{
@@ -182,7 +183,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      validV1Content,
 			},
-			setup:   func(sp *MockSalePageRepo, pr *MockPixelRepo) {},
+			setup:   func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {},
 			wantErr: ErrSlugTaken,
 		},
 		{
@@ -193,7 +194,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      validV1Content,
 			},
-			setup:   func(sp *MockSalePageRepo, pr *MockPixelRepo) {},
+			setup:   func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {},
 			wantErr: ErrInvalidSlug,
 		},
 		{
@@ -204,7 +205,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      validV1Content,
 			},
-			setup:   func(sp *MockSalePageRepo, pr *MockPixelRepo) {},
+			setup:   func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {},
 			wantErr: ErrInvalidSlug,
 		},
 		{
@@ -215,7 +216,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      validV1Content,
 			},
-			setup:   func(sp *MockSalePageRepo, pr *MockPixelRepo) {},
+			setup:   func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {},
 			wantErr: ErrInvalidSlug,
 		},
 		{
@@ -226,7 +227,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      json.RawMessage(`{not valid json`),
 			},
-			setup:   func(sp *MockSalePageRepo, pr *MockPixelRepo) {},
+			setup:   func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {},
 			wantErr: ErrInvalidContent,
 		},
 		{
@@ -237,7 +238,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "blocks",
 				Content:      json.RawMessage(`{"version":2,"blocks":[],"style":{},"tracking":{}}`),
 			},
-			setup:   func(sp *MockSalePageRepo, pr *MockPixelRepo) {},
+			setup:   func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {},
 			wantErr: ErrInvalidContent,
 		},
 		{
@@ -248,7 +249,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "blocks",
 				Content:      generateTooManyBlocksContent(101),
 			},
-			setup:   func(sp *MockSalePageRepo, pr *MockPixelRepo) {},
+			setup:   func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {},
 			wantErr: ErrInvalidContent,
 		},
 		{
@@ -260,7 +261,7 @@ func TestSalePageService_Create(t *testing.T) {
 				Content:      validV1Content,
 				PixelIDs:     []string{"pixel-missing"},
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("SlugExists", mock.Anything, "good-slug").Return(false, nil)
 				pr.On("GetByIDs", mock.Anything, []string{"pixel-missing"}).Return([]*domain.Pixel{}, nil)
 			},
@@ -275,7 +276,7 @@ func TestSalePageService_Create(t *testing.T) {
 				Content:      validV1Content,
 				PixelIDs:     []string{"pixel-other"},
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("SlugExists", mock.Anything, "good-slug").Return(false, nil)
 				pr.On("GetByIDs", mock.Anything, []string{"pixel-other"}).Return([]*domain.Pixel{
 					{ID: "pixel-other", CustomerID: "cust-other"},
@@ -291,7 +292,7 @@ func TestSalePageService_Create(t *testing.T) {
 				TemplateName: "default",
 				Content:      validV1Content,
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("SlugExists", mock.Anything, "racy-slug").Return(false, nil)
 				sp.On("Create", mock.Anything, mock.AnythingOfType("*domain.SalePage")).Return(
 					&pgconn.PgError{Code: "23505"},
@@ -308,7 +309,7 @@ func TestSalePageService_Create(t *testing.T) {
 				Content:      validV1Content,
 				PixelIDs:     nil,
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("SlugExists", mock.Anything, "no-pixels").Return(false, nil)
 				sp.On("Create", mock.Anything, mock.MatchedBy(func(p *domain.SalePage) bool {
 					return p.PixelIDs != nil && len(p.PixelIDs) == 0
@@ -382,14 +383,14 @@ func TestSalePageService_GetByID(t *testing.T) {
 		name       string
 		customerID string
 		pageID     string
-		setup      func(*MockSalePageRepo)
+		setup      func(*mocks.MockSalePageRepo)
 		wantErr    error
 	}{
 		{
 			name:       "success",
 			customerID: "cust-1",
 			pageID:     "page-1",
-			setup: func(sp *MockSalePageRepo) {
+			setup: func(sp *mocks.MockSalePageRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -401,7 +402,7 @@ func TestSalePageService_GetByID(t *testing.T) {
 			name:       "not_found",
 			customerID: "cust-1",
 			pageID:     "nonexistent",
-			setup: func(sp *MockSalePageRepo) {
+			setup: func(sp *mocks.MockSalePageRepo) {
 				sp.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrSalePageNotFound,
@@ -410,7 +411,7 @@ func TestSalePageService_GetByID(t *testing.T) {
 			name:       "not_owned",
 			customerID: "cust-2",
 			pageID:     "page-1",
-			setup: func(sp *MockSalePageRepo) {
+			setup: func(sp *mocks.MockSalePageRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -494,7 +495,7 @@ func TestSalePageService_Update(t *testing.T) {
 		customerID string
 		pageID     string
 		input      UpdateSalePageInput
-		setup      func(*MockSalePageRepo, *MockPixelRepo)
+		setup      func(*mocks.MockSalePageRepo, *mocks.MockPixelRepo)
 		wantErr    error
 		check      func(*testing.T, *domain.SalePage)
 	}{
@@ -503,7 +504,7 @@ func TestSalePageService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pageID:     "page-1",
 			input:      UpdateSalePageInput{Name: strPtr("Updated Name")},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -521,7 +522,7 @@ func TestSalePageService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pageID:     "page-1",
 			input:      UpdateSalePageInput{Slug: strPtr("new-slug")},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -540,7 +541,7 @@ func TestSalePageService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pageID:     "page-1",
 			input:      UpdateSalePageInput{Slug: strPtr("same-slug")},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -559,7 +560,7 @@ func TestSalePageService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pageID:     "page-1",
 			input:      UpdateSalePageInput{Slug: strPtr("taken-slug")},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -574,7 +575,7 @@ func TestSalePageService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pageID:     "page-1",
 			input:      UpdateSalePageInput{Slug: strPtr("admin")},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -588,7 +589,7 @@ func TestSalePageService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pageID:     "page-1",
 			input:      UpdateSalePageInput{Slug: strPtr("Invalid Slug")},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -602,7 +603,7 @@ func TestSalePageService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pageID:     "nonexistent",
 			input:      UpdateSalePageInput{Name: strPtr("Updated")},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrSalePageNotFound,
@@ -612,7 +613,7 @@ func TestSalePageService_Update(t *testing.T) {
 			customerID: "cust-2",
 			pageID:     "page-1",
 			input:      UpdateSalePageInput{Name: strPtr("Updated")},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -627,7 +628,7 @@ func TestSalePageService_Update(t *testing.T) {
 			input: UpdateSalePageInput{
 				PixelIDs: &[]string{"pixel-1", "pixel-2"},
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -650,7 +651,7 @@ func TestSalePageService_Update(t *testing.T) {
 			input: UpdateSalePageInput{
 				PixelIDs: &[]string{"pixel-other"},
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -669,7 +670,7 @@ func TestSalePageService_Update(t *testing.T) {
 			input: UpdateSalePageInput{
 				Content: rawPtr(validV2Content),
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -689,7 +690,7 @@ func TestSalePageService_Update(t *testing.T) {
 			input: UpdateSalePageInput{
 				Content: rawPtr(json.RawMessage(`{not valid`)),
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -705,7 +706,7 @@ func TestSalePageService_Update(t *testing.T) {
 			input: UpdateSalePageInput{
 				IsPublished: boolPtr(true),
 			},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:          "page-1",
 					CustomerID:  "cust-1",
@@ -723,7 +724,7 @@ func TestSalePageService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pageID:     "page-1",
 			input:      UpdateSalePageInput{Slug: strPtr("racy-slug")},
-			setup: func(sp *MockSalePageRepo, pr *MockPixelRepo) {
+			setup: func(sp *mocks.MockSalePageRepo, pr *mocks.MockPixelRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -768,14 +769,14 @@ func TestSalePageService_Delete(t *testing.T) {
 		name       string
 		customerID string
 		pageID     string
-		setup      func(*MockSalePageRepo)
+		setup      func(*mocks.MockSalePageRepo)
 		wantErr    error
 	}{
 		{
 			name:       "success",
 			customerID: "cust-1",
 			pageID:     "page-1",
-			setup: func(sp *MockSalePageRepo) {
+			setup: func(sp *mocks.MockSalePageRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -788,7 +789,7 @@ func TestSalePageService_Delete(t *testing.T) {
 			name:       "not_found",
 			customerID: "cust-1",
 			pageID:     "nonexistent",
-			setup: func(sp *MockSalePageRepo) {
+			setup: func(sp *mocks.MockSalePageRepo) {
 				sp.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrSalePageNotFound,
@@ -797,7 +798,7 @@ func TestSalePageService_Delete(t *testing.T) {
 			name:       "not_owned",
 			customerID: "cust-2",
 			pageID:     "page-1",
-			setup: func(sp *MockSalePageRepo) {
+			setup: func(sp *mocks.MockSalePageRepo) {
 				sp.On("GetByID", mock.Anything, "page-1").Return(&domain.SalePage{
 					ID:         "page-1",
 					CustomerID: "cust-1",
@@ -830,13 +831,13 @@ func TestSalePageService_GetBySlug(t *testing.T) {
 	tests := []struct {
 		name    string
 		slug    string
-		setup   func(*MockSalePageRepo)
+		setup   func(*mocks.MockSalePageRepo)
 		wantErr error
 	}{
 		{
 			name: "published",
 			slug: "my-page",
-			setup: func(sp *MockSalePageRepo) {
+			setup: func(sp *mocks.MockSalePageRepo) {
 				sp.On("GetBySlug", mock.Anything, "my-page").Return(&domain.SalePage{
 					ID:          "page-1",
 					CustomerID:  "cust-1",
@@ -848,7 +849,7 @@ func TestSalePageService_GetBySlug(t *testing.T) {
 		{
 			name: "not_published",
 			slug: "draft-page",
-			setup: func(sp *MockSalePageRepo) {
+			setup: func(sp *mocks.MockSalePageRepo) {
 				sp.On("GetBySlug", mock.Anything, "draft-page").Return(&domain.SalePage{
 					ID:          "page-1",
 					CustomerID:  "cust-1",
@@ -861,7 +862,7 @@ func TestSalePageService_GetBySlug(t *testing.T) {
 		{
 			name: "not_found",
 			slug: "nonexistent",
-			setup: func(sp *MockSalePageRepo) {
+			setup: func(sp *mocks.MockSalePageRepo) {
 				sp.On("GetBySlug", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrSalePageNotFound,
