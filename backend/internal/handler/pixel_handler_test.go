@@ -13,6 +13,7 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
@@ -24,12 +25,12 @@ type httpResponseRecorder = httptest.ResponseRecorder
 // ---------------------------------------------------------------------------
 
 type pixelTestEnv struct {
-	pixelRepo    *MockPixelRepo
-	customerRepo *MockCustomerRepo
-	subRepo      *MockSubscriptionRepo
-	usageRepo    *MockEventUsageRepo
-	salePageRepo *MockSalePageRepo
-	creditRepo   *MockReplayCreditRepo
+	pixelRepo    *mocks.MockPixelRepo
+	customerRepo *mocks.MockCustomerRepo
+	subRepo      *mocks.MockSubscriptionRepo
+	usageRepo    *mocks.MockEventUsageRepo
+	salePageRepo *mocks.MockSalePageRepo
+	creditRepo   *mocks.MockReplayCreditRepo
 	handler      *PixelHandler
 	router       http.Handler
 }
@@ -37,12 +38,12 @@ type pixelTestEnv struct {
 func setupPixelTest(t *testing.T) *pixelTestEnv {
 	t.Helper()
 
-	pixelRepo := &MockPixelRepo{}
-	customerRepo := &MockCustomerRepo{}
-	subRepo := &MockSubscriptionRepo{}
-	usageRepo := &MockEventUsageRepo{}
-	salePageRepo := &MockSalePageRepo{}
-	creditRepo := &MockReplayCreditRepo{}
+	pixelRepo := &mocks.MockPixelRepo{}
+	customerRepo := &mocks.MockCustomerRepo{}
+	subRepo := &mocks.MockSubscriptionRepo{}
+	usageRepo := &mocks.MockEventUsageRepo{}
+	salePageRepo := &mocks.MockSalePageRepo{}
+	creditRepo := &mocks.MockReplayCreditRepo{}
 
 	quotaService := newTestQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 	pixelService := newTestPixelService(pixelRepo, quotaService)

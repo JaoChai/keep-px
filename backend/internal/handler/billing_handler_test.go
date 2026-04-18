@@ -15,6 +15,7 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
@@ -39,11 +40,11 @@ func nbBillingConfig() *config.Config {
 
 // nbNewTestBillingService creates a BillingService with mock repos and no Stripe config.
 func nbNewTestBillingService(
-	purchaseRepo *MockPurchaseRepo,
-	creditRepo *MockReplayCreditRepo,
-	subRepo *MockSubscriptionRepo,
-	customerRepo *MockCustomerRepo,
-	webhookRepo *MockWebhookEventRepo,
+	purchaseRepo *mocks.MockPurchaseRepo,
+	creditRepo *mocks.MockReplayCreditRepo,
+	subRepo *mocks.MockSubscriptionRepo,
+	customerRepo *mocks.MockCustomerRepo,
+	webhookRepo *mocks.MockWebhookEventRepo,
 ) *service.BillingService {
 	return service.NewBillingService(
 		purchaseRepo,
@@ -58,12 +59,12 @@ func nbNewTestBillingService(
 
 // nbNewTestQuotaService creates a QuotaService with mock repos.
 func nbNewTestQuotaService(
-	creditRepo *MockReplayCreditRepo,
-	subRepo *MockSubscriptionRepo,
-	usageRepo *MockEventUsageRepo,
-	pixelRepo *MockPixelRepo,
-	salePageRepo *MockSalePageRepo,
-	customerRepo *MockCustomerRepo,
+	creditRepo *mocks.MockReplayCreditRepo,
+	subRepo *mocks.MockSubscriptionRepo,
+	usageRepo *mocks.MockEventUsageRepo,
+	pixelRepo *mocks.MockPixelRepo,
+	salePageRepo *mocks.MockSalePageRepo,
+	customerRepo *mocks.MockCustomerRepo,
 ) *service.QuotaService {
 	return service.NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 }
@@ -74,21 +75,21 @@ func nbNewTestQuotaService(
 
 func TestBillingHandler_GetBillingOverview(t *testing.T) {
 	t.Run("success returns 200 with billing data", func(t *testing.T) {
-		purchaseRepo := &MockPurchaseRepo{}
-		creditRepo := &MockReplayCreditRepo{}
-		subRepo := &MockSubscriptionRepo{}
-		customerRepo := &MockCustomerRepo{}
-		webhookRepo := &MockWebhookEventRepo{}
+		purchaseRepo := &mocks.MockPurchaseRepo{}
+		creditRepo := &mocks.MockReplayCreditRepo{}
+		subRepo := &mocks.MockSubscriptionRepo{}
+		customerRepo := &mocks.MockCustomerRepo{}
+		webhookRepo := &mocks.MockWebhookEventRepo{}
 
 		billingSvc := nbNewTestBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo)
 
 		// QuotaService repos (separate instances to avoid mock collisions)
-		qCreditRepo := &MockReplayCreditRepo{}
-		qSubRepo := &MockSubscriptionRepo{}
-		qUsageRepo := &MockEventUsageRepo{}
-		qPixelRepo := &MockPixelRepo{}
-		qSalePageRepo := &MockSalePageRepo{}
-		qCustomerRepo := &MockCustomerRepo{}
+		qCreditRepo := &mocks.MockReplayCreditRepo{}
+		qSubRepo := &mocks.MockSubscriptionRepo{}
+		qUsageRepo := &mocks.MockEventUsageRepo{}
+		qPixelRepo := &mocks.MockPixelRepo{}
+		qSalePageRepo := &mocks.MockSalePageRepo{}
+		qCustomerRepo := &mocks.MockCustomerRepo{}
 
 		quotaSvc := nbNewTestQuotaService(qCreditRepo, qSubRepo, qUsageRepo, qPixelRepo, qSalePageRepo, qCustomerRepo)
 
@@ -124,12 +125,12 @@ func TestBillingHandler_GetBillingOverview(t *testing.T) {
 
 	t.Run("no auth returns 401", func(t *testing.T) {
 		billingSvc := nbNewTestBillingService(
-			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
-			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+			&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+			&mocks.MockCustomerRepo{}, &mocks.MockWebhookEventRepo{},
 		)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -150,17 +151,17 @@ func TestBillingHandler_GetQuota(t *testing.T) {
 	t.Run("success returns 200 with quota data", func(t *testing.T) {
 		// BillingService repos (unused but needed for constructor)
 		billingSvc := nbNewTestBillingService(
-			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
-			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+			&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+			&mocks.MockCustomerRepo{}, &mocks.MockWebhookEventRepo{},
 		)
 
 		// QuotaService repos
-		creditRepo := &MockReplayCreditRepo{}
-		subRepo := &MockSubscriptionRepo{}
-		usageRepo := &MockEventUsageRepo{}
-		pixelRepo := &MockPixelRepo{}
-		salePageRepo := &MockSalePageRepo{}
-		customerRepo := &MockCustomerRepo{}
+		creditRepo := &mocks.MockReplayCreditRepo{}
+		subRepo := &mocks.MockSubscriptionRepo{}
+		usageRepo := &mocks.MockEventUsageRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
+		salePageRepo := &mocks.MockSalePageRepo{}
+		customerRepo := &mocks.MockCustomerRepo{}
 
 		quotaSvc := nbNewTestQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
@@ -196,12 +197,12 @@ func TestBillingHandler_GetQuota(t *testing.T) {
 
 	t.Run("no auth returns 401", func(t *testing.T) {
 		billingSvc := nbNewTestBillingService(
-			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
-			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+			&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+			&mocks.MockCustomerRepo{}, &mocks.MockWebhookEventRepo{},
 		)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -220,16 +221,16 @@ func TestBillingHandler_GetQuota(t *testing.T) {
 
 func TestBillingHandler_CreateCheckout(t *testing.T) {
 	t.Run("with pixel_slots returns 503 when Stripe not configured", func(t *testing.T) {
-		purchaseRepo := &MockPurchaseRepo{}
-		creditRepo := &MockReplayCreditRepo{}
-		subRepo := &MockSubscriptionRepo{}
-		customerRepo := &MockCustomerRepo{}
-		webhookRepo := &MockWebhookEventRepo{}
+		purchaseRepo := &mocks.MockPurchaseRepo{}
+		creditRepo := &mocks.MockReplayCreditRepo{}
+		subRepo := &mocks.MockSubscriptionRepo{}
+		customerRepo := &mocks.MockCustomerRepo{}
+		webhookRepo := &mocks.MockWebhookEventRepo{}
 
 		billingSvc := nbNewTestBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -252,16 +253,16 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 	})
 
 	t.Run("with replay_single returns 503 when Stripe not configured", func(t *testing.T) {
-		purchaseRepo := &MockPurchaseRepo{}
-		creditRepo := &MockReplayCreditRepo{}
-		subRepo := &MockSubscriptionRepo{}
-		customerRepo := &MockCustomerRepo{}
-		webhookRepo := &MockWebhookEventRepo{}
+		purchaseRepo := &mocks.MockPurchaseRepo{}
+		creditRepo := &mocks.MockReplayCreditRepo{}
+		subRepo := &mocks.MockSubscriptionRepo{}
+		customerRepo := &mocks.MockCustomerRepo{}
+		webhookRepo := &mocks.MockWebhookEventRepo{}
 
 		billingSvc := nbNewTestBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -284,16 +285,16 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 	})
 
 	t.Run("with replay_monthly returns 503 when Stripe not configured", func(t *testing.T) {
-		purchaseRepo := &MockPurchaseRepo{}
-		creditRepo := &MockReplayCreditRepo{}
-		subRepo := &MockSubscriptionRepo{}
-		customerRepo := &MockCustomerRepo{}
-		webhookRepo := &MockWebhookEventRepo{}
+		purchaseRepo := &mocks.MockPurchaseRepo{}
+		creditRepo := &mocks.MockReplayCreditRepo{}
+		subRepo := &mocks.MockSubscriptionRepo{}
+		customerRepo := &mocks.MockCustomerRepo{}
+		webhookRepo := &mocks.MockWebhookEventRepo{}
 
 		billingSvc := nbNewTestBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -317,12 +318,12 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 
 	t.Run("with invalid type returns 400", func(t *testing.T) {
 		billingSvc := nbNewTestBillingService(
-			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
-			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+			&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+			&mocks.MockCustomerRepo{}, &mocks.MockWebhookEventRepo{},
 		)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -338,12 +339,12 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 
 	t.Run("missing type returns 400", func(t *testing.T) {
 		billingSvc := nbNewTestBillingService(
-			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
-			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+			&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+			&mocks.MockCustomerRepo{}, &mocks.MockWebhookEventRepo{},
 		)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -364,12 +365,12 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 
 	t.Run("no auth returns 401", func(t *testing.T) {
 		billingSvc := nbNewTestBillingService(
-			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
-			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+			&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+			&mocks.MockCustomerRepo{}, &mocks.MockWebhookEventRepo{},
 		)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -390,16 +391,16 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 
 func TestBillingHandler_UpdateSlots(t *testing.T) {
 	t.Run("returns 503 when Stripe not configured", func(t *testing.T) {
-		purchaseRepo := &MockPurchaseRepo{}
-		creditRepo := &MockReplayCreditRepo{}
-		subRepo := &MockSubscriptionRepo{}
-		customerRepo := &MockCustomerRepo{}
-		webhookRepo := &MockWebhookEventRepo{}
+		purchaseRepo := &mocks.MockPurchaseRepo{}
+		creditRepo := &mocks.MockReplayCreditRepo{}
+		subRepo := &mocks.MockSubscriptionRepo{}
+		customerRepo := &mocks.MockCustomerRepo{}
+		webhookRepo := &mocks.MockWebhookEventRepo{}
 
 		billingSvc := nbNewTestBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -423,12 +424,12 @@ func TestBillingHandler_UpdateSlots(t *testing.T) {
 
 	t.Run("invalid quantity returns 400", func(t *testing.T) {
 		billingSvc := nbNewTestBillingService(
-			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
-			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+			&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+			&mocks.MockCustomerRepo{}, &mocks.MockWebhookEventRepo{},
 		)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -449,12 +450,12 @@ func TestBillingHandler_UpdateSlots(t *testing.T) {
 
 	t.Run("no auth returns 401", func(t *testing.T) {
 		billingSvc := nbNewTestBillingService(
-			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
-			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+			&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+			&mocks.MockCustomerRepo{}, &mocks.MockWebhookEventRepo{},
 		)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -475,16 +476,16 @@ func TestBillingHandler_UpdateSlots(t *testing.T) {
 
 func TestBillingHandler_CreatePortalSession(t *testing.T) {
 	t.Run("returns 503 when Stripe not configured", func(t *testing.T) {
-		purchaseRepo := &MockPurchaseRepo{}
-		creditRepo := &MockReplayCreditRepo{}
-		subRepo := &MockSubscriptionRepo{}
-		customerRepo := &MockCustomerRepo{}
-		webhookRepo := &MockWebhookEventRepo{}
+		purchaseRepo := &mocks.MockPurchaseRepo{}
+		creditRepo := &mocks.MockReplayCreditRepo{}
+		subRepo := &mocks.MockSubscriptionRepo{}
+		customerRepo := &mocks.MockCustomerRepo{}
+		webhookRepo := &mocks.MockWebhookEventRepo{}
 
 		billingSvc := nbNewTestBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
@@ -507,12 +508,12 @@ func TestBillingHandler_CreatePortalSession(t *testing.T) {
 
 	t.Run("no auth returns 401", func(t *testing.T) {
 		billingSvc := nbNewTestBillingService(
-			&MockPurchaseRepo{}, &MockReplayCreditRepo{}, &MockSubscriptionRepo{},
-			&MockCustomerRepo{}, &MockWebhookEventRepo{},
+			&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+			&mocks.MockCustomerRepo{}, &mocks.MockWebhookEventRepo{},
 		)
 		quotaSvc := nbNewTestQuotaService(
-			&MockReplayCreditRepo{}, &MockSubscriptionRepo{}, &MockEventUsageRepo{},
-			&MockPixelRepo{}, &MockSalePageRepo{}, &MockCustomerRepo{},
+			&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+			&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
 		)
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 

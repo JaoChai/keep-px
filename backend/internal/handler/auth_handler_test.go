@@ -15,6 +15,7 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
 // ---------------------------------------------------------------------------
@@ -25,14 +26,14 @@ func TestAuthHandler_Me(t *testing.T) {
 	tests := []struct {
 		name       string
 		token      string
-		setupMocks func(*MockCustomerRepo)
+		setupMocks func(*mocks.MockCustomerRepo)
 		wantStatus int
 		wantError  string
 	}{
 		{
 			name:  "success — valid token returns customer data",
 			token: testJWT(testCustomerID, false),
-			setupMocks: func(cr *MockCustomerRepo) {
+			setupMocks: func(cr *mocks.MockCustomerRepo) {
 				cr.On("GetByID", mock.Anything, testCustomerID).Return(&domain.Customer{
 					ID:    testCustomerID,
 					Email: "user@example.com",
@@ -57,7 +58,7 @@ func TestAuthHandler_Me(t *testing.T) {
 		{
 			name:  "customer not found — 401",
 			token: testJWT("nonexistent", false),
-			setupMocks: func(cr *MockCustomerRepo) {
+			setupMocks: func(cr *mocks.MockCustomerRepo) {
 				cr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantStatus: http.StatusUnauthorized,
@@ -67,8 +68,8 @@ func TestAuthHandler_Me(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			customerRepo := &MockCustomerRepo{}
-			refreshTokenRepo := &MockRefreshTokenRepo{}
+			customerRepo := &mocks.MockCustomerRepo{}
+			refreshTokenRepo := &mocks.MockRefreshTokenRepo{}
 			if tt.setupMocks != nil {
 				tt.setupMocks(customerRepo)
 			}
@@ -110,7 +111,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 	tests := []struct {
 		name       string
 		token      string
-		setupMocks func(*MockRefreshTokenRepo)
+		setupMocks func(*mocks.MockRefreshTokenRepo)
 		wantStatus int
 		wantMsg    string
 		wantError  string
@@ -118,7 +119,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		{
 			name:  "success — logged out",
 			token: testJWT(testCustomerID, false),
-			setupMocks: func(rt *MockRefreshTokenRepo) {
+			setupMocks: func(rt *mocks.MockRefreshTokenRepo) {
 				rt.On("DeleteByCustomerID", mock.Anything, testCustomerID).Return(nil)
 			},
 			wantStatus: http.StatusOK,
@@ -134,8 +135,8 @@ func TestAuthHandler_Logout(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			customerRepo := &MockCustomerRepo{}
-			refreshTokenRepo := &MockRefreshTokenRepo{}
+			customerRepo := &mocks.MockCustomerRepo{}
+			refreshTokenRepo := &mocks.MockRefreshTokenRepo{}
 			if tt.setupMocks != nil {
 				tt.setupMocks(refreshTokenRepo)
 			}
@@ -174,14 +175,14 @@ func TestAuthHandler_Refresh(t *testing.T) {
 	tests := []struct {
 		name       string
 		body       interface{}
-		setupMocks func(*MockCustomerRepo, *MockRefreshTokenRepo)
+		setupMocks func(*mocks.MockCustomerRepo, *mocks.MockRefreshTokenRepo)
 		wantStatus int
 		wantError  string
 	}{
 		{
 			name: "success — returns new tokens",
 			body: map[string]string{"refresh_token": "valid-refresh-token"},
-			setupMocks: func(cr *MockCustomerRepo, rt *MockRefreshTokenRepo) {
+			setupMocks: func(cr *mocks.MockCustomerRepo, rt *mocks.MockRefreshTokenRepo) {
 				// The service hashes the token before lookup.
 				rt.On("GetByTokenHash", mock.Anything, mock.AnythingOfType("string")).Return(
 					testCustomerID,
@@ -203,7 +204,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		{
 			name: "invalid refresh token — 401",
 			body: map[string]string{"refresh_token": "bad-token"},
-			setupMocks: func(cr *MockCustomerRepo, rt *MockRefreshTokenRepo) {
+			setupMocks: func(cr *mocks.MockCustomerRepo, rt *mocks.MockRefreshTokenRepo) {
 				rt.On("GetByTokenHash", mock.Anything, mock.AnythingOfType("string")).Return(
 					"",
 					time.Time{},
@@ -222,7 +223,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		{
 			name: "suspended account — 403",
 			body: map[string]string{"refresh_token": "suspended-user-token"},
-			setupMocks: func(cr *MockCustomerRepo, rt *MockRefreshTokenRepo) {
+			setupMocks: func(cr *mocks.MockCustomerRepo, rt *mocks.MockRefreshTokenRepo) {
 				rt.On("GetByTokenHash", mock.Anything, mock.AnythingOfType("string")).Return(
 					"cust-suspended",
 					time.Now().Add(7*24*time.Hour),
@@ -244,8 +245,8 @@ func TestAuthHandler_Refresh(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			customerRepo := &MockCustomerRepo{}
-			refreshTokenRepo := &MockRefreshTokenRepo{}
+			customerRepo := &mocks.MockCustomerRepo{}
+			refreshTokenRepo := &mocks.MockRefreshTokenRepo{}
 			if tt.setupMocks != nil {
 				tt.setupMocks(customerRepo, refreshTokenRepo)
 			}
@@ -318,8 +319,8 @@ func TestAuthHandler_GoogleAuthCallback(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			customerRepo := &MockCustomerRepo{}
-			refreshTokenRepo := &MockRefreshTokenRepo{}
+			customerRepo := &mocks.MockCustomerRepo{}
+			refreshTokenRepo := &mocks.MockRefreshTokenRepo{}
 
 			authService := newTestAuthService(customerRepo, refreshTokenRepo)
 			h := NewAuthHandler(authService, testConfig(), testLogger())
@@ -362,14 +363,14 @@ func TestAuthHandler_RegenerateAPIKey(t *testing.T) {
 	tests := []struct {
 		name       string
 		token      string
-		setupMocks func(*MockCustomerRepo)
+		setupMocks func(*mocks.MockCustomerRepo)
 		wantStatus int
 		wantError  string
 	}{
 		{
 			name:  "success — returns updated customer",
 			token: testJWT(testCustomerID, false),
-			setupMocks: func(cr *MockCustomerRepo) {
+			setupMocks: func(cr *mocks.MockCustomerRepo) {
 				cr.On("RegenerateAPIKey", mock.Anything, testCustomerID, mock.AnythingOfType("string")).Return(&domain.Customer{
 					ID:     testCustomerID,
 					Email:  "user@example.com",
@@ -390,8 +391,8 @@ func TestAuthHandler_RegenerateAPIKey(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			customerRepo := &MockCustomerRepo{}
-			refreshTokenRepo := &MockRefreshTokenRepo{}
+			customerRepo := &mocks.MockCustomerRepo{}
+			refreshTokenRepo := &mocks.MockRefreshTokenRepo{}
 			if tt.setupMocks != nil {
 				tt.setupMocks(customerRepo)
 			}

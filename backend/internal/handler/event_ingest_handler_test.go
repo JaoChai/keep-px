@@ -17,6 +17,7 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/facebook"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
@@ -67,7 +68,7 @@ func eventParseResponse(t *testing.T, rr *httpResponseRecorder) map[string]inter
 
 // newTestEventServiceWithCAPI creates an EventService with a dummy CAPI client
 // that prevents nil-pointer panics in background goroutines during ingest tests.
-func newTestEventServiceWithCAPI(eventRepo *MockEventRepo, pixelRepo *MockPixelRepo, quotaService *service.QuotaService) *service.EventService {
+func newTestEventServiceWithCAPI(eventRepo *mocks.MockEventRepo, pixelRepo *mocks.MockPixelRepo, quotaService *service.QuotaService) *service.EventService {
 	capiClient := facebook.NewCAPIClient("http://localhost:19999")
 	return service.NewEventService(eventRepo, pixelRepo, capiClient, slog.Default(), quotaService)
 }
@@ -80,13 +81,13 @@ func TestEventHandler_Ingest(t *testing.T) {
 	pixelID := uuid.New().String()
 
 	t.Run("success: batch of 2 events returns 202", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
-		subRepo := &MockSubscriptionRepo{}
-		usageRepo := &MockEventUsageRepo{}
-		creditRepo := &MockReplayCreditRepo{}
-		salePageRepo := &MockSalePageRepo{}
-		customerRepo := &MockCustomerRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
+		subRepo := &mocks.MockSubscriptionRepo{}
+		usageRepo := &mocks.MockEventUsageRepo{}
+		creditRepo := &mocks.MockReplayCreditRepo{}
+		salePageRepo := &mocks.MockSalePageRepo{}
+		customerRepo := &mocks.MockCustomerRepo{}
 
 		quotaSvc := newTestQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 		eventSvc := newTestEventServiceWithCAPI(eventRepo, pixelRepo, quotaSvc)
@@ -125,8 +126,8 @@ func TestEventHandler_Ingest(t *testing.T) {
 	})
 
 	t.Run("no auth header returns 401", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -144,8 +145,8 @@ func TestEventHandler_Ingest(t *testing.T) {
 	})
 
 	t.Run("empty events array returns 400", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -164,13 +165,13 @@ func TestEventHandler_Ingest(t *testing.T) {
 	})
 
 	t.Run("quota exceeded returns 402", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
-		subRepo := &MockSubscriptionRepo{}
-		usageRepo := &MockEventUsageRepo{}
-		creditRepo := &MockReplayCreditRepo{}
-		salePageRepo := &MockSalePageRepo{}
-		customerRepo := &MockCustomerRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
+		subRepo := &mocks.MockSubscriptionRepo{}
+		usageRepo := &mocks.MockEventUsageRepo{}
+		creditRepo := &mocks.MockReplayCreditRepo{}
+		salePageRepo := &mocks.MockSalePageRepo{}
+		customerRepo := &mocks.MockCustomerRepo{}
 
 		quotaSvc := newTestQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 		eventSvc := newTestEventServiceWithCAPI(eventRepo, pixelRepo, quotaSvc)
@@ -205,8 +206,8 @@ func TestEventHandler_List(t *testing.T) {
 	pixelID := uuid.New().String()
 
 	t.Run("success: paginated response with defaults", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -232,8 +233,8 @@ func TestEventHandler_List(t *testing.T) {
 	})
 
 	t.Run("with pixel_id filter", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -253,8 +254,8 @@ func TestEventHandler_List(t *testing.T) {
 	})
 
 	t.Run("invalid pixel_id returns 400", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -273,8 +274,8 @@ func TestEventHandler_List(t *testing.T) {
 
 func TestEventHandler_ListRecent(t *testing.T) {
 	t.Run("without since returns latest events", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -296,8 +297,8 @@ func TestEventHandler_ListRecent(t *testing.T) {
 	})
 
 	t.Run("with since returns events after timestamp", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -321,8 +322,8 @@ func TestEventHandler_ListRecent(t *testing.T) {
 	})
 
 	t.Run("invalid since format returns 400", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -343,8 +344,8 @@ func TestEventHandler_GetByID(t *testing.T) {
 	eventID := uuid.New().String()
 
 	t.Run("success returns 200 with event", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -372,8 +373,8 @@ func TestEventHandler_GetByID(t *testing.T) {
 	})
 
 	t.Run("invalid UUID returns 400", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -386,8 +387,8 @@ func TestEventHandler_GetByID(t *testing.T) {
 	})
 
 	t.Run("not found returns 404", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 
@@ -403,8 +404,8 @@ func TestEventHandler_GetByID(t *testing.T) {
 	})
 
 	t.Run("event from different customer returns 404", func(t *testing.T) {
-		eventRepo := &MockEventRepo{}
-		pixelRepo := &MockPixelRepo{}
+		eventRepo := &mocks.MockEventRepo{}
+		pixelRepo := &mocks.MockPixelRepo{}
 		eventSvc := newTestEventService(eventRepo, pixelRepo, nil)
 		h := NewEventHandler(eventSvc, testLogger())
 

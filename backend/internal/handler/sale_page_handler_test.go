@@ -12,6 +12,7 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
 // ---------------------------------------------------------------------------
@@ -19,12 +20,12 @@ import (
 // ---------------------------------------------------------------------------
 
 type salePageTestEnv struct {
-	pixelRepo    *MockPixelRepo
-	customerRepo *MockCustomerRepo
-	subRepo      *MockSubscriptionRepo
-	usageRepo    *MockEventUsageRepo
-	salePageRepo *MockSalePageRepo
-	creditRepo   *MockReplayCreditRepo
+	pixelRepo    *mocks.MockPixelRepo
+	customerRepo *mocks.MockCustomerRepo
+	subRepo      *mocks.MockSubscriptionRepo
+	usageRepo    *mocks.MockEventUsageRepo
+	salePageRepo *mocks.MockSalePageRepo
+	creditRepo   *mocks.MockReplayCreditRepo
 	handler      *SalePageHandler
 	router       http.Handler
 }
@@ -32,12 +33,12 @@ type salePageTestEnv struct {
 func setupSalePageTest(t *testing.T) *salePageTestEnv {
 	t.Helper()
 
-	pixelRepo := &MockPixelRepo{}
-	customerRepo := &MockCustomerRepo{}
-	subRepo := &MockSubscriptionRepo{}
-	usageRepo := &MockEventUsageRepo{}
-	salePageRepo := &MockSalePageRepo{}
-	creditRepo := &MockReplayCreditRepo{}
+	pixelRepo := &mocks.MockPixelRepo{}
+	customerRepo := &mocks.MockCustomerRepo{}
+	subRepo := &mocks.MockSubscriptionRepo{}
+	usageRepo := &mocks.MockEventUsageRepo{}
+	salePageRepo := &mocks.MockSalePageRepo{}
+	creditRepo := &mocks.MockReplayCreditRepo{}
 
 	quotaService := newTestQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 	salePageService := newTestSalePageService(salePageRepo, customerRepo, pixelRepo, quotaService)

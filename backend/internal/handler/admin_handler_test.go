@@ -15,6 +15,7 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
@@ -25,10 +26,10 @@ const testTargetCustomerID = "target-cust"
 // ---------------------------------------------------------------------------
 
 type adminTestEnv struct {
-	adminRepo    *MockAdminRepo
-	customerRepo *MockCustomerRepo
-	creditRepo   *MockReplayCreditRepo
-	replayRepo   *MockReplaySessionRepo
+	adminRepo    *mocks.MockAdminRepo
+	customerRepo *mocks.MockCustomerRepo
+	creditRepo   *mocks.MockReplayCreditRepo
+	replayRepo   *mocks.MockReplaySessionRepo
 	handler      *AdminHandler
 	router       http.Handler
 }
@@ -36,10 +37,10 @@ type adminTestEnv struct {
 func setupAdminTest(t *testing.T) *adminTestEnv {
 	t.Helper()
 
-	adminRepo := &MockAdminRepo{}
-	customerRepo := &MockCustomerRepo{}
-	creditRepo := &MockReplayCreditRepo{}
-	replayRepo := &MockReplaySessionRepo{}
+	adminRepo := &mocks.MockAdminRepo{}
+	customerRepo := &mocks.MockCustomerRepo{}
+	creditRepo := &mocks.MockReplayCreditRepo{}
+	replayRepo := &mocks.MockReplaySessionRepo{}
 
 	adminService := service.NewAdminService(adminRepo, customerRepo, creditRepo, replayRepo, nil, testLogger())
 	h := NewAdminHandler(adminService, testLogger())
