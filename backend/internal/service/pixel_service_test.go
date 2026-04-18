@@ -14,12 +14,13 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/facebook"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
 const testBackupPixelID = "pixel-2"
 
-func newTestPixelService() (*PixelService, *MockPixelRepo) {
-	pixelRepo := new(MockPixelRepo)
+func newTestPixelService() (*PixelService, *mocks.MockPixelRepo) {
+	pixelRepo := new(mocks.MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
 	svc := NewPixelService(pixelRepo, capiClient, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
 	return svc, pixelRepo
@@ -141,14 +142,14 @@ func TestPixelService_GetByID(t *testing.T) {
 		name       string
 		customerID string
 		pixelID    string
-		setup      func(*MockPixelRepo)
+		setup      func(*mocks.MockPixelRepo)
 		wantErr    error
 	}{
 		{
 			name:       "success",
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -161,7 +162,7 @@ func TestPixelService_GetByID(t *testing.T) {
 			name:       "not found",
 			customerID: "cust-1",
 			pixelID:    "nonexistent",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrPixelNotFound,
@@ -170,7 +171,7 @@ func TestPixelService_GetByID(t *testing.T) {
 			name:       "not owned",
 			customerID: "cust-2",
 			pixelID:    "pixel-1",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -220,7 +221,7 @@ func TestPixelService_Update(t *testing.T) {
 		customerID string
 		pixelID    string
 		input      UpdatePixelInput
-		setup      func(*MockPixelRepo)
+		setup      func(*mocks.MockPixelRepo)
 		wantErr    error
 	}{
 		{
@@ -230,7 +231,7 @@ func TestPixelService_Update(t *testing.T) {
 			input: UpdatePixelInput{
 				Name: strPtr("Updated Pixel"),
 			},
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -245,7 +246,7 @@ func TestPixelService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pixelID:    "nonexistent",
 			input:      UpdatePixelInput{Name: strPtr("Updated")},
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrPixelNotFound,
@@ -255,7 +256,7 @@ func TestPixelService_Update(t *testing.T) {
 			customerID: "cust-2",
 			pixelID:    "pixel-1",
 			input:      UpdatePixelInput{Name: strPtr("Updated")},
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -268,7 +269,7 @@ func TestPixelService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
 			input:      UpdatePixelInput{BackupPixelID: strPtr(testBackupPixelID)},
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -290,7 +291,7 @@ func TestPixelService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
 			input:      UpdatePixelInput{BackupPixelID: strPtr("")},
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				backupID := testBackupPixelID
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
@@ -309,7 +310,7 @@ func TestPixelService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
 			input:      UpdatePixelInput{BackupPixelID: strPtr("pixel-1")},
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -322,7 +323,7 @@ func TestPixelService_Update(t *testing.T) {
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
 			input:      UpdatePixelInput{BackupPixelID: strPtr("pixel-3")},
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -360,14 +361,14 @@ func TestPixelService_Delete(t *testing.T) {
 		name       string
 		customerID string
 		pixelID    string
-		setup      func(*MockPixelRepo)
+		setup      func(*mocks.MockPixelRepo)
 		wantErr    error
 	}{
 		{
 			name:       "success",
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -380,7 +381,7 @@ func TestPixelService_Delete(t *testing.T) {
 			name:       "not found",
 			customerID: "cust-1",
 			pixelID:    "nonexistent",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrPixelNotFound,
@@ -389,7 +390,7 @@ func TestPixelService_Delete(t *testing.T) {
 			name:       "not owned",
 			customerID: "cust-2",
 			pixelID:    "pixel-1",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -421,7 +422,7 @@ func TestPixelService_TestConnection(t *testing.T) {
 		name       string
 		customerID string
 		pixelID    string
-		setup      func(*MockPixelRepo)
+		setup      func(*mocks.MockPixelRepo)
 		fbHandler  http.HandlerFunc
 		wantErr    error
 		wantErrMsg string
@@ -430,7 +431,7 @@ func TestPixelService_TestConnection(t *testing.T) {
 			name:       "success",
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
@@ -450,7 +451,7 @@ func TestPixelService_TestConnection(t *testing.T) {
 			name:       "pixel not found",
 			customerID: "cust-1",
 			pixelID:    "nonexistent",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrPixelNotFound,
@@ -459,7 +460,7 @@ func TestPixelService_TestConnection(t *testing.T) {
 			name:       "pixel not owned",
 			customerID: "cust-2",
 			pixelID:    "pixel-1",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -471,7 +472,7 @@ func TestPixelService_TestConnection(t *testing.T) {
 			name:       "missing access token",
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
@@ -485,7 +486,7 @@ func TestPixelService_TestConnection(t *testing.T) {
 			name:       "capi error",
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
-			setup: func(pr *MockPixelRepo) {
+			setup: func(pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
@@ -503,7 +504,7 @@ func TestPixelService_TestConnection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pixelRepo := new(MockPixelRepo)
+			pixelRepo := new(mocks.MockPixelRepo)
 			tt.setup(pixelRepo)
 
 			var capiClient *facebook.CAPIClient

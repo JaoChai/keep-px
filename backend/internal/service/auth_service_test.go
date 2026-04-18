@@ -11,11 +11,12 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
-func newTestAuthService() (*AuthService, *MockCustomerRepo, *MockRefreshTokenRepo) {
-	customerRepo := new(MockCustomerRepo)
-	refreshTokenRepo := new(MockRefreshTokenRepo)
+func newTestAuthService() (*AuthService, *mocks.MockCustomerRepo, *mocks.MockRefreshTokenRepo) {
+	customerRepo := new(mocks.MockCustomerRepo)
+	refreshTokenRepo := new(mocks.MockRefreshTokenRepo)
 	cfg := &config.Config{
 		JWTSecret:     "test-secret",
 		JWTAccessTTL:  15 * time.Minute,
@@ -29,14 +30,14 @@ func TestAuthService_RefreshTokens(t *testing.T) {
 	tests := []struct {
 		name      string
 		token     string
-		setup     func(*MockCustomerRepo, *MockRefreshTokenRepo)
+		setup     func(*mocks.MockCustomerRepo, *mocks.MockRefreshTokenRepo)
 		wantErr   error
 		wantToken bool
 	}{
 		{
 			name:  "success",
 			token: "valid-refresh-token",
-			setup: func(cr *MockCustomerRepo, rt *MockRefreshTokenRepo) {
+			setup: func(cr *mocks.MockCustomerRepo, rt *mocks.MockRefreshTokenRepo) {
 				rt.On("GetByTokenHash", mock.Anything, mock.AnythingOfType("string")).
 					Return("cust-1", time.Now().Add(time.Hour), nil)
 				rt.On("DeleteByTokenHash", mock.Anything, mock.AnythingOfType("string")).Return(nil)
@@ -52,7 +53,7 @@ func TestAuthService_RefreshTokens(t *testing.T) {
 		{
 			name:  "invalid token",
 			token: "invalid-token",
-			setup: func(cr *MockCustomerRepo, rt *MockRefreshTokenRepo) {
+			setup: func(cr *mocks.MockCustomerRepo, rt *mocks.MockRefreshTokenRepo) {
 				rt.On("GetByTokenHash", mock.Anything, mock.AnythingOfType("string")).
 					Return("", time.Time{}, nil)
 			},
@@ -89,13 +90,13 @@ func TestAuthService_Logout(t *testing.T) {
 	tests := []struct {
 		name       string
 		customerID string
-		setup      func(*MockRefreshTokenRepo)
+		setup      func(*mocks.MockRefreshTokenRepo)
 		wantErr    bool
 	}{
 		{
 			name:       "success",
 			customerID: "cust-1",
-			setup: func(rt *MockRefreshTokenRepo) {
+			setup: func(rt *mocks.MockRefreshTokenRepo) {
 				rt.On("DeleteByCustomerID", mock.Anything, "cust-1").Return(nil)
 			},
 			wantErr: false,
@@ -103,7 +104,7 @@ func TestAuthService_Logout(t *testing.T) {
 		{
 			name:       "repo error",
 			customerID: "cust-2",
-			setup: func(rt *MockRefreshTokenRepo) {
+			setup: func(rt *mocks.MockRefreshTokenRepo) {
 				rt.On("DeleteByCustomerID", mock.Anything, "cust-2").Return(errors.New("db error"))
 			},
 			wantErr: true,

@@ -11,15 +11,16 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
 var errDBDown = errors.New("db down")
 
-func newTestAdminService() (*AdminService, *MockAdminRepo, *MockCustomerRepo, *MockReplayCreditRepo, *MockReplaySessionRepo) {
-	adminRepo := new(MockAdminRepo)
-	customerRepo := new(MockCustomerRepo)
-	creditRepo := new(MockReplayCreditRepo)
-	replaySessionRepo := new(MockReplaySessionRepo)
+func newTestAdminService() (*AdminService, *mocks.MockAdminRepo, *mocks.MockCustomerRepo, *mocks.MockReplayCreditRepo, *mocks.MockReplaySessionRepo) {
+	adminRepo := new(mocks.MockAdminRepo)
+	customerRepo := new(mocks.MockCustomerRepo)
+	creditRepo := new(mocks.MockReplayCreditRepo)
+	replaySessionRepo := new(mocks.MockReplaySessionRepo)
 	svc := NewAdminService(adminRepo, customerRepo, creditRepo, replaySessionRepo, nil, slog.Default())
 	return svc, adminRepo, customerRepo, creditRepo, replaySessionRepo
 }
@@ -32,7 +33,7 @@ func TestAdminService_ListCustomers(t *testing.T) {
 		status    string
 		page      int
 		perPage   int
-		setup     func(*MockAdminRepo)
+		setup     func(*mocks.MockAdminRepo)
 		wantLen   int
 		wantTotal int
 		wantErr   error
@@ -44,7 +45,7 @@ func TestAdminService_ListCustomers(t *testing.T) {
 			status:  "",
 			page:    0,
 			perPage: 0,
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("ListCustomers", mock.Anything, "", "", "", 20, 0).Return([]*domain.Customer{
 					{ID: "c1", Email: "a@b.com"},
 				}, 1, nil)
@@ -57,7 +58,7 @@ func TestAdminService_ListCustomers(t *testing.T) {
 			plan:    "nonexistent",
 			page:    1,
 			perPage: 20,
-			setup:   func(ar *MockAdminRepo) {},
+			setup:   func(ar *mocks.MockAdminRepo) {},
 			wantErr: ErrInvalidPlan,
 		},
 		{
@@ -65,7 +66,7 @@ func TestAdminService_ListCustomers(t *testing.T) {
 			status:  "bogus",
 			page:    1,
 			perPage: 10,
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("ListCustomers", mock.Anything, "", "", "", 10, 0).Return([]*domain.Customer{}, 0, nil)
 			},
 			wantLen:   0,
@@ -75,7 +76,7 @@ func TestAdminService_ListCustomers(t *testing.T) {
 			name:    "repo error propagates",
 			page:    1,
 			perPage: 20,
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("ListCustomers", mock.Anything, "", "", "", 20, 0).Return(nil, 0, errDBDown)
 			},
 			wantErr: errDBDown,
@@ -105,13 +106,13 @@ func TestAdminService_GetCustomerDetail(t *testing.T) {
 	tests := []struct {
 		name    string
 		id      string
-		setup   func(*MockAdminRepo)
+		setup   func(*mocks.MockAdminRepo)
 		wantErr error
 	}{
 		{
 			name: "success",
 			id:   "c1",
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("GetCustomerDetail", mock.Anything, "c1").Return(&domain.AdminCustomerDetail{
 					Customer: &domain.Customer{ID: "c1"},
 				}, nil)
@@ -120,7 +121,7 @@ func TestAdminService_GetCustomerDetail(t *testing.T) {
 		{
 			name: "not found",
 			id:   "missing",
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("GetCustomerDetail", mock.Anything, "missing").Return(nil, nil)
 			},
 			wantErr: ErrCustomerNotFound,
@@ -128,7 +129,7 @@ func TestAdminService_GetCustomerDetail(t *testing.T) {
 		{
 			name: "repo error",
 			id:   "c1",
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("GetCustomerDetail", mock.Anything, "c1").Return(nil, errDBDown)
 			},
 			wantErr: errDBDown,
@@ -158,19 +159,19 @@ func TestAdminService_ChangePlan(t *testing.T) {
 		name      string
 		custID    string
 		newPlan   string
-		setupCust func(*MockCustomerRepo)
-		setupAdm  func(*MockAdminRepo)
+		setupCust func(*mocks.MockCustomerRepo)
+		setupAdm  func(*mocks.MockAdminRepo)
 		wantErr   error
 	}{
 		{
 			name:    "success",
 			custID:  "c1",
 			newPlan: domain.PlanPaid,
-			setupCust: func(cr *MockCustomerRepo) {
+			setupCust: func(cr *mocks.MockCustomerRepo) {
 				cr.On("GetByID", mock.Anything, "c1").Return(&domain.Customer{ID: "c1"}, nil)
 				cr.On("UpdatePlan", mock.Anything, "c1", domain.PlanPaid).Return(nil)
 			},
-			setupAdm: func(ar *MockAdminRepo) {
+			setupAdm: func(ar *mocks.MockAdminRepo) {
 				ar.On("CreateAuditLog", mock.Anything, mock.Anything).Return(nil)
 			},
 		},
@@ -178,18 +179,18 @@ func TestAdminService_ChangePlan(t *testing.T) {
 			name:      "invalid plan",
 			custID:    "c1",
 			newPlan:   "gold",
-			setupCust: func(cr *MockCustomerRepo) {},
-			setupAdm:  func(ar *MockAdminRepo) {},
+			setupCust: func(cr *mocks.MockCustomerRepo) {},
+			setupAdm:  func(ar *mocks.MockAdminRepo) {},
 			wantErr:   ErrInvalidPlan,
 		},
 		{
 			name:    "customer not found",
 			custID:  "missing",
 			newPlan: domain.PlanPaid,
-			setupCust: func(cr *MockCustomerRepo) {
+			setupCust: func(cr *mocks.MockCustomerRepo) {
 				cr.On("GetByID", mock.Anything, "missing").Return(nil, nil)
 			},
-			setupAdm: func(ar *MockAdminRepo) {},
+			setupAdm: func(ar *mocks.MockAdminRepo) {},
 			wantErr:  ErrCustomerNotFound,
 		},
 	}
@@ -217,14 +218,14 @@ func TestAdminService_SuspendCustomer(t *testing.T) {
 		name    string
 		adminID string
 		custID  string
-		setup   func(*MockAdminRepo)
+		setup   func(*mocks.MockAdminRepo)
 		wantErr error
 	}{
 		{
 			name:    "success",
 			adminID: "admin-1",
 			custID:  "c1",
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("SuspendCustomer", mock.Anything, "c1").Return(nil)
 				ar.On("CreateAuditLog", mock.Anything, mock.Anything).Return(nil)
 			},
@@ -233,14 +234,14 @@ func TestAdminService_SuspendCustomer(t *testing.T) {
 			name:    "self-suspend blocked",
 			adminID: "c1",
 			custID:  "c1",
-			setup:   func(ar *MockAdminRepo) {},
+			setup:   func(ar *mocks.MockAdminRepo) {},
 			wantErr: ErrAdminSelfSuspend,
 		},
 		{
 			name:    "not found",
 			adminID: "admin-1",
 			custID:  "missing",
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("SuspendCustomer", mock.Anything, "missing").Return(repository.ErrNotFound)
 			},
 			wantErr: ErrCustomerNotFound,
@@ -268,13 +269,13 @@ func TestAdminService_ActivateCustomer(t *testing.T) {
 	tests := []struct {
 		name    string
 		custID  string
-		setup   func(*MockAdminRepo)
+		setup   func(*mocks.MockAdminRepo)
 		wantErr error
 	}{
 		{
 			name:   "success",
 			custID: "c1",
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("ActivateCustomer", mock.Anything, "c1").Return(nil)
 				ar.On("CreateAuditLog", mock.Anything, mock.Anything).Return(nil)
 			},
@@ -282,7 +283,7 @@ func TestAdminService_ActivateCustomer(t *testing.T) {
 		{
 			name:   "not found",
 			custID: "missing",
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("ActivateCustomer", mock.Anything, "missing").Return(repository.ErrNotFound)
 			},
 			wantErr: ErrCustomerNotFound,
@@ -349,19 +350,19 @@ func TestAdminService_ListAllSalePages(t *testing.T) {
 func TestAdminService_DisableSalePage(t *testing.T) {
 	tests := []struct {
 		name    string
-		setup   func(*MockAdminRepo)
+		setup   func(*mocks.MockAdminRepo)
 		wantErr error
 	}{
 		{
 			name: "success",
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("SetSalePagePublished", mock.Anything, "sp1", false).Return(nil)
 				ar.On("CreateAuditLog", mock.Anything, mock.Anything).Return(nil)
 			},
 		},
 		{
 			name: "not found",
-			setup: func(ar *MockAdminRepo) {
+			setup: func(ar *mocks.MockAdminRepo) {
 				ar.On("SetSalePagePublished", mock.Anything, "sp1", false).Return(repository.ErrNotFound)
 			},
 			wantErr: ErrSalePageNotFound,
@@ -401,19 +402,19 @@ func TestAdminService_ListAllPixels(t *testing.T) {
 func TestAdminService_CancelReplay(t *testing.T) {
 	tests := []struct {
 		name    string
-		setup   func(*MockReplaySessionRepo, *MockAdminRepo)
+		setup   func(*mocks.MockReplaySessionRepo, *mocks.MockAdminRepo)
 		wantErr error
 	}{
 		{
 			name: "success",
-			setup: func(rsr *MockReplaySessionRepo, ar *MockAdminRepo) {
+			setup: func(rsr *mocks.MockReplaySessionRepo, ar *mocks.MockAdminRepo) {
 				rsr.On("CancelSession", mock.Anything, "rs1").Return(&domain.ReplaySession{ID: "rs1", CustomerID: "c1"}, nil)
 				ar.On("CreateAuditLog", mock.Anything, mock.Anything).Return(nil)
 			},
 		},
 		{
 			name: "not found",
-			setup: func(rsr *MockReplaySessionRepo, ar *MockAdminRepo) {
+			setup: func(rsr *mocks.MockReplaySessionRepo, ar *mocks.MockAdminRepo) {
 				rsr.On("CancelSession", mock.Anything, "rs1").Return(nil, repository.ErrNotFound)
 			},
 			wantErr: ErrReplayNotFound,

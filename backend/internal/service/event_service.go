@@ -334,11 +334,11 @@ func (s *EventService) ListLatest(ctx context.Context, customerID, pixelID strin
 }
 
 const (
-	maxCAPIRetries     = 3   // shared retry count for CAPI calls
+	maxCAPIRetries     = 3 // shared retry count for CAPI calls
 	realtimeEventLimit = 50
-	maxFBCookieLen     = 500 // max length for _fbc/_fbp cookie values
-	maxFBClidLen       = 200 // max length for fbclid URL parameter
-	defaultCountry     = "th" // Pixlinks v1 operates in Thailand only
+	maxFBCookieLen     = 500       // max length for _fbc/_fbp cookie values
+	maxFBClidLen       = 200       // max length for fbclid URL parameter
+	defaultCountry     = "th"      // Pixlinks v1 operates in Thailand only
 	maxEventDataSize   = 64 * 1024 // 64 KB per event_data field
 	maxUserDataSize    = 16 * 1024 // 16 KB per user_data field
 )

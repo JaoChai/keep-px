@@ -223,9 +223,9 @@ func (s *AdminService) GrantCredits(ctx context.Context, adminID, customerID str
 	}
 
 	s.logAudit(ctx, adminID, "grant_credits", "customer", customerID, &customerID, map[string]interface{}{
-		"pack_type":      input.PackType,
-		"total_replays":  input.TotalReplays,
-		"credit_id":      credit.ID,
+		"pack_type":     input.PackType,
+		"total_replays": input.TotalReplays,
+		"credit_id":     credit.ID,
 	})
 
 	return grant, nil

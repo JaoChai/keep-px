@@ -13,11 +13,12 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/facebook"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
-func newTestEventService() (*EventService, *MockEventRepo, *MockPixelRepo) {
-	eventRepo := new(MockEventRepo)
-	pixelRepo := new(MockPixelRepo)
+func newTestEventService() (*EventService, *mocks.MockEventRepo, *mocks.MockPixelRepo) {
+	eventRepo := new(mocks.MockEventRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
 	logger := slog.Default()
 	svc := NewEventService(eventRepo, pixelRepo, capiClient, logger, nil)
@@ -29,7 +30,7 @@ func TestEventService_Ingest(t *testing.T) {
 		name        string
 		customerID  string
 		input       IngestBatchInput
-		setup       func(*MockEventRepo, *MockPixelRepo)
+		setup       func(*mocks.MockEventRepo, *mocks.MockPixelRepo)
 		wantCreated int
 	}{
 		{
@@ -44,7 +45,7 @@ func TestEventService_Ingest(t *testing.T) {
 					},
 				},
 			},
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -67,7 +68,7 @@ func TestEventService_Ingest(t *testing.T) {
 					},
 				},
 			},
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -88,7 +89,7 @@ func TestEventService_Ingest(t *testing.T) {
 					},
 				},
 			},
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByIDs", mock.Anything, []string{"nonexistent"}).Return([]*domain.Pixel{}, nil)
 			},
 			wantCreated: 0,
@@ -104,7 +105,7 @@ func TestEventService_Ingest(t *testing.T) {
 					},
 				},
 			},
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByIDs", mock.Anything, []string{"pixel-2"}).Return([]*domain.Pixel{{
 					ID:         "pixel-2",
 					CustomerID: "cust-1",
@@ -124,7 +125,7 @@ func TestEventService_Ingest(t *testing.T) {
 					},
 				},
 			},
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -146,7 +147,7 @@ func TestEventService_Ingest(t *testing.T) {
 					},
 				},
 			},
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -171,7 +172,7 @@ func TestEventService_Ingest(t *testing.T) {
 					},
 				},
 			},
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -201,7 +202,7 @@ func TestEventService_Ingest(t *testing.T) {
 					},
 				},
 			},
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByIDs", mock.Anything, []string{"pixel-1"}).Return([]*domain.Pixel{{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -396,10 +397,10 @@ func TestEventService_Ingest_BackupPixelFanOut(t *testing.T) {
 
 func TestEventService_Ingest_OversizedPayload(t *testing.T) {
 	tests := []struct {
-		name        string
-		eventData   json.RawMessage
-		userData    json.RawMessage
-		wantCreated int
+		name         string
+		eventData    json.RawMessage
+		userData     json.RawMessage
+		wantCreated  int
 		expectCreate bool
 	}{
 		{
@@ -511,7 +512,7 @@ func TestEventService_ListByCustomerID(t *testing.T) {
 		page      int
 		perPage   int
 		pixelID   string
-		setup     func(*MockEventRepo)
+		setup     func(*mocks.MockEventRepo)
 		wantLen   int
 		wantTotal int
 	}{
@@ -520,7 +521,7 @@ func TestEventService_ListByCustomerID(t *testing.T) {
 			page:    1,
 			perPage: 10,
 			pixelID: "",
-			setup: func(er *MockEventRepo) {
+			setup: func(er *mocks.MockEventRepo) {
 				er.On("ListByCustomerID", mock.Anything, "cust-1", "", "", (*time.Time)(nil), (*time.Time)(nil), 10, 0).Return([]*domain.PixelEvent{
 					{ID: "evt-1", EventName: "PageView"},
 					{ID: "evt-2", EventName: "Purchase"},
@@ -534,7 +535,7 @@ func TestEventService_ListByCustomerID(t *testing.T) {
 			page:    0,
 			perPage: 0,
 			pixelID: "",
-			setup: func(er *MockEventRepo) {
+			setup: func(er *mocks.MockEventRepo) {
 				er.On("ListByCustomerID", mock.Anything, "cust-1", "", "", (*time.Time)(nil), (*time.Time)(nil), 50, 0).Return([]*domain.PixelEvent{}, 0, nil)
 			},
 			wantLen:   0,
@@ -545,7 +546,7 @@ func TestEventService_ListByCustomerID(t *testing.T) {
 			page:    1,
 			perPage: 50,
 			pixelID: "px-1",
-			setup: func(er *MockEventRepo) {
+			setup: func(er *mocks.MockEventRepo) {
 				er.On("ListByCustomerID", mock.Anything, "cust-1", "px-1", "", (*time.Time)(nil), (*time.Time)(nil), 50, 0).Return([]*domain.PixelEvent{
 					{ID: "evt-1", EventName: "PageView"},
 				}, 1, nil)

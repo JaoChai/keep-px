@@ -16,16 +16,17 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/facebook"
+	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
-func newTestReplayService() (*ReplayService, *MockReplaySessionRepo, *MockEventRepo, *MockPixelRepo) {
+func newTestReplayService() (*ReplayService, *mocks.MockReplaySessionRepo, *mocks.MockEventRepo, *mocks.MockPixelRepo) {
 	return newTestReplayServiceWithConcurrency(5)
 }
 
-func newTestReplayServiceWithConcurrency(maxConcurrent int) (*ReplayService, *MockReplaySessionRepo, *MockEventRepo, *MockPixelRepo) {
-	replayRepo := new(MockReplaySessionRepo)
-	eventRepo := new(MockEventRepo)
-	pixelRepo := new(MockPixelRepo)
+func newTestReplayServiceWithConcurrency(maxConcurrent int) (*ReplayService, *mocks.MockReplaySessionRepo, *mocks.MockEventRepo, *mocks.MockPixelRepo) {
+	replayRepo := new(mocks.MockReplaySessionRepo)
+	eventRepo := new(mocks.MockEventRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
 	logger := slog.Default()
 	svc := NewReplayService(context.Background(), replayRepo, eventRepo, pixelRepo, capiClient, logger, maxConcurrent, nil)
@@ -37,7 +38,7 @@ func TestReplayService_Create(t *testing.T) {
 		name        string
 		customerID  string
 		input       CreateReplayInput
-		setup       func(*MockReplaySessionRepo, *MockEventRepo, *MockPixelRepo)
+		setup       func(*mocks.MockReplaySessionRepo, *mocks.MockEventRepo, *mocks.MockPixelRepo)
 		wantErr     error
 		wantWarning string
 	}{
@@ -48,7 +49,7 @@ func TestReplayService_Create(t *testing.T) {
 				SourcePixelID: "pixel-1",
 				TargetPixelID: "pixel-2",
 			},
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
@@ -83,7 +84,7 @@ func TestReplayService_Create(t *testing.T) {
 				SourcePixelID: "pixel-1",
 				TargetPixelID: "pixel-2",
 			},
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
@@ -118,7 +119,7 @@ func TestReplayService_Create(t *testing.T) {
 				TargetPixelID: "pixel-2",
 				TimeMode:      "current",
 			},
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
@@ -152,7 +153,7 @@ func TestReplayService_Create(t *testing.T) {
 				SourcePixelID: "pixel-1",
 				TargetPixelID: "pixel-2",
 			},
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
@@ -188,7 +189,7 @@ func TestReplayService_Create(t *testing.T) {
 				SourcePixelID: "nonexistent",
 				TargetPixelID: "pixel-2",
 			},
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrPixelNotFound,
@@ -200,7 +201,7 @@ func TestReplayService_Create(t *testing.T) {
 				SourcePixelID: "pixel-1",
 				TargetPixelID: "pixel-3",
 			},
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:         "pixel-1",
 					CustomerID: "cust-1",
@@ -260,9 +261,9 @@ func TestReplayService_ExecuteReplay_AuthErrorFailFast(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	replayRepo := new(MockReplaySessionRepo)
-	eventRepo := new(MockEventRepo)
-	pixelRepo := new(MockPixelRepo)
+	replayRepo := new(mocks.MockReplaySessionRepo)
+	eventRepo := new(mocks.MockEventRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
 
@@ -316,9 +317,9 @@ func TestReplayService_ExecuteReplay_TimeModeCurrentUsesNow(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	replayRepo := new(MockReplaySessionRepo)
-	eventRepo := new(MockEventRepo)
-	pixelRepo := new(MockPixelRepo)
+	replayRepo := new(mocks.MockReplaySessionRepo)
+	eventRepo := new(mocks.MockEventRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
 
@@ -369,9 +370,9 @@ func TestReplayService_ExecuteReplay_BatchDelay(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	replayRepo := new(MockReplaySessionRepo)
-	eventRepo := new(MockEventRepo)
-	pixelRepo := new(MockPixelRepo)
+	replayRepo := new(mocks.MockReplaySessionRepo)
+	eventRepo := new(mocks.MockEventRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
 
@@ -421,9 +422,9 @@ func TestReplayService_ExecuteReplay_NonAuthErrorContinues(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	replayRepo := new(MockReplaySessionRepo)
-	eventRepo := new(MockEventRepo)
-	pixelRepo := new(MockPixelRepo)
+	replayRepo := new(mocks.MockReplaySessionRepo)
+	eventRepo := new(mocks.MockEventRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
 
@@ -469,9 +470,9 @@ func TestReplayService_ExecuteReplay_CancellationCheck(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	replayRepo := new(MockReplaySessionRepo)
-	eventRepo := new(MockEventRepo)
-	pixelRepo := new(MockPixelRepo)
+	replayRepo := new(mocks.MockReplaySessionRepo)
+	eventRepo := new(mocks.MockEventRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
 
@@ -512,14 +513,14 @@ func TestReplayService_GetByID(t *testing.T) {
 		name       string
 		customerID string
 		sessionID  string
-		setup      func(*MockReplaySessionRepo)
+		setup      func(*mocks.MockReplaySessionRepo)
 		wantErr    error
 	}{
 		{
 			name:       "success",
 			customerID: "cust-1",
 			sessionID:  "session-1",
-			setup: func(rr *MockReplaySessionRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo) {
 				rr.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
 					ID:         "session-1",
 					CustomerID: "cust-1",
@@ -532,7 +533,7 @@ func TestReplayService_GetByID(t *testing.T) {
 			name:       "not found",
 			customerID: "cust-1",
 			sessionID:  "nonexistent",
-			setup: func(rr *MockReplaySessionRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo) {
 				rr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrReplayNotFound,
@@ -541,7 +542,7 @@ func TestReplayService_GetByID(t *testing.T) {
 			name:       "not owned",
 			customerID: "cust-2",
 			sessionID:  "session-1",
-			setup: func(rr *MockReplaySessionRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo) {
 				rr.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
 					ID:         "session-1",
 					CustomerID: "cust-1",
@@ -590,14 +591,14 @@ func TestReplayService_Cancel(t *testing.T) {
 		name       string
 		customerID string
 		sessionID  string
-		setup      func(*MockReplaySessionRepo)
+		setup      func(*mocks.MockReplaySessionRepo)
 		wantErr    error
 	}{
 		{
 			name:       "cancel running session",
 			customerID: "cust-1",
 			sessionID:  "session-1",
-			setup: func(rr *MockReplaySessionRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo) {
 				rr.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
 					ID:         "session-1",
 					CustomerID: "cust-1",
@@ -615,7 +616,7 @@ func TestReplayService_Cancel(t *testing.T) {
 			name:       "cancel pending session",
 			customerID: "cust-1",
 			sessionID:  "session-2",
-			setup: func(rr *MockReplaySessionRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo) {
 				rr.On("GetByID", mock.Anything, "session-2").Return(&domain.ReplaySession{
 					ID:         "session-2",
 					CustomerID: "cust-1",
@@ -633,7 +634,7 @@ func TestReplayService_Cancel(t *testing.T) {
 			name:       "cannot cancel completed session",
 			customerID: "cust-1",
 			sessionID:  "session-3",
-			setup: func(rr *MockReplaySessionRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo) {
 				rr.On("GetByID", mock.Anything, "session-3").Return(&domain.ReplaySession{
 					ID:         "session-3",
 					CustomerID: "cust-1",
@@ -648,7 +649,7 @@ func TestReplayService_Cancel(t *testing.T) {
 			name:       "cannot cancel failed session",
 			customerID: "cust-1",
 			sessionID:  "session-4",
-			setup: func(rr *MockReplaySessionRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo) {
 				rr.On("GetByID", mock.Anything, "session-4").Return(&domain.ReplaySession{
 					ID:         "session-4",
 					CustomerID: "cust-1",
@@ -663,7 +664,7 @@ func TestReplayService_Cancel(t *testing.T) {
 			name:       "session not found",
 			customerID: "cust-1",
 			sessionID:  "nonexistent",
-			setup: func(rr *MockReplaySessionRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo) {
 				rr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrReplayNotFound,
@@ -672,7 +673,7 @@ func TestReplayService_Cancel(t *testing.T) {
 			name:       "session not owned",
 			customerID: "cust-2",
 			sessionID:  "session-1",
-			setup: func(rr *MockReplaySessionRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo) {
 				rr.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
 					ID:         "session-1",
 					CustomerID: "cust-1",
@@ -708,7 +709,7 @@ func TestReplayService_Preview(t *testing.T) {
 		name        string
 		customerID  string
 		input       CreateReplayInput
-		setup       func(*MockReplaySessionRepo, *MockEventRepo, *MockPixelRepo)
+		setup       func(*mocks.MockReplaySessionRepo, *mocks.MockEventRepo, *mocks.MockPixelRepo)
 		wantErr     error
 		wantTotal   int
 		wantSamples int
@@ -720,7 +721,7 @@ func TestReplayService_Preview(t *testing.T) {
 				SourcePixelID: "pixel-1",
 				TargetPixelID: "pixel-2",
 			},
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
@@ -752,7 +753,7 @@ func TestReplayService_Preview(t *testing.T) {
 				SourcePixelID: "pixel-1",
 				TargetPixelID: "pixel-2",
 			},
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID:            "pixel-1",
 					CustomerID:    "cust-1",
@@ -781,7 +782,7 @@ func TestReplayService_Preview(t *testing.T) {
 				SourcePixelID: "nonexistent",
 				TargetPixelID: "pixel-2",
 			},
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrPixelNotFound,
@@ -814,14 +815,14 @@ func TestReplayService_Retry(t *testing.T) {
 		name       string
 		customerID string
 		sessionID  string
-		setup      func(*MockReplaySessionRepo, *MockEventRepo, *MockPixelRepo)
+		setup      func(*mocks.MockReplaySessionRepo, *mocks.MockEventRepo, *mocks.MockPixelRepo)
 		wantErr    error
 	}{
 		{
 			name:       "retry failed session",
 			customerID: "cust-1",
 			sessionID:  "session-1",
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				failedRanges, _ := json.Marshal([]domain.BatchRange{{Start: 0, End: 1000}})
 				rr.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
 					ID:                "session-1",
@@ -856,7 +857,7 @@ func TestReplayService_Retry(t *testing.T) {
 			name:       "retry cancelled session",
 			customerID: "cust-1",
 			sessionID:  "session-2",
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				rr.On("GetByID", mock.Anything, "session-2").Return(&domain.ReplaySession{
 					ID:            "session-2",
 					CustomerID:    "cust-1",
@@ -889,7 +890,7 @@ func TestReplayService_Retry(t *testing.T) {
 			name:       "cannot retry running session",
 			customerID: "cust-1",
 			sessionID:  "session-3",
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				rr.On("GetByID", mock.Anything, "session-3").Return(&domain.ReplaySession{
 					ID:         "session-3",
 					CustomerID: "cust-1",
@@ -902,7 +903,7 @@ func TestReplayService_Retry(t *testing.T) {
 			name:       "cannot retry completed session",
 			customerID: "cust-1",
 			sessionID:  "session-4",
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				rr.On("GetByID", mock.Anything, "session-4").Return(&domain.ReplaySession{
 					ID:         "session-4",
 					CustomerID: "cust-1",
@@ -915,7 +916,7 @@ func TestReplayService_Retry(t *testing.T) {
 			name:       "session not found",
 			customerID: "cust-1",
 			sessionID:  "nonexistent",
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				rr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrReplayNotFound,
@@ -924,7 +925,7 @@ func TestReplayService_Retry(t *testing.T) {
 			name:       "session not owned",
 			customerID: "cust-2",
 			sessionID:  "session-1",
-			setup: func(rr *MockReplaySessionRepo, er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(rr *mocks.MockReplaySessionRepo, er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				rr.On("GetByID", mock.Anything, "session-1").Return(&domain.ReplaySession{
 					ID:         "session-1",
 					CustomerID: "cust-1",
@@ -998,9 +999,9 @@ func TestReplayService_Create_SemaphoreBlock(t *testing.T) {
 
 func TestReplayService_Create_ShutdownDuringSemWait(t *testing.T) {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
-	replayRepo := new(MockReplaySessionRepo)
-	eventRepo := new(MockEventRepo)
-	pixelRepo := new(MockPixelRepo)
+	replayRepo := new(mocks.MockReplaySessionRepo)
+	eventRepo := new(mocks.MockEventRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
 	capiClient := facebook.NewCAPIClient("http://localhost:9999")
 	logger := slog.Default()
 	svc := NewReplayService(shutdownCtx, replayRepo, eventRepo, pixelRepo, capiClient, logger, 1, nil)
@@ -1123,9 +1124,9 @@ func TestReplayService_ExecuteReplay_DefaultDelay(t *testing.T) {
 	}))
 	defer fakeServer.Close()
 
-	replayRepo := new(MockReplaySessionRepo)
-	eventRepo := new(MockEventRepo)
-	pixelRepo := new(MockPixelRepo)
+	replayRepo := new(mocks.MockReplaySessionRepo)
+	eventRepo := new(mocks.MockEventRepo)
+	pixelRepo := new(mocks.MockPixelRepo)
 	capiClient := facebook.NewCAPIClient(fakeServer.URL)
 	logger := slog.Default()
 
@@ -1161,7 +1162,7 @@ func TestReplayService_ExecuteReplay_DefaultDelay(t *testing.T) {
 
 	// Should have at least ~200ms delay between batches
 	assert.GreaterOrEqual(t, elapsed, 150*time.Millisecond) // allow small tolerance
-	assert.Equal(t, 2, callCount) // 2 CAPI calls (2 batches)
+	assert.Equal(t, 2, callCount)                           // 2 CAPI calls (2 batches)
 	replayRepo.AssertExpectations(t)
 }
 
@@ -1272,7 +1273,7 @@ func TestReplayService_GetEventTypes(t *testing.T) {
 		name       string
 		customerID string
 		pixelID    string
-		setup      func(*MockEventRepo, *MockPixelRepo)
+		setup      func(*mocks.MockEventRepo, *mocks.MockPixelRepo)
 		wantTypes  []string
 		wantErr    error
 	}{
@@ -1280,7 +1281,7 @@ func TestReplayService_GetEventTypes(t *testing.T) {
 			name:       "success",
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID: "pixel-1", CustomerID: "cust-1",
 				}, nil)
@@ -1292,7 +1293,7 @@ func TestReplayService_GetEventTypes(t *testing.T) {
 			name:       "empty returns empty slice",
 			customerID: "cust-1",
 			pixelID:    "pixel-1",
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID: "pixel-1", CustomerID: "cust-1",
 				}, nil)
@@ -1304,7 +1305,7 @@ func TestReplayService_GetEventTypes(t *testing.T) {
 			name:       "pixel not found",
 			customerID: "cust-1",
 			pixelID:    "nonexistent",
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "nonexistent").Return(nil, nil)
 			},
 			wantErr: ErrPixelNotFound,
@@ -1313,7 +1314,7 @@ func TestReplayService_GetEventTypes(t *testing.T) {
 			name:       "pixel not owned",
 			customerID: "cust-2",
 			pixelID:    "pixel-1",
-			setup: func(er *MockEventRepo, pr *MockPixelRepo) {
+			setup: func(er *mocks.MockEventRepo, pr *mocks.MockPixelRepo) {
 				pr.On("GetByID", mock.Anything, "pixel-1").Return(&domain.Pixel{
 					ID: "pixel-1", CustomerID: "cust-1",
 				}, nil)
@@ -1345,7 +1346,7 @@ func TestReplayService_GetEventTypes(t *testing.T) {
 // CAPI event construction tests (fixes for [100] Invalid parameter)
 // ---------------------------------------------------------------------------
 
-func setupReplayCAPITest(t *testing.T) (*ReplayService, *MockReplaySessionRepo, *[]facebook.CAPIEvent, func()) {
+func setupReplayCAPITest(t *testing.T) (*ReplayService, *mocks.MockReplaySessionRepo, *[]facebook.CAPIEvent, func()) {
 	t.Helper()
 	var captured []facebook.CAPIEvent
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1359,13 +1360,13 @@ func setupReplayCAPITest(t *testing.T) (*ReplayService, *MockReplaySessionRepo, 
 		json.NewEncoder(w).Encode(facebook.CAPIResponse{EventsReceived: len(req.Data)})
 	}))
 
-	replayRepo := new(MockReplaySessionRepo)
+	replayRepo := new(mocks.MockReplaySessionRepo)
 	replayRepo.On("UpdateStatus", mock.Anything, mock.Anything, "running").Return(nil)
 	replayRepo.On("GetStatus", mock.Anything, mock.Anything).Return("running", nil)
 	replayRepo.On("UpdateProgress", mock.Anything, mock.Anything, mock.AnythingOfType("int"), mock.AnythingOfType("int")).Return(nil)
 	replayRepo.On("UpdateStatus", mock.Anything, mock.Anything, "completed").Return(nil)
 
-	svc := NewReplayService(context.Background(), replayRepo, new(MockEventRepo), new(MockPixelRepo),
+	svc := NewReplayService(context.Background(), replayRepo, new(mocks.MockEventRepo), new(mocks.MockPixelRepo),
 		facebook.NewCAPIClient(srv.URL), slog.Default(), 5, nil)
 
 	return svc, replayRepo, &captured, srv.Close
