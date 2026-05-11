@@ -51,6 +51,7 @@ func APIKeyAuthWithContext(ctx context.Context, customerRepo repository.Customer
 				entry := val.(apiKeyCacheEntry)
 				if time.Now().Before(entry.expiry) {
 					ctx := context.WithValue(r.Context(), CustomerIDKey, entry.customerID)
+					ctx = context.WithValue(ctx, apiKeyCtxKey{}, apiKey)
 					next.ServeHTTP(w, r.WithContext(ctx))
 					return
 				}
@@ -69,6 +70,7 @@ func APIKeyAuthWithContext(ctx context.Context, customerRepo repository.Customer
 			})
 
 			ctx := context.WithValue(r.Context(), CustomerIDKey, customer.ID)
+			ctx = context.WithValue(ctx, apiKeyCtxKey{}, apiKey)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
