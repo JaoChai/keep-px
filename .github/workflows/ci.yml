@@ -196,17 +196,26 @@ jobs:
           echo "::warning::Backend health check failed — global-setup retry will handle it"
 
       - name: Generate E2E auth tokens
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          E2E_USER_ID: "00000000-0000-4000-a000-000000000e2e"
         run: |
-          E2E_USER_ID="00000000-0000-4000-a000-000000000e2e"
-          ACCESS_TOKEN=$(node -e "
-            const crypto = require('crypto');
-            const b64url = (b) => Buffer.from(b).toString('base64url');
-            const header = b64url(JSON.stringify({alg:'HS256',typ:'JWT'}));
+          if [ -z "$JWT_SECRET" ]; then
+            echo "JWT_SECRET missing" >&2
+            exit 1
+          fi
+          ACCESS_TOKEN=$(node -e '
+            const crypto = require("crypto");
+            const secret = process.env.JWT_SECRET;
+            const userId = process.env.E2E_USER_ID;
+            if (!secret) { console.error("JWT_SECRET missing"); process.exit(1); }
+            const b64url = (b) => Buffer.from(b).toString("base64url");
+            const header = b64url(JSON.stringify({alg:"HS256",typ:"JWT"}));
             const now = Math.floor(Date.now()/1000);
-            const payload = b64url(JSON.stringify({sub:'$E2E_USER_ID',email:'e2e-smoke@keep-px.internal',is_admin:false,iat:now,exp:now+3600}));
-            const sig = crypto.createHmac('sha256','${{ secrets.JWT_SECRET }}').update(header+'.'+payload).digest('base64url');
-            console.log(header+'.'+payload+'.'+sig);
-          ")
+            const payload = b64url(JSON.stringify({sub:userId,email:"e2e-smoke@keep-px.internal",is_admin:false,iat:now,exp:now+3600}));
+            const sig = crypto.createHmac("sha256", secret).update(header+"."+payload).digest("base64url");
+            console.log(header+"."+payload+"."+sig);
+          ')
           REFRESH_TOKEN=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
           echo "E2E_ACCESS_TOKEN=$ACCESS_TOKEN" >> "$GITHUB_ENV"
           echo "E2E_REFRESH_TOKEN=$REFRESH_TOKEN" >> "$GITHUB_ENV"
