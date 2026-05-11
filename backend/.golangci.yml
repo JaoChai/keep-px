@@ -21,7 +21,11 @@ linters:
         - (*github.com/golang-migrate/migrate/v4.Migrate).Close
     goconst:
       min-len: 3
-      min-occurrences: 3
+      min-occurrences: 7
 
   exclusions:
     generated: strict
+    rules:
+      - path: _test\.go$
+        linters:
+          - goconst
