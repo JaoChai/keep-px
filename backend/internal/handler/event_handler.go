@@ -19,6 +19,11 @@ import (
 	"github.com/jaochai/pixlinks/backend/internal/service"
 )
 
+const (
+	headerCFConnectingIP = "CF-Connecting-IP"
+	headerTrueClientIP   = "True-Client-IP"
+)
+
 type EventHandler struct {
 	eventService *service.EventService
 	validate     *validator.Validate
@@ -235,7 +240,7 @@ func (h *EventHandler) EventTypes(w http.ResponseWriter, r *http.Request) {
 // Note: r.RemoteAddr may already be normalised by chimiddleware.RealIP (registered
 // globally in router.go), which rewrites it from X-Real-IP / X-Forwarded-For.
 func extractClientIP(r *http.Request) string {
-	for _, h := range []string{"CF-Connecting-IP", "True-Client-IP"} {
+	for _, h := range []string{headerCFConnectingIP, headerTrueClientIP} {
 		if raw := r.Header.Get(h); raw != "" {
 			if ip := net.ParseIP(strings.TrimSpace(raw)); ip != nil {
 				return ip.String()
