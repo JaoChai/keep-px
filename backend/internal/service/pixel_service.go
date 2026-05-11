@@ -27,6 +27,8 @@ var (
 	ErrCAPINotConfigured   = errors.New("CAPI client not configured")
 )
 
+const eventNameTestPageView = "PageView"
+
 type PixelService struct {
 	pixelRepo    repository.PixelRepository
 	capiClient   *facebook.CAPIClient
@@ -228,7 +230,7 @@ func (s *PixelService) TestConnection(ctx context.Context, customerID, pixelID s
 	}
 
 	event := facebook.CAPIEvent{
-		EventName:             "PageView",
+		EventName:             eventNameTestPageView,
 		EventTime:             time.Now().Unix(),
 		ActionSource:          "website",
 		EventID:               uuid.NewString(),
