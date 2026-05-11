@@ -17,6 +17,8 @@ type Config struct {
 	FBGraphAPIURL      string        `env:"FB_GRAPH_API_URL" envDefault:"https://graph.facebook.com/v21.0"`
 	CORSAllowedOrigins []string      `env:"CORS_ALLOWED_ORIGINS" envSeparator:"," envDefault:"http://localhost:5173"`
 	RateLimitRPS       int           `env:"RATE_LIMIT_RPS" envDefault:"100"`
+	RateLimitAPIKeyRPS   int `env:"RATE_LIMIT_API_KEY_RPS" envDefault:"100"`
+	RateLimitAPIKeyBurst int `env:"RATE_LIMIT_API_KEY_BURST" envDefault:"200"`
 
 	// Public base URL for sale pages
 	BaseURL string `env:"BASE_URL" envDefault:"https://pixlinks.xyz"`
