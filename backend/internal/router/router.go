@@ -144,7 +144,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 			// Event ingestion (API key auth)
 			r.Route("/events", func(r chi.Router) {
 				r.Use(middleware.APIKeyAuthWithContext(shutdownCtx, customerRepo))
-				r.Post("/ingest", eventHandler.Ingest)
+				r.With(middleware.RateLimitByAPIKey(cfg.RateLimitAPIKeyRPS, cfg.RateLimitAPIKeyBurst)).Post("/ingest", eventHandler.Ingest)
 			})
 
 			// Dashboard routes (JWT auth)
