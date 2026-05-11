@@ -77,7 +77,7 @@ func RateLimitByAPIKey(rps int, burst int) func(http.Handler) http.Handler {
 			}
 			if !store.get(key).Allow() {
 				w.Header().Set("Retry-After", "1")
-				http.Error(w, `{"error":"rate limit exceeded"}`, http.StatusTooManyRequests)
+				writeJSONError(w, http.StatusTooManyRequests, "rate limit exceeded")
 				return
 			}
 			next.ServeHTTP(w, r)
