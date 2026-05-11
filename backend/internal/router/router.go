@@ -105,6 +105,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 	// Health check
 	r.Get("/health", healthHandler.Health)
+	r.Get("/ready", healthHandler.Ready)
 
 	// Rate limiter with context for proper goroutine cleanup
 	rateLimiter := middleware.RateLimitWithContext(shutdownCtx, cfg.RateLimitRPS)
