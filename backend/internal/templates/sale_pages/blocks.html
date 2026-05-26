@@ -100,6 +100,23 @@
             fill: currentColor;
             flex-shrink: 0;
         }
+        .block-video {
+            width: 100%;
+            margin: 0;
+            display: block;
+        }
+        .block-video video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .block-divider {
+            margin: 1rem 1.5rem;
+            border: 0;
+            border-top-style: solid;
+            border-top-width: 1px;
+            border-top-color: rgba(0,0,0,0.15);
+        }
         .footer {
             padding: 1rem 1.5rem;
             text-align: center;
@@ -147,6 +164,16 @@
                     {{.ButtonText}}
                 </a>
                 {{end}}
+            {{end}}
+
+            {{if eq .Type "video"}}
+            <div class="block-video">
+                <video src="{{.VideoURL}}" controls preload="metadata" playsinline></video>
+            </div>
+            {{end}}
+
+            {{if eq .Type "divider"}}
+            <hr class="block-divider" style="border-top-style: {{if .DividerStyle}}{{.DividerStyle}}{{else}}solid{{end}}; border-top-width: {{if .DividerThickness}}{{.DividerThickness}}{{else}}1{{end}}px;">
             {{end}}
         {{end}}
 
