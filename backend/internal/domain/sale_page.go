@@ -69,21 +69,26 @@ type ContactInfo struct {
 type BlockType string
 
 const (
-	BlockTypeImage  BlockType = "image"
-	BlockTypeText   BlockType = "text"
-	BlockTypeButton BlockType = "button"
+	BlockTypeImage   BlockType = "image"
+	BlockTypeText    BlockType = "text"
+	BlockTypeButton  BlockType = "button"
+	BlockTypeVideo   BlockType = "video"
+	BlockTypeDivider BlockType = "divider"
 )
 
 type Block struct {
-	ID          string    `json:"id"`
-	Type        BlockType `json:"type"`
-	ImageURL    string    `json:"image_url,omitempty"`
-	LinkURL     string    `json:"link_url,omitempty"`
-	Text        string    `json:"text,omitempty"`
-	ButtonStyle string    `json:"button_style,omitempty"`
-	ButtonText  string    `json:"button_text,omitempty"`
-	ButtonURL   string    `json:"button_url,omitempty"`
-	ButtonValue string    `json:"button_value,omitempty"`
+	ID               string    `json:"id"`
+	Type             BlockType `json:"type"`
+	ImageURL         string    `json:"image_url,omitempty"`
+	LinkURL          string    `json:"link_url,omitempty"`
+	Text             string    `json:"text,omitempty"`
+	ButtonStyle      string    `json:"button_style,omitempty"`
+	ButtonText       string    `json:"button_text,omitempty"`
+	ButtonURL        string    `json:"button_url,omitempty"`
+	ButtonValue      string    `json:"button_value,omitempty"`
+	VideoURL         string    `json:"video_url,omitempty"`
+	DividerStyle     string    `json:"divider_style,omitempty"`
+	DividerThickness int       `json:"divider_thickness,omitempty"`
 }
 
 type BlocksContent struct {

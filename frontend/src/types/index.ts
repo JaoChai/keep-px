@@ -105,8 +105,9 @@ export interface SalePageContent {
 }
 
 // Block-based content (v2)
-export type BlockType = 'image' | 'text' | 'button'
+export type BlockType = 'image' | 'text' | 'button' | 'video' | 'divider'
 export type ButtonStyle = 'line' | 'website' | 'custom'
+export type DividerStyle = 'solid' | 'dashed' | 'dotted'
 
 export interface Block {
   id: string
@@ -118,6 +119,9 @@ export interface Block {
   button_text?: string
   button_url?: string
   button_value?: string
+  video_url?: string
+  divider_style?: DividerStyle
+  divider_thickness?: number
 }
 
 export interface TrackingConfig {

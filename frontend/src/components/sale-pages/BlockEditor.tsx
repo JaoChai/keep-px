@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ChevronUp, ChevronDown, Trash2, Image, Type, MessageCircle, Globe, Link, Upload, Loader2 } from 'lucide-react'
+import { ChevronUp, ChevronDown, Trash2, Image, Type, MessageCircle, Globe, Link, Upload, Loader2, Film, Minus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -69,12 +69,21 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
     button_url: '',
     button_value: '',
   })
+  const addVideoBlock = () => addBlock({ id: crypto.randomUUID(), type: 'video', video_url: '' })
+  const addDividerBlock = () => addBlock({
+    id: crypto.randomUUID(),
+    type: 'divider',
+    divider_style: 'solid',
+    divider_thickness: 1,
+  })
 
   const getTypeBadge = (type: string) => {
     switch (type) {
       case 'image': return <Badge variant="secondary">รูปภาพ</Badge>
       case 'text': return <Badge variant="secondary">ข้อความ</Badge>
       case 'button': return <Badge variant="secondary">ปุ่ม</Badge>
+      case 'video': return <Badge variant="secondary">วิดีโอ</Badge>
+      case 'divider': return <Badge variant="secondary">เส้นคั่น</Badge>
       default: return null
     }
   }
@@ -208,6 +217,45 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
               )}
             </div>
           )}
+
+          {block.type === 'video' && (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">URL วิดีโอ (mp4)</Label>
+              <Input
+                type="url"
+                placeholder="https://example.com/video.mp4"
+                value={block.video_url ?? ''}
+                onChange={(e) => updateBlock(index, { video_url: e.target.value })}
+              />
+            </div>
+          )}
+
+          {block.type === 'divider' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">รูปแบบเส้น</Label>
+                <select
+                  className="w-full mt-1 border border-input rounded-md px-3 py-2 text-sm bg-background"
+                  value={block.divider_style ?? 'solid'}
+                  onChange={(e) => updateBlock(index, { divider_style: e.target.value as 'solid' | 'dashed' | 'dotted' })}
+                >
+                  <option value="solid">เส้นทึบ</option>
+                  <option value="dashed">เส้นประ</option>
+                  <option value="dotted">จุด</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">ความหนา (px)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={block.divider_thickness ?? 1}
+                  onChange={(e) => updateBlock(index, { divider_thickness: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+          )}
         </div>
       ))}
 
@@ -241,6 +289,14 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
           <Button type="button" variant="outline" size="sm" onClick={() => addButtonBlock('custom')}>
             <Link className="h-3.5 w-3.5" />
             ปุ่มลิงก์
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={addVideoBlock}>
+            <Film className="h-3.5 w-3.5" />
+            วิดีโอ
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={addDividerBlock}>
+            <Minus className="h-3.5 w-3.5" />
+            เส้นคั่น
           </Button>
         </div>
       </div>
