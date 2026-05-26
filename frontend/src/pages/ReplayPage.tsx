@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link } from 'react-router'
-import { RotateCcw, Play, AlertTriangle, StopCircle, Eye, CreditCard } from 'lucide-react'
+import { RotateCcw, Play, AlertTriangle, StopCircle, Eye, CreditCard, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -235,6 +235,13 @@ export function ReplayPage() {
                     ))}
                   </select>
                   {errors.target_pixel_id && <p className="text-sm text-red-500">{errors.target_pixel_id.message}</p>}
+                  <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                    <span>
+                      Replay ส่งไปยังพิกเซลปลายทางที่เลือกเท่านั้น — ไม่ส่งต่อไปยัง Backup Pixel อัตโนมัติ
+                      หากต้องการ replay ไปยัง backup ด้วย ให้สร้าง replay session อีกชุดโดยเลือก backup เป็นปลายทาง
+                    </span>
+                  </p>
                 </div>
 
                 {eventTypes && eventTypes.length > 0 && (
