@@ -1,7 +1,16 @@
 #!/usr/bin/env sh
 
 # react-doctor hook start
+# Probes local install first (frontend/ workspace) so commits use the pinned
+# version from package.json instead of re-downloading @latest on every commit.
+# Hook is intentionally advisory: prints warnings but does not block commits,
+# to allow gradual adoption while the codebase still has known regressions.
 react_doctor_scan_staged_files() {
+  if [ -x "./frontend/node_modules/.bin/react-doctor" ]; then
+    "./frontend/node_modules/.bin/react-doctor" --staged --fail-on warning
+    return
+  fi
+
   if [ -x "./node_modules/.bin/react-doctor" ]; then
     "./node_modules/.bin/react-doctor" --staged --fail-on warning
     return
@@ -25,12 +34,8 @@ react_doctor_scan_staged_files() {
   printf '%s\n' "react-doctor: command not found; skipping staged scan."
 }
 
-react_doctor_output=$(mktemp "${TMPDIR:-/tmp}/react-doctor-hook.XXXXXX")
-if react_doctor_scan_staged_files > "$react_doctor_output" 2>&1; then
-  rm -f "$react_doctor_output"
-else
-  rm -f "$react_doctor_output"
-  printf '%s\n' "React Doctor found staged regressions." "Run react-doctor --staged --fail-on warning to inspect." "Want them fixed? Ask your agent to run that command and resolve the findings." >&2
+if ! react_doctor_scan_staged_files; then
+  printf '%s\n' "react-doctor: staged scan found regressions (advisory, commit not blocked)." "Run npm --prefix frontend run doctor -- --staged --fail-on warning to inspect." >&2
 fi
 # react-doctor hook end
 npx lint-staged
