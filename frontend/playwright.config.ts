@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
+import dotenv from 'dotenv'
+
+// Load .env.e2e.local first (production/real FB testing), then override with shell env
+dotenv.config({ path: '.env.e2e.local', override: false })
 
 const isCI = !!process.env.CI
 const useExternalURL = !!process.env.E2E_BASE_URL
