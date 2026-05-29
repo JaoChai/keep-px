@@ -28,7 +28,7 @@ export function FeaturesSection() {
               style={{ transitionDelay: `${i * 100}ms` }}
             >
               <div className="mb-4 inline-flex rounded-lg bg-blue-50 p-3">
-                <feature.icon className="h-6 w-6 text-blue-800" />
+                <feature.icon className="size-6 text-blue-800" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900">
                 {feature.title}

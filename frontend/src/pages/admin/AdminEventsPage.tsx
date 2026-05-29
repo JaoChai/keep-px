@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Activity, Zap, CheckCircle, XCircle } from 'lucide-react'
+import { useState, useEffect, Suspense, lazy } from 'react'
+import { Activity, Zap, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -7,15 +7,10 @@ import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/shared/StatCard'
 import { useAdminEvents, useAdminEventStats } from '@/hooks/use-admin'
 import { timeAgo } from '@/lib/utils'
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
+
+const AdminEventsTimeseriesChart = lazy(
+  () => import('@/components/charts/AdminEventsTimeseriesChart')
+)
 
 export function AdminEventsPage() {
   const [customerID, setCustomerID] = useState('')
@@ -49,12 +44,12 @@ export function AdminEventsPage() {
         <StatCard
           title="อีเวนต์วันนี้"
           value={(stats?.total_today ?? 0).toLocaleString()}
-          icon={<Zap className="h-5 w-5" />}
+          icon={<Zap className="size-5" />}
         />
         <StatCard
           title="ชั่วโมงนี้"
           value={(stats?.total_this_hour ?? 0).toLocaleString()}
-          icon={<Activity className="h-5 w-5" />}
+          icon={<Activity className="size-5" />}
         />
         <StatCard
           title="CAPI Success Rate"
@@ -75,40 +70,15 @@ export function AdminEventsPage() {
         </CardHeader>
         <CardContent>
           {stats && stats.timeseries.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={stats.timeseries}>
-                <defs>
-                  <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#18181B" stopOpacity={0.1} />
-                    <stop offset="95%" stopColor="#18181B" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorCapiSuccess" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#16a34a" stopOpacity={0.1} />
-                    <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
-                <XAxis
-                  dataKey="timestamp"
-                  tick={{ fontSize: 12, fill: '#737373' }}
-                  tickFormatter={(val: string) => {
-                    const d = new Date(val)
-                    return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
-                  }}
-                />
-                <YAxis tick={{ fontSize: 12, fill: '#737373' }} />
-                <Tooltip
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e5e5', fontSize: '12px' }}
-                  labelFormatter={(val) => {
-                    const d = new Date(String(val))
-                    return d.toLocaleString('th-TH')
-                  }}
-                />
-                <Area type="monotone" dataKey="event_count" stroke="#18181B" fillOpacity={1} fill="url(#colorEvents)" name="อีเวนต์ทั้งหมด" />
-                <Area type="monotone" dataKey="capi_success" stroke="#16a34a" fillOpacity={1} fill="url(#colorCapiSuccess)" name="CAPI สำเร็จ" />
-                <Area type="monotone" dataKey="capi_failure" stroke="#dc2626" fillOpacity={0} name="CAPI ล้มเหลว" />
-              </AreaChart>
-            </ResponsiveContainer>
+            <Suspense
+              fallback={
+                <div className="h-[300px] flex items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              }
+            >
+              <AdminEventsTimeseriesChart data={stats.timeseries} height={300} />
+            </Suspense>
           ) : (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
               ยังไม่มีข้อมูล

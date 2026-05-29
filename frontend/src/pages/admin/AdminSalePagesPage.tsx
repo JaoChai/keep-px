@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import { FileText } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,24 +8,59 @@ import { useAdminSalePages } from '@/hooks/use-admin'
 import { SalePageDetailDialog } from '@/components/admin/SalePageDetailDialog'
 import { timeAgo } from '@/lib/utils'
 
+type FilterState = {
+  search: string
+  debouncedSearch: string
+  published: string
+  customerID: string
+  page: number
+}
+
+type FilterAction =
+  | { type: 'SET_SEARCH'; payload: string }
+  | { type: 'COMMIT_DEBOUNCED_SEARCH'; payload: string }
+  | { type: 'SET_PUBLISHED'; payload: string }
+  | { type: 'SET_CUSTOMER_ID'; payload: string }
+  | { type: 'SET_PAGE'; payload: number }
+
+const initialFilterState: FilterState = {
+  search: '',
+  debouncedSearch: '',
+  published: '',
+  customerID: '',
+  page: 1,
+}
+
+function filterReducer(state: FilterState, action: FilterAction): FilterState {
+  switch (action.type) {
+    case 'SET_SEARCH':
+      return { ...state, search: action.payload }
+    case 'COMMIT_DEBOUNCED_SEARCH':
+      return { ...state, debouncedSearch: action.payload, page: 1 }
+    case 'SET_PUBLISHED':
+      return { ...state, published: action.payload, page: 1 }
+    case 'SET_CUSTOMER_ID':
+      return { ...state, customerID: action.payload, page: 1 }
+    case 'SET_PAGE':
+      return { ...state, page: action.payload }
+    default:
+      return state
+  }
+}
+
 export function AdminSalePagesPage() {
-  const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [published, setPublished] = useState('')
-  const [customerID, setCustomerID] = useState('')
-  const [page, setPage] = useState(1)
+  const [state, dispatch] = useReducer(filterReducer, initialFilterState)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const perPage = 20
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(search)
-      setPage(1)
+      dispatch({ type: 'COMMIT_DEBOUNCED_SEARCH', payload: state.search })
     }, 300)
     return () => clearTimeout(timer)
-  }, [search])
+  }, [state.search])
 
-  const { data, isLoading } = useAdminSalePages(debouncedSearch, customerID, published, page, perPage)
+  const { data, isLoading } = useAdminSalePages(state.debouncedSearch, state.customerID, state.published, state.page, perPage)
 
   return (
     <div>
@@ -36,7 +71,7 @@ export function AdminSalePagesPage() {
         </div>
         {data && (
           <Badge variant="secondary" className="text-sm">
-            <FileText className="h-3.5 w-3.5 mr-1" />
+            <FileText className="size-3.5 mr-1" />
             {data.total} เพจ
           </Badge>
         )}
@@ -45,13 +80,13 @@ export function AdminSalePagesPage() {
       <div className="flex gap-3 mb-4">
         <Input
           placeholder="ค้นหาชื่อ/slug..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={state.search}
+          onChange={(e) => dispatch({ type: 'SET_SEARCH', payload: e.target.value })}
           className="max-w-xs"
         />
         <select
-          value={published}
-          onChange={(e) => { setPublished(e.target.value); setPage(1) }}
+          value={state.published}
+          onChange={(e) => dispatch({ type: 'SET_PUBLISHED', payload: e.target.value })}
           className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
         >
           <option value="">ทั้งหมด</option>
@@ -60,8 +95,8 @@ export function AdminSalePagesPage() {
         </select>
         <Input
           placeholder="Customer ID"
-          value={customerID}
-          onChange={(e) => { setCustomerID(e.target.value); setPage(1) }}
+          value={state.customerID}
+          onChange={(e) => dispatch({ type: 'SET_CUSTOMER_ID', payload: e.target.value })}
           className="max-w-[200px]"
         />
       </div>
@@ -127,10 +162,10 @@ export function AdminSalePagesPage() {
             หน้า {data.page} จาก {data.total_pages}
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            <Button variant="outline" size="sm" disabled={state.page <= 1} onClick={() => dispatch({ type: 'SET_PAGE', payload: state.page - 1 })}>
               ก่อนหน้า
             </Button>
-            <Button variant="outline" size="sm" disabled={page >= data.total_pages} onClick={() => setPage((p) => p + 1)}>
+            <Button variant="outline" size="sm" disabled={state.page >= data.total_pages} onClick={() => dispatch({ type: 'SET_PAGE', payload: state.page + 1 })}>
               ถัดไป
             </Button>
           </div>

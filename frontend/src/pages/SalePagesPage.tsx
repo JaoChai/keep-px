@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useReducer, useRef } from 'react'
 import { useNavigate } from 'react-router'
 import { Plus, Pencil, Trash2, Copy, Check, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,52 @@ import { QueryErrorAlert } from '@/components/shared/QueryErrorAlert'
 import { toast } from 'sonner'
 import type { SalePage } from '@/types'
 
+type UiState = {
+  deleteConfirm: string | null
+  copiedId: string | null
+  duplicatingId: string | null
+  pixelSwitchPage: SalePage | null
+  pixelSelections: string[]
+}
+
+type UiAction =
+  | { type: 'OPEN_DELETE_CONFIRM'; payload: string }
+  | { type: 'CLOSE_DELETE_CONFIRM' }
+  | { type: 'SET_COPIED'; payload: string | null }
+  | { type: 'SET_DUPLICATING'; payload: string | null }
+  | { type: 'OPEN_PIXEL_SWITCH'; payload: { page: SalePage; selections: string[] } }
+  | { type: 'CLOSE_PIXEL_SWITCH' }
+  | { type: 'SET_PIXEL_SELECTIONS'; payload: string[] }
+
+const initialUiState: UiState = {
+  deleteConfirm: null,
+  copiedId: null,
+  duplicatingId: null,
+  pixelSwitchPage: null,
+  pixelSelections: [],
+}
+
+function uiReducer(state: UiState, action: UiAction): UiState {
+  switch (action.type) {
+    case 'OPEN_DELETE_CONFIRM':
+      return { ...state, deleteConfirm: action.payload }
+    case 'CLOSE_DELETE_CONFIRM':
+      return { ...state, deleteConfirm: null }
+    case 'SET_COPIED':
+      return { ...state, copiedId: action.payload }
+    case 'SET_DUPLICATING':
+      return { ...state, duplicatingId: action.payload }
+    case 'OPEN_PIXEL_SWITCH':
+      return { ...state, pixelSwitchPage: action.payload.page, pixelSelections: action.payload.selections }
+    case 'CLOSE_PIXEL_SWITCH':
+      return { ...state, pixelSwitchPage: null }
+    case 'SET_PIXEL_SELECTIONS':
+      return { ...state, pixelSelections: action.payload }
+    default:
+      return state
+  }
+}
+
 export function SalePagesPage() {
   const { data: salePages, isLoading, isError: isSalePagesError, error: salePagesError, refetch: refetchSalePages } = useSalePages()
   const { data: pixels, isError: isPixelsError, error: pixelsError, refetch: refetchPixels } = usePixels()
@@ -21,11 +67,7 @@ export function SalePagesPage() {
   const navigate = useNavigate()
 
   const pixelNameMap = usePixelNameMap()
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
-  const [pixelSwitchPage, setPixelSwitchPage] = useState<SalePage | null>(null)
-  const [pixelSelections, setPixelSelections] = useState<string[]>([])
+  const [state, dispatch] = useReducer(uiReducer, initialUiState)
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const getPixelNames = (pixelIds: string[]) => {
@@ -38,7 +80,7 @@ export function SalePagesPage() {
   const handleDelete = async (id: string) => {
     try {
       await deleteSalePage.mutateAsync(id)
-      setDeleteConfirm(null)
+      dispatch({ type: 'CLOSE_DELETE_CONFIRM' })
     } catch { /* hook onError shows toast */ }
   }
 
@@ -46,16 +88,16 @@ export function SalePagesPage() {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/p/${page.slug}`)
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
-      setCopiedId(page.id)
+      dispatch({ type: 'SET_COPIED', payload: page.id })
       toast.success('คัดลอกลิงก์แล้ว')
-      copyTimerRef.current = setTimeout(() => setCopiedId(null), 2000)
+      copyTimerRef.current = setTimeout(() => dispatch({ type: 'SET_COPIED', payload: null }), 2000)
     } catch {
       toast.error('คัดลอกลิงก์ไม่สำเร็จ')
     }
   }
 
   const handleDuplicate = async (page: SalePage) => {
-    setDuplicatingId(page.id)
+    dispatch({ type: 'SET_DUPLICATING', payload: page.id })
     try {
       await createSalePage.mutateAsync({
         name: `สำเนา - ${page.name}`,
@@ -65,27 +107,26 @@ export function SalePagesPage() {
         is_published: false,
       })
     } catch { /* hook onError shows toast */ }
-    setDuplicatingId(null)
+    dispatch({ type: 'SET_DUPLICATING', payload: null })
   }
 
   const openPixelSwitch = (page: SalePage) => {
-    setPixelSwitchPage(page)
-    setPixelSelections(page.pixel_ids || [])
+    dispatch({ type: 'OPEN_PIXEL_SWITCH', payload: { page, selections: page.pixel_ids || [] } })
   }
 
   const handlePixelSave = async () => {
-    if (!pixelSwitchPage) return
+    if (!state.pixelSwitchPage) return
     try {
       await updateSalePage.mutateAsync({
-        id: pixelSwitchPage.id,
-        name: pixelSwitchPage.name,
-        slug: pixelSwitchPage.slug,
-        pixel_ids: pixelSelections,
-        template_name: pixelSwitchPage.template_name,
-        content: pixelSwitchPage.content,
-        is_published: pixelSwitchPage.is_published,
+        id: state.pixelSwitchPage.id,
+        name: state.pixelSwitchPage.name,
+        slug: state.pixelSwitchPage.slug,
+        pixel_ids: state.pixelSelections,
+        template_name: state.pixelSwitchPage.template_name,
+        content: state.pixelSwitchPage.content,
+        is_published: state.pixelSwitchPage.is_published,
       })
-      setPixelSwitchPage(null)
+      dispatch({ type: 'CLOSE_PIXEL_SWITCH' })
     } catch { /* hook onError shows toast, dialog stays open for retry */ }
   }
 
@@ -168,7 +209,7 @@ export function SalePagesPage() {
 
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => copyLink(page)}>
-                      {copiedId === page.id ? (
+                      {state.copiedId === page.id ? (
                         <Check className="h-4 w-4 text-green-500" />
                       ) : (
                         <Copy className="h-4 w-4" />
@@ -185,17 +226,17 @@ export function SalePagesPage() {
                           : `/sale-pages/${page.id}/edit`
                       )}
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Pencil className="size-4" />
                       แก้ไข
                     </Button>
 
                     <Button
                       variant="ghost"
                       size="sm"
-                      disabled={duplicatingId === page.id}
+                      disabled={state.duplicatingId === page.id}
                       onClick={() => handleDuplicate(page)}
                     >
-                      <Copy className="h-4 w-4" />
+                      <Copy className="size-4" />
                       ทำซ้ำ
                     </Button>
 
@@ -204,7 +245,7 @@ export function SalePagesPage() {
                       size="sm"
                       onClick={() => openPixelSwitch(page)}
                     >
-                      <RefreshCw className="h-4 w-4" />
+                      <RefreshCw className="size-4" />
                       เปลี่ยน Pixel
                     </Button>
 
@@ -212,9 +253,9 @@ export function SalePagesPage() {
                       variant="ghost"
                       size="sm"
                       className="text-red-500 hover:text-red-600"
-                      onClick={() => setDeleteConfirm(page.id)}
+                      onClick={() => dispatch({ type: 'OPEN_DELETE_CONFIRM', payload: page.id })}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="size-4" />
                       ลบ
                     </Button>
                   </div>
@@ -226,8 +267,8 @@ export function SalePagesPage() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <DialogContent onClose={() => setDeleteConfirm(null)}>
+      <Dialog open={!!state.deleteConfirm} onOpenChange={() => dispatch({ type: 'CLOSE_DELETE_CONFIRM' })}>
+        <DialogContent onClose={() => dispatch({ type: 'CLOSE_DELETE_CONFIRM' })}>
           <DialogHeader>
             <DialogTitle>ลบเซลเพจ</DialogTitle>
           </DialogHeader>
@@ -235,8 +276,8 @@ export function SalePagesPage() {
             คุณแน่ใจหรือไม่ว่าต้องการลบเซลเพจนี้? ไม่สามารถย้อนกลับได้
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>ยกเลิก</Button>
-            <Button variant="destructive" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>
+            <Button variant="outline" onClick={() => dispatch({ type: 'CLOSE_DELETE_CONFIRM' })}>ยกเลิก</Button>
+            <Button variant="destructive" onClick={() => state.deleteConfirm && handleDelete(state.deleteConfirm)}>
               ลบ
             </Button>
           </DialogFooter>
@@ -244,8 +285,8 @@ export function SalePagesPage() {
       </Dialog>
 
       {/* Pixel Switch Dialog */}
-      <Dialog open={!!pixelSwitchPage} onOpenChange={() => setPixelSwitchPage(null)}>
-        <DialogContent onClose={() => setPixelSwitchPage(null)}>
+      <Dialog open={!!state.pixelSwitchPage} onOpenChange={() => dispatch({ type: 'CLOSE_PIXEL_SWITCH' })}>
+        <DialogContent onClose={() => dispatch({ type: 'CLOSE_PIXEL_SWITCH' })}>
           <DialogHeader>
             <DialogTitle>เปลี่ยน Pixel</DialogTitle>
           </DialogHeader>
@@ -255,12 +296,12 @@ export function SalePagesPage() {
                 <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-accent cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={pixelSelections.includes(pixel.id)}
+                    checked={state.pixelSelections.includes(pixel.id)}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setPixelSelections(prev => [...prev, pixel.id])
+                        dispatch({ type: 'SET_PIXEL_SELECTIONS', payload: [...state.pixelSelections, pixel.id] })
                       } else {
-                        setPixelSelections(prev => prev.filter(id => id !== pixel.id))
+                        dispatch({ type: 'SET_PIXEL_SELECTIONS', payload: state.pixelSelections.filter(id => id !== pixel.id) })
                       }
                     }}
                   />
@@ -273,7 +314,7 @@ export function SalePagesPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPixelSwitchPage(null)}>ยกเลิก</Button>
+            <Button variant="outline" onClick={() => dispatch({ type: 'CLOSE_PIXEL_SWITCH' })}>ยกเลิก</Button>
             <Button onClick={handlePixelSave} disabled={updateSalePage.isPending}>
               บันทึก
             </Button>

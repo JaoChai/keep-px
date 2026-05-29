@@ -11,7 +11,7 @@ export function HeroSection() {
         <div className="text-center lg:text-left">
           {/* Badge */}
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-sm text-blue-800">
-            <ShieldCheck className="h-4 w-4" />
+            <ShieldCheck className="size-4" />
             <span>แพลตฟอร์มปกป้องข้อมูล Facebook Pixel</span>
           </div>
 
@@ -32,9 +32,10 @@ export function HeroSection() {
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-amber-400 transition-colors"
             >
               เริ่มต้นฟรี
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="size-4" />
             </Link>
             <button
+              type="button"
               onClick={() => scrollToSection('#how-it-works')}
               className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
             >

@@ -1,34 +1,57 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { useParams, useNavigate, Link } from 'react-router'
-import { useForm, useWatch } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { ArrowLeft, Plus, X, Copy, Check, ExternalLink, Info, Upload, Loader2, ChevronDown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { SalePagePreview } from '@/components/sale-pages/SalePagePreview'
-import { StyleEditor } from '@/components/sale-pages/StyleEditor'
-import { UnsavedChangesDialog } from '@/components/shared/UnsavedChangesDialog'
-import { useSalePages, useCreateSalePage, useUpdateSalePage } from '@/hooks/use-sale-pages'
-import { useQuota } from '@/hooks/use-billing'
-import { usePixels } from '@/hooks/use-pixels'
-import { useUploadImage, useUploadImages } from '@/hooks/use-upload'
-import { useUnsavedChanges } from '@/hooks/use-unsaved-changes'
-import { useAutoSaveDraft, loadDraft } from '@/hooks/use-auto-save-draft'
-import { CTA_EVENT_OPTIONS } from '@/lib/utils'
-import { toast } from 'sonner'
-import type { SalePageContent, SalePageContentV2, PageStyle } from '@/types'
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useParams, useNavigate, Link } from "react-router";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  ArrowLeft,
+  Plus,
+  X,
+  Copy,
+  Check,
+  ExternalLink,
+  Info,
+  Upload,
+  Loader2,
+  ChevronDown,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { SalePagePreview } from "@/components/sale-pages/SalePagePreview";
+import { StyleEditor } from "@/components/sale-pages/StyleEditor";
+import { UnsavedChangesDialog } from "@/components/shared/UnsavedChangesDialog";
+import {
+  useSalePages,
+  useCreateSalePage,
+  useUpdateSalePage,
+} from "@/hooks/use-sale-pages";
+import { useQuota } from "@/hooks/use-billing";
+import { usePixels } from "@/hooks/use-pixels";
+import { useUploadImage, useUploadImages } from "@/hooks/use-upload";
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes";
+import { useAutoSaveDraft, loadDraft } from "@/hooks/use-auto-save-draft";
+import { CTA_EVENT_OPTIONS } from "@/lib/utils";
+import { toast } from "sonner";
+import type { SalePageContent, SalePageContentV2, PageStyle } from "@/types";
 
 const salePageSchema = z.object({
-  name: z.string().min(1, 'กรุณากรอกชื่อเพจ'),
-  slug: z.string().refine(
-    (val) => val === '' || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(val),
-    'ใช้ได้เฉพาะตัวอักษรภาษาอังกฤษพิมพ์เล็ก ตัวเลข และเครื่องหมาย -'
-  ),
+  name: z.string().min(1, "กรุณากรอกชื่อเพจ"),
+  slug: z
+    .string()
+    .refine(
+      (val) => val === "" || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(val),
+      "ใช้ได้เฉพาะตัวอักษรภาษาอังกฤษพิมพ์เล็ก ตัวเลข และเครื่องหมาย -",
+    ),
   hero_title: z.string(),
   hero_subtitle: z.string(),
   hero_image_url: z.string(),
@@ -43,41 +66,52 @@ const salePageSchema = z.object({
   tracking_content_name: z.string(),
   tracking_content_value: z.number(),
   tracking_currency: z.string(),
-})
+});
 
-type SalePageForm = z.infer<typeof salePageSchema>
+type SalePageForm = z.infer<typeof salePageSchema>;
 
 export function SalePageEditorPage() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const isEditing = !!id
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const isEditing = !!id;
 
-  const { data: salePages } = useSalePages()
-  const { data: quota } = useQuota()
-  const { data: pixels } = usePixels()
-  const createSalePage = useCreateSalePage()
-  const updateSalePage = useUpdateSalePage()
+  const { data: salePages } = useSalePages();
+  const { data: quota } = useQuota();
+  const { data: pixels } = usePixels();
+  const createSalePage = useCreateSalePage();
+  const updateSalePage = useUpdateSalePage();
 
-  const isAtSalePageLimit = !isEditing && !!quota && !!salePages && salePages.length >= quota.max_sale_pages
+  const isAtSalePageLimit =
+    !isEditing &&
+    !!quota &&
+    !!salePages &&
+    salePages.length >= quota.max_sale_pages;
 
-  const [features, setFeatures] = useState<string[]>([''])
-  const [bodyImages, setBodyImages] = useState<string[]>([])
-  const [pageStyle, setPageStyle] = useState<PageStyle>({})
-  const [showCustomSlug, setShowCustomSlug] = useState(false)
-  const [publishedDialog, setPublishedDialog] = useState<{ slug: string } | null>(null)
-  const [copiedUrl, setCopiedUrl] = useState(false)
-  const uploadImage = useUploadImage()
-  const uploadImages = useUploadImages()
-  const heroFileRef = useRef<HTMLInputElement>(null)
-  const bodyFileRef = useRef<HTMLInputElement>(null)
+  const [features, setFeatures] = useState<string[]>([""]);
+  const [bodyImages, setBodyImages] = useState<string[]>([]);
+  const [pageStyle, setPageStyle] = useState<PageStyle>({});
+  const [showCustomSlug, setShowCustomSlug] = useState(false);
+  const [publishedDialog, setPublishedDialog] = useState<{
+    slug: string;
+  } | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const uploadImage = useUploadImage();
+  const uploadImages = useUploadImages();
+  const heroFileRef = useRef<HTMLInputElement>(null);
+  const bodyFileRef = useRef<HTMLInputElement>(null);
 
-  const existingPage = isEditing ? salePages?.find((p) => p.id === id) : undefined
+  const existingPage = isEditing
+    ? salePages?.find((p) => p.id === id)
+    : undefined;
 
   // Redirect v2 pages to blocks editor
-  const isV2 = existingPage && 'version' in existingPage.content && (existingPage.content as SalePageContentV2).version === 2
+  const isV2 =
+    existingPage &&
+    "version" in existingPage.content &&
+    (existingPage.content as SalePageContentV2).version === 2;
   useEffect(() => {
-    if (isV2) navigate(`/sale-pages/${id}/edit-blocks`, { replace: true })
-  }, [isV2, id, navigate])
+    if (isV2) navigate(`/sale-pages/${id}/edit-blocks`, { replace: true });
+  }, [isV2, id, navigate]);
 
   const {
     register,
@@ -90,53 +124,63 @@ export function SalePageEditorPage() {
   } = useForm<SalePageForm>({
     resolver: zodResolver(salePageSchema),
     defaultValues: {
-      name: '',
-      slug: '',
-      hero_title: '',
-      hero_subtitle: '',
-      hero_image_url: '',
-      description: '',
-      features: [''],
-      cta_button_text: '',
-      cta_button_link: '',
-      contact_line_id: '',
-      contact_phone: '',
-      contact_website_url: '',
-      cta_event_name: 'Lead',
-      tracking_content_name: '',
+      name: "",
+      slug: "",
+      hero_title: "",
+      hero_subtitle: "",
+      hero_image_url: "",
+      description: "",
+      features: [""],
+      cta_button_text: "",
+      cta_button_link: "",
+      contact_line_id: "",
+      contact_phone: "",
+      contact_website_url: "",
+      cta_event_name: "Lead",
+      tracking_content_name: "",
       tracking_content_value: 0,
-      tracking_currency: 'THB',
+      tracking_currency: "THB",
     },
-  })
+  });
 
-  const [selectedPixelIds, setSelectedPixelIds] = useState<string[]>([])
-  const [initializedId, setInitializedId] = useState<string | null>(null)
-  const [hasUserEdited, setHasUserEdited] = useState(false)
-  const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor')
-  const unsaved = useUnsavedChanges(isDirty || hasUserEdited)
+  const [selectedPixelIds, setSelectedPixelIds] = useState<string[]>([]);
+  const [initializedId, setInitializedId] = useState<string | null>(null);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+  const [mobileView, setMobileView] = useState<"editor" | "preview">("editor");
+  const unsaved = useUnsavedChanges(isDirty || hasUserEdited);
 
-  const draftKey = isEditing ? `sale-page-classic:${id}` : 'sale-page-classic:new'
-  const formValuesRef = useRef<SalePageForm | null>(null)
+  const draftKey = isEditing
+    ? `sale-page-classic:${id}`
+    : "sale-page-classic:new";
+  const formValuesRef = useRef<SalePageForm | null>(null);
   useEffect(() => {
-    const sub = watch((values) => { formValuesRef.current = values as SalePageForm })
-    return () => sub.unsubscribe()
-  }, [watch])
+    const sub = watch((values) => {
+      formValuesRef.current = values as SalePageForm;
+    });
+    return () => sub.unsubscribe();
+  }, [watch]);
   const draftData = useMemo(
-    () => ({ ...(formValuesRef.current ?? {}), selectedPixelIds, features, bodyImages, pageStyle }),
+    () => ({
+      ...(formValuesRef.current ?? {}),
+      selectedPixelIds,
+      features,
+      bodyImages,
+      pageStyle,
+    }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedPixelIds, features, bodyImages, pageStyle, isDirty, hasUserEdited]
-  )
-  const { clearDraft } = useAutoSaveDraft(draftKey, draftData)
+    [selectedPixelIds, features, bodyImages, pageStyle, isDirty, hasUserEdited],
+  );
+  const { clearDraft } = useAutoSaveDraft(draftKey, draftData);
 
   // Load existing data when editing — hydrates form + local state from server data
   useEffect(() => {
     if (existingPage && !isV2 && initializedId !== existingPage.id) {
-      const c = existingPage.content as SalePageContent
-      const featuresList = c.body.features.length > 0 ? c.body.features : ['']
-       
-      setInitializedId(existingPage.id)
-       
-      setSelectedPixelIds(existingPage.pixel_ids ?? [])
+      const c = existingPage.content as SalePageContent;
+      const featuresList = c.body.features.length > 0 ? c.body.features : [""];
+
+      setInitializedId(existingPage.id);
+
+      setSelectedPixelIds(existingPage.pixel_ids ?? []);
       reset({
         name: existingPage.name,
         slug: existingPage.slug,
@@ -149,212 +193,233 @@ export function SalePageEditorPage() {
         cta_button_link: c.cta.button_link,
         contact_line_id: c.contact.line_id,
         contact_phone: c.contact.phone,
-        contact_website_url: c.contact.website_url ?? '',
-        cta_event_name: c.tracking?.cta_event_name || 'Lead',
-        tracking_content_name: c.tracking?.content_name || '',
+        contact_website_url: c.contact.website_url ?? "",
+        cta_event_name: c.tracking?.cta_event_name || "Lead",
+        tracking_content_name: c.tracking?.content_name || "",
         tracking_content_value: c.tracking?.content_value || 0,
-        tracking_currency: c.tracking?.currency || 'THB',
-      })
-      setFeatures(featuresList)  
-      setBodyImages(c.body.images ?? [])  
-      setPageStyle(c.style ?? {})  
-      setShowCustomSlug(true)  
+        tracking_currency: c.tracking?.currency || "THB",
+      });
+      setFeatures(featuresList);
+      setBodyImages(c.body.images ?? []);
+      setPageStyle(c.style ?? {});
+      setShowCustomSlug(true);
     }
-  }, [existingPage, isV2, initializedId, reset])
+  }, [existingPage, isV2, initializedId, reset]);
 
   // Restore draft (only for new pages to avoid overwriting server data)
   useEffect(() => {
-    if (isEditing) return // Don't override server data for editing
-    const draft = loadDraft<Record<string, unknown>>(draftKey)
-    if (!draft) return
+    if (isEditing) return; // Don't override server data for editing
+    const draft = loadDraft<Record<string, unknown>>(draftKey);
+    if (!draft) return;
     if (draft.name) {
       reset({
-        name: (draft.name as string) ?? '',
-        slug: (draft.slug as string) ?? '',
-        hero_title: (draft.hero_title as string) ?? '',
-        hero_subtitle: (draft.hero_subtitle as string) ?? '',
-        hero_image_url: (draft.hero_image_url as string) ?? '',
-        description: (draft.description as string) ?? '',
-        features: (draft.features as string[]) ?? [''],
-        cta_button_text: (draft.cta_button_text as string) ?? '',
-        cta_button_link: (draft.cta_button_link as string) ?? '',
-        contact_line_id: (draft.contact_line_id as string) ?? '',
-        contact_phone: (draft.contact_phone as string) ?? '',
-        contact_website_url: (draft.contact_website_url as string) ?? '',
-        cta_event_name: (draft.cta_event_name as string) ?? 'Lead',
-        tracking_content_name: (draft.tracking_content_name as string) ?? '',
+        name: (draft.name as string) ?? "",
+        slug: (draft.slug as string) ?? "",
+        hero_title: (draft.hero_title as string) ?? "",
+        hero_subtitle: (draft.hero_subtitle as string) ?? "",
+        hero_image_url: (draft.hero_image_url as string) ?? "",
+        description: (draft.description as string) ?? "",
+        features: (draft.features as string[]) ?? [""],
+        cta_button_text: (draft.cta_button_text as string) ?? "",
+        cta_button_link: (draft.cta_button_link as string) ?? "",
+        contact_line_id: (draft.contact_line_id as string) ?? "",
+        contact_phone: (draft.contact_phone as string) ?? "",
+        contact_website_url: (draft.contact_website_url as string) ?? "",
+        cta_event_name: (draft.cta_event_name as string) ?? "Lead",
+        tracking_content_name: (draft.tracking_content_name as string) ?? "",
         tracking_content_value: (draft.tracking_content_value as number) ?? 0,
-        tracking_currency: (draft.tracking_currency as string) ?? 'THB',
-      })
-      setSelectedPixelIds((draft.selectedPixelIds as string[]) ?? [])
-      setFeatures((draft.features as string[]) ?? [''])
-      setBodyImages((draft.bodyImages as string[]) ?? [])
-      setPageStyle((draft.pageStyle as PageStyle) ?? {})
-      toast('กู้คืนแบบร่างจากการบันทึกอัตโนมัติ')
+        tracking_currency: (draft.tracking_currency as string) ?? "THB",
+      });
+      setSelectedPixelIds((draft.selectedPixelIds as string[]) ?? []);
+      setFeatures((draft.features as string[]) ?? [""]);
+      setBodyImages((draft.bodyImages as string[]) ?? []);
+      setPageStyle((draft.pageStyle as PageStyle) ?? {});
+      toast("กู้คืนแบบร่างจากการบันทึกอัตโนมัติ");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
   // Sync features state to form
   useEffect(() => {
-    setValue('features', features)
-  }, [features, setValue])
+    setValue("features", features);
+  }, [features, setValue]);
 
   // Watch only fields used by the preview and hero image thumbnail
   const previewFields = useWatch({
     control,
     name: [
-      'hero_title',
-      'hero_subtitle',
-      'hero_image_url',
-      'description',
-      'cta_button_text',
-      'cta_button_link',
-      'contact_line_id',
-      'contact_phone',
-      'contact_website_url',
-      'cta_event_name',
+      "hero_title",
+      "hero_subtitle",
+      "hero_image_url",
+      "description",
+      "cta_button_text",
+      "cta_button_link",
+      "contact_line_id",
+      "contact_phone",
+      "contact_website_url",
+      "cta_event_name",
     ],
-  })
+  });
   const [
-    heroTitle, heroSubtitle, heroImageUrl, description,
-    ctaButtonText, ctaButtonLink, contactLineId, contactPhone,
-    contactWebsiteUrl, ctaEventName,
-  ] = previewFields
+    heroTitle,
+    heroSubtitle,
+    heroImageUrl,
+    description,
+    ctaButtonText,
+    ctaButtonLink,
+    contactLineId,
+    contactPhone,
+    contactWebsiteUrl,
+    ctaEventName,
+  ] = previewFields;
 
-  const previewHero = useMemo(() => ({
-    title: heroTitle ?? '',
-    subtitle: heroSubtitle ?? '',
-    image_url: heroImageUrl ?? '',
-  }), [heroTitle, heroSubtitle, heroImageUrl])
+  const previewHero = useMemo(
+    () => ({
+      title: heroTitle ?? "",
+      subtitle: heroSubtitle ?? "",
+      image_url: heroImageUrl ?? "",
+    }),
+    [heroTitle, heroSubtitle, heroImageUrl],
+  );
 
-  const previewBody = useMemo(() => ({
-    description: description ?? '',
-    features,
-    images: bodyImages,
-  }), [description, features, bodyImages])
+  const previewBody = useMemo(
+    () => ({
+      description: description ?? "",
+      features,
+      images: bodyImages,
+    }),
+    [description, features, bodyImages],
+  );
 
-  const previewCta = useMemo(() => ({
-    button_text: ctaButtonText ?? '',
-    button_link: ctaButtonLink ?? '',
-  }), [ctaButtonText, ctaButtonLink])
+  const previewCta = useMemo(
+    () => ({
+      button_text: ctaButtonText ?? "",
+      button_link: ctaButtonLink ?? "",
+    }),
+    [ctaButtonText, ctaButtonLink],
+  );
 
-  const previewContact = useMemo(() => ({
-    line_id: contactLineId ?? '',
-    phone: contactPhone ?? '',
-    website_url: contactWebsiteUrl ?? '',
-  }), [contactLineId, contactPhone, contactWebsiteUrl])
+  const previewContact = useMemo(
+    () => ({
+      line_id: contactLineId ?? "",
+      phone: contactPhone ?? "",
+      website_url: contactWebsiteUrl ?? "",
+    }),
+    [contactLineId, contactPhone, contactWebsiteUrl],
+  );
 
   const addFeature = () => {
     if (features.length < 10) {
-      setFeatures([...features, ''])
-      setHasUserEdited(true)
+      setFeatures([...features, ""]);
+      setHasUserEdited(true);
     }
-  }
+  };
 
   const removeFeature = (index: number) => {
-    setFeatures(features.filter((_, i) => i !== index))
-    setHasUserEdited(true)
-  }
+    setFeatures(features.filter((_, i) => i !== index));
+    setHasUserEdited(true);
+  };
 
   const updateFeature = (index: number, value: string) => {
-    const updated = [...features]
-    updated[index] = value
-    setFeatures(updated)
-    setHasUserEdited(true)
-  }
+    const updated = [...features];
+    updated[index] = value;
+    setFeatures(updated);
+    setHasUserEdited(true);
+  };
 
   const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await uploadImage.mutateAsync(file)
-    setValue('hero_image_url', url)
-    setHasUserEdited(true)
-    if (heroFileRef.current) heroFileRef.current.value = ''
-  }
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadImage.mutateAsync(file);
+    setValue("hero_image_url", url);
+    setHasUserEdited(true);
+    if (heroFileRef.current) heroFileRef.current.value = "";
+  };
 
-  const handleBodyImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-    const urls = await uploadImages.mutateAsync(Array.from(files))
-    setBodyImages((prev) => [...prev, ...urls])
-    setHasUserEdited(true)
-    if (bodyFileRef.current) bodyFileRef.current.value = ''
-  }
+  const handleBodyImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const urls = await uploadImages.mutateAsync(Array.from(files));
+    setBodyImages((prev) => [...prev, ...urls]);
+    setHasUserEdited(true);
+    if (bodyFileRef.current) bodyFileRef.current.value = "";
+  };
 
   const removeBodyImage = (index: number) => {
-    setBodyImages((prev) => prev.filter((_, i) => i !== index))
-    setHasUserEdited(true)
-  }
+    setBodyImages((prev) => prev.filter((_, i) => i !== index));
+    setHasUserEdited(true);
+  };
 
   const buildContent = (data: SalePageForm): SalePageContent => ({
     hero: {
-      title: data.hero_title ?? '',
-      subtitle: data.hero_subtitle ?? '',
-      image_url: data.hero_image_url ?? '',
+      title: data.hero_title ?? "",
+      subtitle: data.hero_subtitle ?? "",
+      image_url: data.hero_image_url ?? "",
     },
     body: {
-      description: data.description ?? '',
+      description: data.description ?? "",
       features: features.filter((f) => f.trim()),
       images: bodyImages,
     },
     cta: {
-      button_text: data.cta_button_text ?? '',
-      button_link: data.cta_button_link ?? '',
+      button_text: data.cta_button_text ?? "",
+      button_link: data.cta_button_link ?? "",
     },
     contact: {
-      line_id: data.contact_line_id ?? '',
-      phone: data.contact_phone ?? '',
-      website_url: data.contact_website_url ?? '',
+      line_id: data.contact_line_id ?? "",
+      phone: data.contact_phone ?? "",
+      website_url: data.contact_website_url ?? "",
     },
     tracking: {
-      cta_event_name: data.cta_event_name || 'Lead',
-      content_name: data.tracking_content_name || '',
+      cta_event_name: data.cta_event_name || "Lead",
+      content_name: data.tracking_content_name || "",
       content_value: data.tracking_content_value || 0,
-      currency: data.tracking_currency || 'THB',
+      currency: data.tracking_currency || "THB",
     },
     style: pageStyle,
-  })
+  });
 
   const onSubmit = async (data: SalePageForm, isPublished: boolean) => {
-    const content = buildContent(data)
+    const content = buildContent(data);
     const payload = {
       name: data.name,
       slug: data.slug || undefined,
       pixel_ids: selectedPixelIds,
-      template_name: 'simple',
+      template_name: "simple",
       content,
       is_published: isPublished,
-    }
+    };
 
     if (isEditing) {
-      const result = await updateSalePage.mutateAsync({ id, ...payload })
-      clearDraft()
-      setHasUserEdited(false)
-      unsaved.allowNavigation()
+      const result = await updateSalePage.mutateAsync({ id, ...payload });
+      clearDraft();
+      setHasUserEdited(false);
+      unsaved.allowNavigation();
       if (isPublished) {
-        setPublishedDialog({ slug: result.slug })
+        setPublishedDialog({ slug: result.slug });
       } else {
-        navigate('/sale-pages')
+        navigate("/sale-pages");
       }
     } else {
-      const result = await createSalePage.mutateAsync(payload)
-      clearDraft()
-      setHasUserEdited(false)
-      unsaved.allowNavigation()
+      const result = await createSalePage.mutateAsync(payload);
+      clearDraft();
+      setHasUserEdited(false);
+      unsaved.allowNavigation();
       if (isPublished) {
-        setPublishedDialog({ slug: result.slug })
+        setPublishedDialog({ slug: result.slug });
       } else {
-        navigate('/sale-pages')
+        navigate("/sale-pages");
       }
     }
-  }
+  };
 
   const copyUrl = (slug: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/p/${slug}`)
-    setCopiedUrl(true)
-    setTimeout(() => setCopiedUrl(false), 2000)
-  }
+    navigator.clipboard.writeText(`${window.location.origin}/p/${slug}`);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
 
   return (
     <div>
@@ -371,22 +436,30 @@ export function SalePageEditorPage() {
           <Button
             variant="outline"
             disabled={isSubmitting}
-            onClick={handleSubmit((data: SalePageForm) => onSubmit(data, false))}
+            onClick={handleSubmit((data: SalePageForm) =>
+              onSubmit(data, false),
+            )}
           >
-            {isSubmitting ? 'กำลังบันทึก...' : 'บันทึกแบบร่าง'}
+            {isSubmitting ? "กำลังบันทึก..." : "บันทึกแบบร่าง"}
           </Button>
           <Button
             disabled={isSubmitting}
             onClick={handleSubmit((data: SalePageForm) => onSubmit(data, true))}
           >
-            {isSubmitting ? 'กำลังเผยแพร่...' : isEditing && existingPage?.is_published ? 'อัปเดต' : 'เผยแพร่'}
+            {isSubmitting
+              ? "กำลังเผยแพร่..."
+              : isEditing && existingPage?.is_published
+                ? "อัปเดต"
+                : "เผยแพร่"}
           </Button>
         </div>
       </div>
 
       {isAtSalePageLimit ? (
         <div className="text-center py-12 border border-dashed border-border rounded-lg">
-          <p className="text-lg font-medium text-foreground mb-2">ถึงขีดจำกัดเซลเพจแล้ว</p>
+          <p className="text-lg font-medium text-foreground mb-2">
+            ถึงขีดจำกัดเซลเพจแล้ว
+          </p>
           <p className="text-sm text-muted-foreground mb-4">
             คุณมีเซลเพจ {salePages?.length}/{quota?.max_sale_pages} หน้าแล้ว
           </p>
@@ -401,16 +474,20 @@ export function SalePageEditorPage() {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => setMobileView(mobileView === 'editor' ? 'preview' : 'editor')}
+              onClick={() =>
+                setMobileView(mobileView === "editor" ? "preview" : "editor")
+              }
             >
-              {mobileView === 'editor' ? 'Preview' : 'Editor'}
+              {mobileView === "editor" ? "Preview" : "Editor"}
             </Button>
           </div>
 
           {/* 2-Column Layout */}
           <div className="flex gap-8">
             {/* Left Column - Form */}
-            <div className={`flex-1 lg:w-2/3 space-y-6 ${mobileView === 'preview' ? 'hidden lg:block' : ''}`}>
+            <div
+              className={`flex-1 lg:w-2/3 space-y-6 ${mobileView === "preview" ? "hidden lg:block" : ""}`}
+            >
               {/* Basic Info */}
               <Card>
                 <CardHeader>
@@ -419,8 +496,16 @@ export function SalePageEditorPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">ชื่อเพจ</Label>
-                    <Input id="name" placeholder="เซลเพจของฉัน" {...register('name')} />
-                    {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+                    <Input
+                      id="name"
+                      placeholder="เซลเพจของฉัน"
+                      {...register("name")}
+                    />
+                    {errors.name && (
+                      <p className="text-sm text-red-500">
+                        {errors.name.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <button
@@ -428,86 +513,136 @@ export function SalePageEditorPage() {
                       className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                       onClick={() => setShowCustomSlug(!showCustomSlug)}
                     >
-                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showCustomSlug ? 'rotate-0' : '-rotate-90'}`} />
-                      ตั้ง URL เอง (ไม่บังคับ)
-                    </button>
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 transition-transform ${showCustomSlug ? "rotate-0" : "-rotate-90"}`}
+                      />{" "}
+                      ตั้ง URL เอง (ไม่บังคับ){" "}
+                    </button>{" "}
                     {showCustomSlug && (
                       <div className="flex">
+                        {" "}
                         <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-border bg-muted text-sm text-muted-foreground">
-                          /p/
-                        </span>
+                          {" "}
+                          /p/{" "}
+                        </span>{" "}
                         <Input
                           id="slug"
                           className="rounded-l-none"
                           placeholder="my-sale-page"
-                          {...register('slug')}
-                        />
+                          {...register("slug")}
+                        />{" "}
                       </div>
-                    )}
+                    )}{" "}
                     {!showCustomSlug && (
-                      <p className="text-xs text-muted-foreground">ระบบจะสร้าง URL ให้อัตโนมัติ</p>
-                    )}
-                    {errors.slug && <p className="text-sm text-red-500">{errors.slug.message}</p>}
-                  </div>
+                      <p className="text-xs text-muted-foreground">
+                        ระบบจะสร้าง URL ให้อัตโนมัติ
+                      </p>
+                    )}{" "}
+                    {errors.slug && (
+                      <p className="text-sm text-red-500">
+                        {errors.slug.message}
+                      </p>
+                    )}{" "}
+                  </div>{" "}
                   <div className="space-y-2">
-                    <Label>พิกเซล (ไม่บังคับ)</Label>
+                    {" "}
+                    <Label>พิกเซล (ไม่บังคับ)</Label>{" "}
                     <div className="max-h-40 overflow-y-auto border border-border rounded-md p-2 space-y-1">
+                      {" "}
                       {(!pixels || pixels.length === 0) && (
-                        <p className="text-xs text-muted-foreground">ไม่มีพิกเซลที่ใช้ได้</p>
-                      )}
+                        <p className="text-xs text-muted-foreground">
+                          ไม่มีพิกเซลที่ใช้ได้
+                        </p>
+                      )}{" "}
                       {pixels?.map((pixel) => (
-                        <label key={pixel.id} className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-accent cursor-pointer">
+                        <label
+                          key={pixel.id}
+                          className="flex items-center gap-2 text-sm py-1 px-1 rounded hover:bg-accent cursor-pointer"
+                        >
+                          {" "}
                           <input
                             type="checkbox"
                             checked={selectedPixelIds.includes(pixel.id)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSelectedPixelIds(prev => [...prev, pixel.id])
+                                setSelectedPixelIds((prev) => [
+                                  ...prev,
+                                  pixel.id,
+                                ]);
                               } else {
-                                setSelectedPixelIds(prev => prev.filter(id => id !== pixel.id))
+                                setSelectedPixelIds((prev) =>
+                                  prev.filter((id) => id !== pixel.id),
+                                );
                               }
-                              setHasUserEdited(true)
+                              setHasUserEdited(true);
                             }}
                             className="rounded border-border"
-                          />
-                          {pixel.name} ({pixel.fb_pixel_id})
+                          />{" "}
+                          {pixel.name} ({pixel.fb_pixel_id}){" "}
                         </label>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Hero Section */}
+                      ))}{" "}
+                    </div>{" "}
+                  </div>{" "}
+                </CardContent>{" "}
+              </Card>{" "}
+              {/* Hero Section */}{" "}
               <Card>
+                {" "}
                 <CardHeader>
-                  <CardTitle>ส่วน Hero</CardTitle>
-                </CardHeader>
+                  {" "}
+                  <CardTitle>ส่วน Hero</CardTitle>{" "}
+                </CardHeader>{" "}
                 <CardContent className="space-y-4">
+                  {" "}
                   <div className="space-y-2">
-                    <Label htmlFor="hero_title">หัวข้อ</Label>
-                    <Input id="hero_title" placeholder="ชื่อสินค้าของคุณ" {...register('hero_title')} />
-                  </div>
+                    {" "}
+                    <Label htmlFor="hero_title">หัวข้อ</Label>{" "}
+                    <Input
+                      id="hero_title"
+                      placeholder="ชื่อสินค้าของคุณ"
+                      {...register("hero_title")}
+                    />{" "}
+                  </div>{" "}
                   <div className="space-y-2">
-                    <Label htmlFor="hero_subtitle">คำบรรยาย</Label>
-                    <Input id="hero_subtitle" placeholder="คำอธิบายสั้นๆ..." {...register('hero_subtitle')} />
-                  </div>
+                    {" "}
+                    <Label htmlFor="hero_subtitle">คำบรรยาย</Label>{" "}
+                    <Input
+                      id="hero_subtitle"
+                      placeholder="คำอธิบายสั้นๆ..."
+                      {...register("hero_subtitle")}
+                    />{" "}
+                  </div>{" "}
                   <div className="space-y-2">
-                    <Label>รูปภาพ Hero</Label>
+                    {" "}
+                    <Label>รูปภาพ Hero</Label>{" "}
                     {heroImageUrl && (
                       <div className="relative w-full max-w-[200px]">
-                        <img src={heroImageUrl} alt="" className="w-full h-auto rounded-lg border border-border" />
+                        {" "}
+                        <img
+                          src={heroImageUrl}
+                          alt=""
+                          className="w-full h-auto rounded-lg border border-border"
+                        />{" "}
                         <button
                           type="button"
-                          className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
-                          onClick={() => setValue('hero_image_url', '')}
+                          className="absolute -top-2 -right-2 size-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                          onClick={() => setValue("hero_image_url", "")}
                         >
-                          <X className="h-3 w-3" />
-                        </button>
+                          {" "}
+                          <X className="h-3 w-3" />{" "}
+                        </button>{" "}
                       </div>
-                    )}
+                    )}{" "}
                     <div className="flex gap-2">
-                      <input ref={heroFileRef} type="file" accept="image/*" className="hidden" onChange={handleHeroUpload} />
+                      {" "}
+                      <input
+                        ref={heroFileRef}
+                        type="file"
+                        accept="image/*"
+                        aria-label="อัพโหลดรูปหลัก"
+                        className="hidden"
+                        onChange={handleHeroUpload}
+                      />{" "}
                       <Button
                         type="button"
                         variant="outline"
@@ -515,15 +650,26 @@ export function SalePageEditorPage() {
                         disabled={uploadImage.isPending}
                         onClick={() => heroFileRef.current?.click()}
                       >
-                        {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                        {uploadImage.isPending && uploadImage.progress > 0 ? `${uploadImage.progress}%` : 'อัพโหลดรูป'}
+                        {" "}
+                        {uploadImage.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="h-3.5 w-3.5" />
+                        )}{" "}
+                        {uploadImage.isPending && uploadImage.progress > 0
+                          ? `${uploadImage.progress}%`
+                          : "อัพโหลดรูป"}
                       </Button>
                     </div>
-                    <Input id="hero_image_url" placeholder="หรือวาง URL รูปภาพ" {...register('hero_image_url')} className="text-xs" />
+                    <Input
+                      id="hero_image_url"
+                      placeholder="หรือวาง URL รูปภาพ"
+                      {...register("hero_image_url")}
+                      className="text-xs"
+                    />
                   </div>
                 </CardContent>
               </Card>
-
               {/* Description */}
               <Card>
                 <CardHeader>
@@ -536,7 +682,7 @@ export function SalePageEditorPage() {
                       id="description"
                       placeholder="อธิบายสินค้าหรือบริการของคุณ..."
                       rows={4}
-                      {...register('description')}
+                      {...register("description")}
                     />
                   </div>
                   <div className="space-y-2">
@@ -547,8 +693,10 @@ export function SalePageEditorPage() {
                           <Input
                             placeholder={`จุดเด่นที่ ${index + 1}`}
                             value={feature}
-                            onChange={(e) => updateFeature(index, e.target.value)}
-                          />
+                            onChange={(e) =>
+                              updateFeature(index, e.target.value)
+                            }
+                          />{" "}
                           {features.length > 1 && (
                             <Button
                               variant="ghost"
@@ -556,39 +704,62 @@ export function SalePageEditorPage() {
                               type="button"
                               onClick={() => removeFeature(index)}
                             >
-                              <X className="h-4 w-4 text-muted-foreground" />
+                              {" "}
+                              <X className="h-4 w-4 text-muted-foreground" />{" "}
                             </Button>
-                          )}
+                          )}{" "}
                         </div>
-                      ))}
-                    </div>
+                      ))}{" "}
+                    </div>{" "}
                     {features.length < 10 && (
-                      <Button variant="outline" size="sm" type="button" onClick={addFeature}>
-                        <Plus className="h-3.5 w-3.5" />
-                        เพิ่มจุดเด่น
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={addFeature}
+                      >
+                        {" "}
+                        <Plus className="h-3.5 w-3.5" /> เพิ่มจุดเด่น{" "}
                       </Button>
-                    )}
-                  </div>
+                    )}{" "}
+                  </div>{" "}
                   <div className="space-y-2">
-                    <Label>รูปภาพเนื้อหา</Label>
+                    {" "}
+                    <Label>รูปภาพเนื้อหา</Label>{" "}
                     {bodyImages.length > 0 && (
                       <div className="grid grid-cols-3 gap-2">
+                        {" "}
                         {bodyImages.map((url, index) => (
                           <div key={index} className="relative group">
-                            <img src={url} alt="" className="w-full h-24 object-cover rounded-lg border border-border" />
+                            {" "}
+                            <img
+                              src={url}
+                              alt=""
+                              className="w-full h-24 object-cover rounded-lg border border-border"
+                            />{" "}
                             <button
                               type="button"
-                              className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                              className="absolute -top-2 -right-2 size-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                               onClick={() => removeBodyImage(index)}
                             >
-                              <X className="h-3 w-3" />
-                            </button>
+                              {" "}
+                              <X className="h-3 w-3" />{" "}
+                            </button>{" "}
                           </div>
-                        ))}
+                        ))}{" "}
                       </div>
-                    )}
+                    )}{" "}
                     <div>
-                      <input ref={bodyFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleBodyImageUpload} />
+                      {" "}
+                      <input
+                        ref={bodyFileRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        aria-label="อัพโหลดรูปเนื้อหา"
+                        className="hidden"
+                        onChange={handleBodyImageUpload}
+                      />{" "}
                       <Button
                         type="button"
                         variant="outline"
@@ -596,14 +767,20 @@ export function SalePageEditorPage() {
                         disabled={uploadImages.isPending}
                         onClick={() => bodyFileRef.current?.click()}
                       >
-                        {uploadImages.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                        {uploadImages.isPending && uploadImages.progress > 0 ? `${uploadImages.progress}%` : 'เพิ่มรูปภาพ'}
+                        {" "}
+                        {uploadImages.isPending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="h-3.5 w-3.5" />
+                        )}{" "}
+                        {uploadImages.isPending && uploadImages.progress > 0
+                          ? `${uploadImages.progress}%`
+                          : "เพิ่มรูปภาพ"}
                       </Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-
               {/* Call to Action */}
               <Card>
                 <CardHeader>
@@ -612,15 +789,22 @@ export function SalePageEditorPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="cta_button_text">ข้อความปุ่ม</Label>
-                    <Input id="cta_button_text" placeholder="ซื้อเลย" {...register('cta_button_text')} />
+                    <Input
+                      id="cta_button_text"
+                      placeholder="ซื้อเลย"
+                      {...register("cta_button_text")}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cta_button_link">ลิงก์ปุ่ม</Label>
-                    <Input id="cta_button_link" placeholder="https://example.com/buy" {...register('cta_button_link')} />
+                    <Input
+                      id="cta_button_link"
+                      placeholder="https://example.com/buy"
+                      {...register("cta_button_link")}
+                    />
                   </div>
                 </CardContent>
               </Card>
-
               {/* Tracking Settings */}
               <Card>
                 <CardHeader>
@@ -628,11 +812,13 @@ export function SalePageEditorPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="cta_event_name">เมื่อกดปุ่ม CTA ให้ยิงอีเวนต์</Label>
+                    <Label htmlFor="cta_event_name">
+                      เมื่อกดปุ่ม CTA ให้ยิงอีเวนต์
+                    </Label>
                     <select
                       id="cta_event_name"
                       className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      {...register('cta_event_name')}
+                      {...register("cta_event_name")}
                     >
                       {CTA_EVENT_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -642,21 +828,27 @@ export function SalePageEditorPage() {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="tracking_content_name">ชื่อสินค้า (ไม่บังคับ)</Label>
+                    <Label htmlFor="tracking_content_name">
+                      ชื่อสินค้า (ไม่บังคับ)
+                    </Label>
                     <Input
                       id="tracking_content_name"
                       placeholder="เช่น ครีมหน้าใส, คอร์สออนไลน์"
-                      {...register('tracking_content_name')}
+                      {...register("tracking_content_name")}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="tracking_content_value">ราคาสินค้า (ไม่บังคับ)</Label>
+                      <Label htmlFor="tracking_content_value">
+                        ราคาสินค้า (ไม่บังคับ)
+                      </Label>
                       <Input
                         id="tracking_content_value"
                         type="number"
                         placeholder="0"
-                        {...register('tracking_content_value', { valueAsNumber: true })}
+                        {...register("tracking_content_value", {
+                          valueAsNumber: true,
+                        })}
                       />
                     </div>
                     <div className="space-y-2">
@@ -664,7 +856,7 @@ export function SalePageEditorPage() {
                       <select
                         id="tracking_currency"
                         className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        {...register('tracking_currency')}
+                        {...register("tracking_currency")}
                       >
                         <option value="THB">THB (บาท)</option>
                         <option value="USD">USD (ดอลลาร์)</option>
@@ -677,19 +869,38 @@ export function SalePageEditorPage() {
                       <div className="text-xs text-blue-700 space-y-1">
                         <p className="font-medium">อีเวนต์ที่ยิงอัตโนมัติ:</p>
                         <ul className="space-y-0.5 ml-1">
-                          <li><code className="bg-blue-100 px-1 rounded">PageView</code> — ยิงเมื่อเปิดหน้าเพจ</li>
-                          <li><code className="bg-blue-100 px-1 rounded">ViewContent</code> — ยิงเมื่อเปิดหน้าเพจ</li>
-                          <li><code className="bg-blue-100 px-1 rounded">Contact</code> — ยิงเมื่อกด LINE หรือเบอร์โทร</li>
+                          <li>
+                            <code className="bg-blue-100 px-1 rounded">
+                              PageView
+                            </code>{" "}
+                            — ยิงเมื่อเปิดหน้าเพจ
+                          </li>
+                          <li>
+                            <code className="bg-blue-100 px-1 rounded">
+                              ViewContent
+                            </code>{" "}
+                            — ยิงเมื่อเปิดหน้าเพจ
+                          </li>
+                          <li>
+                            <code className="bg-blue-100 px-1 rounded">
+                              Contact
+                            </code>{" "}
+                            — ยิงเมื่อกด LINE หรือเบอร์โทร
+                          </li>
                         </ul>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-
               {/* Page Style */}
-              <StyleEditor style={pageStyle} onChange={(s) => { setPageStyle(s); setHasUserEdited(true) }} />
-
+              <StyleEditor
+                style={pageStyle}
+                onChange={(s) => {
+                  setPageStyle(s);
+                  setHasUserEdited(true);
+                }}
+              />
               {/* Contact Info */}
               <Card>
                 <CardHeader>
@@ -698,18 +909,26 @@ export function SalePageEditorPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="contact_line_id">LINE ID</Label>
-                    <Input id="contact_line_id" placeholder="@yourlineid" {...register('contact_line_id')} />
+                    <Input
+                      id="contact_line_id"
+                      placeholder="@yourlineid"
+                      {...register("contact_line_id")}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="contact_phone">เบอร์โทรศัพท์</Label>
-                    <Input id="contact_phone" placeholder="08x-xxx-xxxx" {...register('contact_phone')} />
+                    <Input
+                      id="contact_phone"
+                      placeholder="08x-xxx-xxxx"
+                      {...register("contact_phone")}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="contact_website_url">URL เว็บไซต์</Label>
                     <Input
                       id="contact_website_url"
                       placeholder="https://yourwebsite.com"
-                      {...register('contact_website_url')}
+                      {...register("contact_website_url")}
                     />
                   </div>
                 </CardContent>
@@ -717,42 +936,62 @@ export function SalePageEditorPage() {
             </div>
 
             {/* Right Column - Preview */}
-            <div className={`lg:w-1/3 ${mobileView === 'preview' ? 'block w-full' : 'hidden lg:block'}`}>
+            <div
+              className={`lg:w-1/3 ${mobileView === "preview" ? "block w-full" : "hidden lg:block"}`}
+            >
               <div className="sticky top-8">
-                <p className="text-sm font-medium text-muted-foreground mb-3">ตัวอย่าง</p>
+                <p className="text-sm font-medium text-muted-foreground mb-3">
+                  ตัวอย่าง
+                </p>
                 <SalePagePreview
                   hero={previewHero}
                   body={previewBody}
                   cta={previewCta}
                   contact={previewContact}
-                  ctaEventName={ctaEventName || 'Lead'}
+                  ctaEventName={ctaEventName || "Lead"}
                   style={pageStyle}
                 />
               </div>
             </div>
           </div>
 
-          <UnsavedChangesDialog isBlocked={unsaved.isBlocked} onStay={unsaved.cancelLeave} onLeave={unsaved.confirmLeave} />
+          <UnsavedChangesDialog
+            isBlocked={unsaved.isBlocked}
+            onStay={unsaved.cancelLeave}
+            onLeave={unsaved.confirmLeave}
+          />
 
           {/* Published Success Dialog */}
-          <Dialog open={!!publishedDialog} onOpenChange={() => setPublishedDialog(null)}>
+          <Dialog
+            open={!!publishedDialog}
+            onOpenChange={() => setPublishedDialog(null)}
+          >
             <DialogContent onClose={() => setPublishedDialog(null)}>
               <DialogHeader>
                 <DialogTitle>เผยแพร่เซลเพจสำเร็จ!</DialogTitle>
               </DialogHeader>
               <div className="mt-4 space-y-3">
-                <p className="text-sm text-muted-foreground">เพจของคุณเปิดให้ใช้งานที่:</p>
+                <p className="text-sm text-muted-foreground">
+                  เพจของคุณเปิดให้ใช้งานที่:
+                </p>
                 <div className="flex items-center gap-2 p-2 bg-muted rounded-md border border-border">
                   <code className="text-sm text-foreground flex-1 truncate">
-                    {publishedDialog && `${window.location.origin}/p/${publishedDialog.slug}`}
+                    {publishedDialog &&
+                      `${window.location.origin}/p/${publishedDialog.slug}`}
                   </code>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => publishedDialog && copyUrl(publishedDialog.slug)}
+                    onClick={() =>
+                      publishedDialog && copyUrl(publishedDialog.slug)
+                    }
                   >
-                    {copiedUrl ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                    {copiedUrl ? (
+                      <Check className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -762,12 +1001,20 @@ export function SalePageEditorPage() {
               <DialogFooter>
                 <Button
                   variant="outline"
-                  onClick={() => publishedDialog && window.open(`/p/${publishedDialog.slug}`, '_blank')}
+                  onClick={() =>
+                    publishedDialog &&
+                    window.open(`/p/${publishedDialog.slug}`, "_blank")
+                  }
                 >
-                  <ExternalLink className="h-4 w-4" />
+                  <ExternalLink className="size-4" />
                   เปิดเพจ
                 </Button>
-                <Button onClick={() => { setPublishedDialog(null); navigate('/sale-pages') }}>
+                <Button
+                  onClick={() => {
+                    setPublishedDialog(null);
+                    navigate("/sale-pages");
+                  }}
+                >
                   กลับไปเซลเพจ
                 </Button>
               </DialogFooter>
@@ -776,5 +1023,5 @@ export function SalePageEditorPage() {
         </>
       )}
     </div>
-  )
+  );
 }

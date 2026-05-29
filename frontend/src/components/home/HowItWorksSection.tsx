@@ -34,7 +34,7 @@ export function HowItWorksSection() {
                 </div>
               )}
 
-              <div className="relative mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-lg font-bold text-white">
+              <div className="relative mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-blue-800 text-lg font-bold text-white">
                 {step.number}
               </div>
               <h3 className="text-lg font-semibold text-slate-900">

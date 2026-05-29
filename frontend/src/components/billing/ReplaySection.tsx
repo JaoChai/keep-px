@@ -48,8 +48,8 @@ export function ReplaySection({
       <CardContent className="p-5 flex flex-col flex-1">
         {/* Header with icon */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-9 w-9 rounded-lg bg-primary/5 flex items-center justify-center">
-            <RefreshCw className="h-5 w-5 text-primary" />
+          <div className="size-9 rounded-lg bg-primary/5 flex items-center justify-center">
+            <RefreshCw className="size-5 text-primary" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-foreground">รีเพลย์</h3>
@@ -97,7 +97,7 @@ export function ReplaySection({
 
         {credits.length === 0 && (
           <p className="text-sm text-muted-foreground mb-4 flex items-center gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className="size-3.5" />
             ยังไม่มีเครดิตรีเพลย์ — ซื้อด้านล่าง
           </p>
         )}
@@ -113,8 +113,8 @@ export function ReplaySection({
               )}
             >
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <opt.icon className="h-4 w-4 text-foreground" />
+                <div className="size-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <opt.icon className="size-4 text-foreground" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
@@ -143,7 +143,7 @@ export function ReplaySection({
                   className="h-8 px-3"
                 >
                   {pendingCheckoutType === opt.type ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin" />
                   ) : (
                     'ซื้อ'
                   )}
@@ -156,7 +156,7 @@ export function ReplaySection({
         {/* Stripe badge — footer */}
         <div className="mt-auto pt-2">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5" />
+            <ShieldCheck className="size-3.5" />
             ชำระเงินปลอดภัยผ่าน Stripe
           </p>
         </div>

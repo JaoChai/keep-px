@@ -123,7 +123,7 @@ export function PixelsPage() {
           )}
         </div>
         <Button onClick={openCreate} disabled={isAtPixelLimit} title={isAtPixelLimit ? 'ถึงขีดจำกัด Pixel Slots แล้ว' : undefined}>
-          <Plus className="h-4 w-4" />
+          <Plus className="size-4" />
           เพิ่มพิกเซล
         </Button>
       </div>
@@ -169,7 +169,7 @@ export function PixelsPage() {
           <div className="text-center py-12 border border-dashed border-border rounded-lg">
             <p className="text-muted-foreground mb-4">ยังไม่มีพิกเซล</p>
             <Button variant="outline" onClick={openCreate}>
-              <Plus className="h-4 w-4" />
+              <Plus className="size-4" />
               เพิ่มพิกเซลแรกของคุณ
             </Button>
           </div>
@@ -194,7 +194,7 @@ export function PixelsPage() {
                   <td className="px-4 py-3 text-sm font-medium text-foreground">{pixel.name}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground font-mono">{pixel.fb_pixel_id}</td>
                   <td className="px-4 py-3">
-                    <button onClick={() => handleToggleActive(pixel)}>
+                    <button type="button" onClick={() => handleToggleActive(pixel)}>
                       <Badge variant={pixel.is_active ? 'success' : 'warning'}>
                         {pixel.is_active ? 'ใช้งาน' : 'หยุดชั่วคราว'}
                       </Badge>
@@ -203,7 +203,7 @@ export function PixelsPage() {
                   <td className="px-4 py-3">
                     {pixel.backup_pixel_id ? (
                       <Badge variant="outline" className="gap-1">
-                        <Shield className="h-3 w-3" />
+                        <Shield className="size-3" />
                         {pixels?.find(p => p.id === pixel.backup_pixel_id)?.name || 'ไม่ทราบ'}
                       </Badge>
                     ) : (
@@ -223,16 +223,16 @@ export function PixelsPage() {
                         disabled={testPixel.isPending}
                       >
                         {testPixel.isPending && testPixel.variables === pixel.id ? (
-                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                         ) : (
-                          <Zap className="h-4 w-4" />
+                          <Zap className="size-4" />
                         )}
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(pixel)}>
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="size-4" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => setDeleteConfirm(pixel.id)}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
+                        <Trash2 className="size-4 text-red-500" />
                       </Button>
                     </div>
                   </td>

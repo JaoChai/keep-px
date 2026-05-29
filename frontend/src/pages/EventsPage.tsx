@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react'
 import { useSearchParams } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -51,6 +51,7 @@ import {
   Monitor,
   CalendarDays,
   Download,
+  Loader2,
 } from 'lucide-react'
 import { useRealtimeEvents } from '@/hooks/use-realtime-events'
 import { useRealtimeStats } from '@/hooks/use-realtime-stats'
@@ -61,15 +62,8 @@ import { usePixelNameMap } from '@/hooks/use-pixel-name-map'
 import { QueryErrorAlert } from '@/components/shared/QueryErrorAlert'
 import { eventBadgeVariant, getEventColor } from '@/lib/event-utils'
 import { timeAgo } from '@/lib/utils'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-} from 'recharts'
+
+const EventsRateChart = lazy(() => import('@/components/charts/EventsRateChart'))
 
 function formatAbsoluteTime(date: string | Date): string {
   return new Date(date).toLocaleString('th-TH', {
@@ -194,8 +188,12 @@ function exportEventsCSV(events: Array<{ event_time: string; event_name: string;
   URL.revokeObjectURL(url)
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 function syntaxHighlightJSON(json: string): string {
-  return json.replace(
+  return escapeHtml(json).replace(
     /("(\\u[\dA-Fa-f]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
     (match) => {
       let cls = 'text-orange-500' // number
@@ -442,7 +440,7 @@ export function EventsPage() {
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>
               บัฟเฟอร์เต็ม — อีเวนต์เก่าจะถูกลบอัตโนมัติ กด{' '}
-              <button onClick={clear} className="font-medium underline underline-offset-2">
+              <button type="button" onClick={clear} className="font-medium underline underline-offset-2">
                 ล้าง
               </button>{' '}
               เพื่อรีเซ็ต
@@ -502,8 +500,9 @@ export function EventsPage() {
                 <PopoverContent className="w-auto p-4" align="start">
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground">จาก</label>
+                      <label htmlFor="events-date-from" className="text-xs font-medium text-muted-foreground">จาก</label>
                       <Input
+                        id="events-date-from"
                         type="datetime-local"
                         className="mt-1"
                         value={fromFilter ? fromFilter.slice(0, 16) : ''}
@@ -514,8 +513,9 @@ export function EventsPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground">ถึง</label>
+                      <label htmlFor="events-date-to" className="text-xs font-medium text-muted-foreground">ถึง</label>
                       <Input
+                        id="events-date-to"
                         type="datetime-local"
                         className="mt-1"
                         value={toFilter ? toFilter.slice(0, 16) : ''}
@@ -597,25 +597,15 @@ export function EventsPage() {
                 <CardTitle className="text-base">อัตราอีเวนต์ (5 นาที)</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={timeBuckets}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 10, fill: '#737373' }}
-                      interval={4}
-                    />
-                    <YAxis tick={{ fontSize: 12, fill: '#737373' }} allowDecimals={false} />
-                    <RechartsTooltip
-                      contentStyle={{
-                        borderRadius: '8px',
-                        border: '1px solid #e5e5e5',
-                        fontSize: '12px',
-                      }}
-                    />
-                    <Bar dataKey="count" fill="#18181B" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <Suspense
+                  fallback={
+                    <div className="h-[200px] flex items-center justify-center">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  }
+                >
+                  <EventsRateChart data={timeBuckets} height={200} />
+                </Suspense>
               </CardContent>
             </Card>
 

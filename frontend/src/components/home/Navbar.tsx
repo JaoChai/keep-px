@@ -11,7 +11,7 @@ export function Navbar() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2" aria-label="Pixlinks — กลับหน้าหลัก">
-          <Shield className="h-6 w-6 text-blue-800" />
+          <Shield className="size-6 text-blue-800" />
           <span className="text-xl font-bold text-slate-900">Pixlinks</span>
         </Link>
 
@@ -20,6 +20,7 @@ export function Navbar() {
           {NAV_LINKS.map((link) => (
             <button
               key={link.href}
+              type="button"
               onClick={() => scrollToSection(link.href)}
               className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
             >
@@ -38,11 +39,12 @@ export function Navbar() {
 
         {/* Mobile toggle */}
         <button
+          type="button"
           onClick={() => setOpen(!open)}
           className="md:hidden p-2 text-slate-600"
           aria-label={open ? 'ปิดเมนู' : 'เปิดเมนู'}
         >
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          {open ? <X className="size-6" /> : <Menu className="size-6" />}
         </button>
       </div>
 
@@ -52,6 +54,7 @@ export function Navbar() {
           {NAV_LINKS.map((link) => (
             <button
               key={link.href}
+              type="button"
               onClick={() => {
                 scrollToSection(link.href)
                 setOpen(false)

@@ -23,7 +23,7 @@ function StatCard({ title, value, subtitle, icon, loading }: StatCardProps) {
             )}
             {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
           </div>
-          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-foreground">
+          <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-foreground">
             {icon}
           </div>
         </div>

@@ -10,9 +10,9 @@ export function DashboardMockup() {
         {/* Title bar */}
         <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
           <div className="flex gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-red-400" />
-            <div className="h-3 w-3 rounded-full bg-amber-400" />
-            <div className="h-3 w-3 rounded-full bg-green-400" />
+            <div className="size-3 rounded-full bg-red-400" />
+            <div className="size-3 rounded-full bg-amber-400" />
+            <div className="size-3 rounded-full bg-green-400" />
           </div>
           <div className="mx-auto rounded bg-slate-200 px-8 py-1 text-xs text-slate-400">
             pixlinks.app/dashboard
@@ -124,7 +124,7 @@ export function DashboardMockup() {
                 className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2"
               >
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500 motion-safe:animate-pulse" />
+                  <div className="size-2 rounded-full bg-green-500 motion-safe:animate-pulse" />
                   <span className="text-xs font-medium text-slate-700">
                     {event.name}
                   </span>
@@ -144,8 +144,8 @@ export function DashboardMockup() {
       </div>
 
       {/* Floating decoration */}
-      <div className="absolute -top-4 -right-4 h-24 w-24 rounded-full bg-amber-400/20 blur-2xl" />
-      <div className="absolute -bottom-6 -left-6 h-32 w-32 rounded-full bg-blue-600/10 blur-2xl" />
+      <div className="absolute -top-4 -right-4 size-24 rounded-full bg-amber-400/20 blur-2xl" />
+      <div className="absolute -bottom-6 -left-6 size-32 rounded-full bg-blue-600/10 blur-2xl" />
     </div>
   )
 }

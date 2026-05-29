@@ -9,7 +9,7 @@ export function Footer() {
           {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2">
-              <Shield className="h-6 w-6 text-blue-400" />
+              <Shield className="size-6 text-blue-400" />
               <span className="text-lg font-bold text-white">Pixlinks</span>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-slate-400">
@@ -25,6 +25,7 @@ export function Footer() {
               {FOOTER_PRODUCT_LINKS.map((link) => (
                 <li key={link.label}>
                   <button
+                    type="button"
                     onClick={() => scrollToSection(link.href)}
                     className="text-sm text-slate-400 hover:text-white transition-colors"
                   >
@@ -58,7 +59,7 @@ export function Footer() {
                   href="mailto:support@pixlinks.app"
                   className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
                 >
-                  <Mail className="h-4 w-4" />
+                  <Mail className="size-4" />
                   support@pixlinks.app
                 </a>
               </li>

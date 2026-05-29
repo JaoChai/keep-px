@@ -28,7 +28,7 @@ export function PainPointsSection() {
               style={{ transitionDelay: `${i * 150}ms` }}
             >
               <div className="mb-4 inline-flex rounded-lg bg-red-50 p-3">
-                <point.icon className="h-6 w-6 text-red-500" />
+                <point.icon className="size-6 text-red-500" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900">
                 {point.title}

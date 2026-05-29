@@ -92,6 +92,7 @@ export const SalePagePreview = memo(function SalePagePreview({ hero, body, cta, 
       <div className="px-6 pb-4">
         <div className="relative">
           <button
+            type="button"
             className={!style?.accent_color ? 'w-full py-3 rounded-lg bg-gradient-to-r from-zinc-800 to-zinc-900 text-white font-semibold text-sm shadow-md' : 'w-full py-3 rounded-lg text-white font-semibold text-sm shadow-md'}
             style={style?.accent_color ? { background: `linear-gradient(to right, ${accentColor}, ${accentColor}cc)` } : undefined}
           >
@@ -112,19 +113,19 @@ export const SalePagePreview = memo(function SalePagePreview({ hero, body, cta, 
           <div className="space-y-2">
             {contact.line_id && (
               <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-white text-sm font-semibold" style={{ backgroundColor: '#06C755' }}>
-                <MessageCircle className="h-4 w-4" />
+                <MessageCircle className="size-4" />
                 <span>LINE: {contact.line_id}</span>
               </div>
             )}
             {contact.phone && (
               <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold">
-                <Phone className="h-4 w-4" />
+                <Phone className="size-4" />
                 <span>โทร: {contact.phone}</span>
               </div>
             )}
             {contact.website_url && (
               <div className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-purple-600 text-white text-sm font-semibold">
-                <Globe className="h-4 w-4" />
+                <Globe className="size-4" />
                 <span>เยี่ยมชมเว็บไซต์</span>
               </div>
             )}

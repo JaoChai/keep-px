@@ -6,9 +6,9 @@ import { useScrollReveal } from './useScrollReveal'
 function CellValue({ value }: { value: string | boolean }) {
   if (typeof value === 'boolean') {
     return value ? (
-      <Check className="mx-auto h-5 w-5 text-green-500" aria-label="รองรับ" />
+      <Check className="mx-auto size-5 text-green-500" aria-label="รองรับ" />
     ) : (
-      <X className="mx-auto h-5 w-5 text-slate-300" aria-label="ไม่รองรับ" />
+      <X className="mx-auto size-5 text-slate-300" aria-label="ไม่รองรับ" />
     )
   }
   return <span>{value}</span>
@@ -79,7 +79,7 @@ export function PricingSection() {
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-400 transition-colors"
             >
               เริ่มต้นเลย
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="size-4" />
             </Link>
           </div>
         </div>

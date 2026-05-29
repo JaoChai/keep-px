@@ -70,7 +70,7 @@ export const BlockPreview = memo(function BlockPreview({ blocks, ctaEventName, s
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white text-sm font-semibold"
                     style={{ backgroundColor: btnColor }}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="size-4" />
                     <span>{block.button_text || 'ปุ่ม'}</span>
                   </div>
                   {ctaEventName && (

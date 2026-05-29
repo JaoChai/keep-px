@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import { Users } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,25 +10,60 @@ import { PLAN_LABELS, timeAgo } from '@/lib/utils'
 
 const PLANS = ['', 'sandbox', 'launch', 'shield', 'vault'] as const
 
+type FilterState = {
+  search: string
+  debouncedSearch: string
+  plan: string
+  status: string
+  page: number
+}
+
+type FilterAction =
+  | { type: 'SET_SEARCH'; payload: string }
+  | { type: 'COMMIT_DEBOUNCED_SEARCH'; payload: string }
+  | { type: 'SET_PLAN'; payload: string }
+  | { type: 'SET_STATUS'; payload: string }
+  | { type: 'SET_PAGE'; payload: number }
+
+const initialFilterState: FilterState = {
+  search: '',
+  debouncedSearch: '',
+  plan: '',
+  status: '',
+  page: 1,
+}
+
+function filterReducer(state: FilterState, action: FilterAction): FilterState {
+  switch (action.type) {
+    case 'SET_SEARCH':
+      return { ...state, search: action.payload }
+    case 'COMMIT_DEBOUNCED_SEARCH':
+      return { ...state, debouncedSearch: action.payload, page: 1 }
+    case 'SET_PLAN':
+      return { ...state, plan: action.payload, page: 1 }
+    case 'SET_STATUS':
+      return { ...state, status: action.payload, page: 1 }
+    case 'SET_PAGE':
+      return { ...state, page: action.payload }
+    default:
+      return state
+  }
+}
+
 export function AdminCustomersPage() {
-  const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [plan, setPlan] = useState('')
-  const [status, setStatus] = useState('')
-  const [page, setPage] = useState(1)
+  const [state, dispatch] = useReducer(filterReducer, initialFilterState)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const perPage = 20
 
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(search)
-      setPage(1)
+      dispatch({ type: 'COMMIT_DEBOUNCED_SEARCH', payload: state.search })
     }, 300)
     return () => clearTimeout(timer)
-  }, [search])
+  }, [state.search])
 
-  const { data, isLoading } = useAdminCustomers(debouncedSearch, plan, status, page, perPage)
+  const { data, isLoading } = useAdminCustomers(state.debouncedSearch, state.plan, state.status, state.page, perPage)
 
   const planBadgeVariant = (p: string): 'default' | 'secondary' | 'success' | 'warning' => {
     switch (p) {
@@ -48,7 +83,7 @@ export function AdminCustomersPage() {
         </div>
         {data && (
           <Badge variant="secondary" className="text-sm">
-            <Users className="h-3.5 w-3.5 mr-1" />
+            <Users className="size-3.5 mr-1" />
             {data.total} คน
           </Badge>
         )}
@@ -58,13 +93,13 @@ export function AdminCustomersPage() {
       <div className="flex gap-3 mb-4">
         <Input
           placeholder="ค้นหาอีเมลหรือชื่อ..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={state.search}
+          onChange={(e) => dispatch({ type: 'SET_SEARCH', payload: e.target.value })}
           className="max-w-xs"
         />
         <select
-          value={plan}
-          onChange={(e) => { setPlan(e.target.value); setPage(1) }}
+          value={state.plan}
+          onChange={(e) => dispatch({ type: 'SET_PLAN', payload: e.target.value })}
           className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
         >
           <option value="">ทุกแผน</option>
@@ -73,8 +108,8 @@ export function AdminCustomersPage() {
           ))}
         </select>
         <select
-          value={status}
-          onChange={(e) => { setStatus(e.target.value); setPage(1) }}
+          value={state.status}
+          onChange={(e) => dispatch({ type: 'SET_STATUS', payload: e.target.value })}
           className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
         >
           <option value="">ทุกสถานะ</option>
@@ -151,16 +186,16 @@ export function AdminCustomersPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
+              disabled={state.page <= 1}
+              onClick={() => dispatch({ type: 'SET_PAGE', payload: state.page - 1 })}
             >
               ก่อนหน้า
             </Button>
             <Button
               variant="outline"
               size="sm"
-              disabled={page >= data.total_pages}
-              onClick={() => setPage((p) => p + 1)}
+              disabled={state.page >= data.total_pages}
+              onClick={() => dispatch({ type: 'SET_PAGE', payload: state.page + 1 })}
             >
               ถัดไป
             </Button>

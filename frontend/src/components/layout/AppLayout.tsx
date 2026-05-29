@@ -13,11 +13,12 @@ export function AppLayout() {
       {/* Mobile header */}
       <div className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card px-4 lg:hidden">
         <button
+          type="button"
           onClick={() => setSidebarOpen(true)}
           aria-label="Open sidebar"
           className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="size-5" />
         </button>
         <span className="text-lg font-bold text-foreground">Pixlinks</span>
       </div>
