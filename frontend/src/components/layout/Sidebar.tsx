@@ -79,11 +79,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       <div className="flex h-16 items-center justify-between px-6 border-b border-border">
         <h1 className="text-xl font-bold text-foreground">Pixlinks</h1>
         <button
+          type="button"
           onClick={onClose}
           aria-label="Close sidebar"
           className="lg:hidden rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
         >
-          <X className="h-5 w-5" />
+          <X className="size-5" />
         </button>
       </div>
 
@@ -130,7 +131,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                       }`
                     }
                   >
-                    <item.icon className="h-5 w-5" />
+                    <item.icon className="size-5" />
                     {item.label}
                   </NavLink>
                 </li>
@@ -142,10 +143,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
       <div className="border-t border-border p-3">
         <button
+          type="button"
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="size-5" />
           ออกจากระบบ
         </button>
       </div>

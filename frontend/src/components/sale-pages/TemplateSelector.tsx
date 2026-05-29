@@ -75,7 +75,7 @@ export function TemplateSelector({ onSelect }: TemplateSelectorProps) {
             )}
             <div className="flex items-center gap-1.5 mb-2">
               {template.icons.map((Icon, i) => (
-                <Icon key={i} className="h-4 w-4 text-muted-foreground" />
+                <Icon key={i} className="size-4 text-muted-foreground" />
               ))}
             </div>
             <p className="text-sm font-medium text-foreground">{template.title}</p>

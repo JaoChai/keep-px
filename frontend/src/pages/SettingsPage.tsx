@@ -67,7 +67,7 @@ export function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Key className="h-4 w-4" />
+              <Key className="size-4" />
               API Key
             </CardTitle>
             <CardDescription>API Key สำหรับรับข้อมูลอีเวนต์</CardDescription>
@@ -136,7 +136,7 @@ export function SettingsPage() {
             </Button>
             <Button variant="destructive" onClick={handleRegenerate} disabled={regenerateMutation.isPending}>
               {regenerateMutation.isPending ? (
-                <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
+                <RefreshCw className="size-4 mr-1.5 animate-spin" />
               ) : null}
               ยืนยัน
             </Button>

@@ -1,88 +1,115 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Link } from 'react-router'
-import { RotateCcw, Play, AlertTriangle, StopCircle, Eye, CreditCard, Info } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { ReplayStatusBadge } from '@/components/shared/ReplayStatusBadge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import axios from 'axios'
-import { toast } from 'sonner'
-import { usePixels } from '@/hooks/use-pixels'
-import { useReplays, useReplaySession, useCreateReplay, useCancelReplay, useRetryReplay, useReplayPreview, useEventTypes } from '@/hooks/use-replays'
-import { useQuota } from '@/hooks/use-billing'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { truncateMessage, isUnlimited } from '@/lib/utils'
-import type { ReplayPreview } from '@/types'
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Link } from "react-router";
+import {
+  RotateCcw,
+  Play,
+  AlertTriangle,
+  StopCircle,
+  Eye,
+  CreditCard,
+  Info,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ReplayStatusBadge } from "@/components/shared/ReplayStatusBadge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import axios from "axios";
+import { toast } from "sonner";
+import { usePixels } from "@/hooks/use-pixels";
+import {
+  useReplays,
+  useReplaySession,
+  useCreateReplay,
+  useCancelReplay,
+  useRetryReplay,
+  useReplayPreview,
+  useEventTypes,
+} from "@/hooks/use-replays";
+import { useQuota } from "@/hooks/use-billing";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { truncateMessage, isUnlimited } from "@/lib/utils";
+import type { ReplayPreview } from "@/types";
 
-const replaySchema = z.object({
-  source_pixel_id: z.string().min(1, 'กรุณาเลือกพิกเซลต้นทาง'),
-  target_pixel_id: z.string().min(1, 'กรุณาเลือกพิกเซลปลายทาง'),
-  date_from: z.string().optional(),
-  date_to: z.string().optional(),
-  time_mode: z.enum(['original', 'current']),
-  batch_delay_ms: z.number().min(0).max(60000),
-}).refine(
-  (data) => {
-    if (data.date_from && data.date_to) {
-      return data.date_from <= data.date_to
-    }
-    return true
-  },
-  { message: 'วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด', path: ['date_to'] }
-)
+const replaySchema = z
+  .object({
+    source_pixel_id: z.string().min(1, "กรุณาเลือกพิกเซลต้นทาง"),
+    target_pixel_id: z.string().min(1, "กรุณาเลือกพิกเซลปลายทาง"),
+    date_from: z.string().optional(),
+    date_to: z.string().optional(),
+    time_mode: z.enum(["original", "current"]),
+    batch_delay_ms: z.number().min(0).max(60000),
+  })
+  .refine(
+    (data) => {
+      if (data.date_from && data.date_to) {
+        return data.date_from <= data.date_to;
+      }
+      return true;
+    },
+    { message: "วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด", path: ["date_to"] },
+  );
 
-type ReplayForm = z.infer<typeof replaySchema>
+type ReplayForm = z.infer<typeof replaySchema>;
 
 function toStartOfDay(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00')
-  const offset = -date.getTimezoneOffset()
-  const sign = offset >= 0 ? '+' : '-'
-  const pad = (n: number) => String(Math.abs(n)).padStart(2, '0')
-  const tz = `${sign}${pad(Math.floor(offset / 60))}:${pad(offset % 60)}`
-  return `${dateStr}T00:00:00${tz}`
+  const date = new Date(dateStr + "T00:00:00");
+  const offset = -date.getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  const pad = (n: number) => String(Math.abs(n)).padStart(2, "0");
+  const tz = `${sign}${pad(Math.floor(offset / 60))}:${pad(offset % 60)}`;
+  return `${dateStr}T00:00:00${tz}`;
 }
 
 function toEndOfDay(dateStr: string): string {
-  const date = new Date(dateStr + 'T23:59:59')
-  const offset = -date.getTimezoneOffset()
-  const sign = offset >= 0 ? '+' : '-'
-  const pad = (n: number) => String(Math.abs(n)).padStart(2, '0')
-  const tz = `${sign}${pad(Math.floor(offset / 60))}:${pad(offset % 60)}`
-  return `${dateStr}T23:59:59${tz}`
+  const date = new Date(dateStr + "T23:59:59");
+  const offset = -date.getTimezoneOffset();
+  const sign = offset >= 0 ? "+" : "-";
+  const pad = (n: number) => String(Math.abs(n)).padStart(2, "0");
+  const tz = `${sign}${pad(Math.floor(offset / 60))}:${pad(offset % 60)}`;
+  return `${dateStr}T23:59:59${tz}`;
 }
 
 function getErrorMessage(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err) && err.response?.data?.error) {
-    return err.response.data.error
+    return err.response.data.error;
   }
-  return fallback
+  return fallback;
 }
 
 export function ReplayPage() {
-  const { data: quota } = useQuota()
-  const { data: pixels } = usePixels()
-  const { data: replays, isLoading } = useReplays()
-  const createReplay = useCreateReplay()
-  const cancelReplay = useCancelReplay()
-  const retryReplay = useRetryReplay()
-  const previewReplay = useReplayPreview()
-  const [activeReplayId, setActiveReplayId] = useState<string | null>(null)
-  const { data: activeReplay } = useReplaySession(activeReplayId)
-  const [preview, setPreview] = useState<ReplayPreview | null>(null)
-  const [pendingFormData, setPendingFormData] = useState<ReplayForm | null>(null)
-  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([])
-  const [cancelConfirm, setCancelConfirm] = useState<string | null>(null)
+  const { data: quota } = useQuota();
+  const { data: pixels } = usePixels();
+  const { data: replays, isLoading } = useReplays();
+  const createReplay = useCreateReplay();
+  const cancelReplay = useCancelReplay();
+  const retryReplay = useRetryReplay();
+  const previewReplay = useReplayPreview();
+  const [activeReplayId, setActiveReplayId] = useState<string | null>(null);
+  const { data: activeReplay } = useReplaySession(activeReplayId);
+  const [preview, setPreview] = useState<ReplayPreview | null>(null);
+  const [pendingFormData, setPendingFormData] = useState<ReplayForm | null>(
+    null,
+  );
+  const [selectedEventTypes, setSelectedEventTypes] = useState<string[]>([]);
+  const [cancelConfirm, setCancelConfirm] = useState<string | null>(null);
 
   const pixelMap = useMemo(() => {
-    const map = new Map<string, string>()
-    pixels?.forEach((p) => map.set(p.id, p.name))
-    return map
-  }, [pixels])
+    const map = new Map<string, string>();
+    pixels?.forEach((p) => map.set(p.id, p.name));
+    return map;
+  }, [pixels]);
 
   const {
     register,
@@ -93,344 +120,491 @@ export function ReplayPage() {
   } = useForm<ReplayForm>({
     resolver: zodResolver(replaySchema),
     defaultValues: {
-      time_mode: 'original',
+      time_mode: "original",
       batch_delay_ms: 0,
     },
-  })
+  });
 
-  const watchedSourcePixelId = watch('source_pixel_id')
-  const { data: eventTypes } = useEventTypes(watchedSourcePixelId)
+  const watchedSourcePixelId = watch("source_pixel_id");
+  const { data: eventTypes } = useEventTypes(watchedSourcePixelId);
 
   useEffect(() => {
-    setSelectedEventTypes([])
-  }, [watchedSourcePixelId])
+    setSelectedEventTypes([]);
+  }, [watchedSourcePixelId]);
 
   const onPreview = async (formData: ReplayForm) => {
     try {
       const result = await previewReplay.mutateAsync({
         source_pixel_id: formData.source_pixel_id,
         target_pixel_id: formData.target_pixel_id,
-        event_types: selectedEventTypes.length > 0 ? selectedEventTypes : undefined,
-        date_from: formData.date_from ? toStartOfDay(formData.date_from) : undefined,
+        event_types:
+          selectedEventTypes.length > 0 ? selectedEventTypes : undefined,
+        date_from: formData.date_from
+          ? toStartOfDay(formData.date_from)
+          : undefined,
         date_to: formData.date_to ? toEndOfDay(formData.date_to) : undefined,
-      })
-      setPreview(result)
-      setPendingFormData(formData)
+      });
+      setPreview(result);
+      setPendingFormData(formData);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'ไม่สามารถโหลดตัวอย่างได้'))
+      toast.error(getErrorMessage(err, "ไม่สามารถโหลดตัวอย่างได้"));
     }
-  }
+  };
 
   const onConfirmReplay = async () => {
-    if (!pendingFormData) return
+    if (!pendingFormData) return;
     try {
       const result = await createReplay.mutateAsync({
         source_pixel_id: pendingFormData.source_pixel_id,
         target_pixel_id: pendingFormData.target_pixel_id,
-        event_types: selectedEventTypes.length > 0 ? selectedEventTypes : undefined,
-        date_from: pendingFormData.date_from ? toStartOfDay(pendingFormData.date_from) : undefined,
-        date_to: pendingFormData.date_to ? toEndOfDay(pendingFormData.date_to) : undefined,
+        event_types:
+          selectedEventTypes.length > 0 ? selectedEventTypes : undefined,
+        date_from: pendingFormData.date_from
+          ? toStartOfDay(pendingFormData.date_from)
+          : undefined,
+        date_to: pendingFormData.date_to
+          ? toEndOfDay(pendingFormData.date_to)
+          : undefined,
         time_mode: pendingFormData.time_mode,
         batch_delay_ms: pendingFormData.batch_delay_ms || undefined,
-      })
-      setActiveReplayId(result.session.id)
-      setPreview(null)
-      setPendingFormData(null)
+      });
+      setActiveReplayId(result.session.id);
+      setPreview(null);
+      setPendingFormData(null);
       if (result.warning) {
-        toast.warning(result.warning)
+        toast.warning(result.warning);
       }
     } catch (err) {
-      toast.error(getErrorMessage(err, 'ไม่สามารถเริ่มรีเพลย์ได้'))
+      toast.error(getErrorMessage(err, "ไม่สามารถเริ่มรีเพลย์ได้"));
     }
-  }
+  };
 
   const handleCancel = async (id: string) => {
     try {
-      await cancelReplay.mutateAsync(id)
-      toast.success('ยกเลิกรีเพลย์แล้ว')
+      await cancelReplay.mutateAsync(id);
+      toast.success("ยกเลิกรีเพลย์แล้ว");
     } catch (err) {
-      toast.error(getErrorMessage(err, 'ไม่สามารถยกเลิกรีเพลย์ได้'))
+      toast.error(getErrorMessage(err, "ไม่สามารถยกเลิกรีเพลย์ได้"));
     }
-  }
+  };
 
   const handleRetry = async (id: string) => {
     try {
-      const result = await retryReplay.mutateAsync(id)
-      setActiveReplayId(result.id)
-      toast.success('เริ่มลองใหม่แล้ว')
+      const result = await retryReplay.mutateAsync(id);
+      setActiveReplayId(result.id);
+      toast.success("เริ่มลองใหม่แล้ว");
     } catch (err) {
-      toast.error(getErrorMessage(err, 'ไม่สามารถลองรีเพลย์ใหม่ได้'))
+      toast.error(getErrorMessage(err, "ไม่สามารถลองรีเพลย์ใหม่ได้"));
     }
-  }
+  };
 
-  const canCancel = activeReplay && (activeReplay.status === 'running' || activeReplay.status === 'pending')
-  const canRetry = activeReplay && (activeReplay.status === 'failed' || activeReplay.status === 'cancelled') && activeReplay.failed_events > 0
+  const canCancel =
+    activeReplay &&
+    (activeReplay.status === "running" || activeReplay.status === "pending");
+  const canRetry =
+    activeReplay &&
+    (activeReplay.status === "failed" || activeReplay.status === "cancelled") &&
+    activeReplay.failed_events > 0;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">ศูนย์รีเพลย์</h1>
-          <p className="text-sm text-muted-foreground mt-1">รีเพลย์อีเวนต์จากพิกเซลหนึ่งไปยังอีกพิกเซลหนึ่ง</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            รีเพลย์อีเวนต์จากพิกเซลหนึ่งไปยังอีกพิกเซลหนึ่ง
+          </p>
         </div>
         {quota && (
-          <Badge variant={quota.can_replay ? 'success' : 'secondary'} className="text-sm px-3 py-1">
+          <Badge
+            variant={quota.can_replay ? "success" : "secondary"}
+            className="text-sm px-3 py-1"
+          >
             {isUnlimited(quota.remaining_replays)
-              ? 'รีเพลย์ไม่จำกัด'
-              : `เหลือ ${quota.remaining_replays} รีเพลย์`}
+              ? "รีเพลย์ไม่จำกัด"
+              : `เหลือ ${quota.remaining_replays} รีเพลย์`}{" "}
           </Badge>
-        )}
-      </div>
-
+        )}{" "}
+      </div>{" "}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Replay Form */}
+        {" "}
+        {/* Replay Form */}{" "}
         <Card className="lg:col-span-1">
+          {" "}
           <CardHeader>
+            {" "}
             <CardTitle className="flex items-center gap-2 text-base">
-              <Play className="h-4 w-4" />
-              รีเพลย์ใหม่
-            </CardTitle>
-          </CardHeader>
+              {" "}
+              <Play className="h-4 w-4" /> รีเพลย์ใหม่{" "}
+            </CardTitle>{" "}
+          </CardHeader>{" "}
           <CardContent>
+            {" "}
             {quota && !quota.can_replay ? (
               <div className="text-center py-6 space-y-4">
+                {" "}
                 <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto">
-                  <CreditCard className="h-6 w-6 text-muted-foreground" />
-                </div>
+                  {" "}
+                  <CreditCard className="h-6 w-6 text-muted-foreground" />{" "}
+                </div>{" "}
                 <div>
-                  <p className="font-medium text-foreground">ไม่มีเครดิตรีเพลย์</p>
+                  {" "}
+                  <p className="font-medium text-foreground">
+                    ไม่มีเครดิตรีเพลย์
+                  </p>{" "}
                   <p className="text-sm text-muted-foreground mt-1">
-                    ซื้อแพ็กรีเพลย์เพื่อเริ่มรีเพลย์อีเวนต์ไปยังพิกเซลใหม่
-                  </p>
-                </div>
+                    {" "}
+                    ซื้อแพ็กรีเพลย์เพื่อเริ่มรีเพลย์อีเวนต์ไปยังพิกเซลใหม่{" "}
+                  </p>{" "}
+                </div>{" "}
                 <Link to="/billing">
-                  <Button>ดูแพ็กรีเพลย์</Button>
-                </Link>
+                  {" "}
+                  <Button>ดูแพ็กรีเพลย์</Button>{" "}
+                </Link>{" "}
               </div>
             ) : !preview ? (
               <form onSubmit={handleSubmit(onPreview)} className="space-y-4">
+                {" "}
                 <div className="space-y-2">
-                  <Label>พิกเซลต้นทาง</Label>
+                  {" "}
+                  <Label>พิกเซลต้นทาง</Label>{" "}
                   <select
                     className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
-                    {...register('source_pixel_id')}
+                    {...register("source_pixel_id")}
                   >
-                    <option value="">เลือกต้นทาง...</option>
+                    {" "}
+                    <option value="">เลือกต้นทาง...</option>{" "}
                     {pixels?.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.fb_pixel_id})</option>
-                    ))}
-                  </select>
-                  {errors.source_pixel_id && <p className="text-sm text-red-500">{errors.source_pixel_id.message}</p>}
-                </div>
-
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.fb_pixel_id})
+                      </option>
+                    ))}{" "}
+                  </select>{" "}
+                  {errors.source_pixel_id && (
+                    <p className="text-sm text-red-500">
+                      {errors.source_pixel_id.message}
+                    </p>
+                  )}{" "}
+                </div>{" "}
                 <div className="space-y-2">
-                  <Label>พิกเซลปลายทาง</Label>
+                  {" "}
+                  <Label>พิกเซลปลายทาง</Label>{" "}
                   <select
                     className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
-                    {...register('target_pixel_id')}
+                    {...register("target_pixel_id")}
                   >
-                    <option value="">เลือกปลายทาง...</option>
+                    {" "}
+                    <option value="">เลือกปลายทาง...</option>{" "}
                     {pixels?.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.fb_pixel_id})</option>
-                    ))}
-                  </select>
-                  {errors.target_pixel_id && <p className="text-sm text-red-500">{errors.target_pixel_id.message}</p>}
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.fb_pixel_id})
+                      </option>
+                    ))}{" "}
+                  </select>{" "}
+                  {errors.target_pixel_id && (
+                    <p className="text-sm text-red-500">
+                      {errors.target_pixel_id.message}
+                    </p>
+                  )}{" "}
                   <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                    <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                    {" "}
+                    <Info className="mt-0.5 size-3.5 flex-shrink-0" />{" "}
                     <span>
-                      Replay ส่งไปยังพิกเซลปลายทางที่เลือกเท่านั้น — ไม่ส่งต่อไปยัง Backup Pixel อัตโนมัติ
-                      หากต้องการ replay ไปยัง backup ด้วย ให้สร้าง replay session อีกชุดโดยเลือก backup เป็นปลายทาง
-                    </span>
-                  </p>
-                </div>
-
+                      {" "}
+                      Replay ส่งไปยังพิกเซลปลายทางที่เลือกเท่านั้น —
+                      ไม่ส่งต่อไปยัง Backup Pixel อัตโนมัติ หากต้องการ replay
+                      ไปยัง backup ด้วย ให้สร้าง replay session อีกชุดโดยเลือก
+                      backup เป็นปลายทาง{" "}
+                    </span>{" "}
+                  </p>{" "}
+                </div>{" "}
                 {eventTypes && eventTypes.length > 0 && (
                   <div className="space-y-2">
+                    {" "}
                     <div className="flex items-center justify-between">
-                      <Label>ประเภทอีเวนต์ (ไม่บังคับ)</Label>
+                      {" "}
+                      <Label>ประเภทอีเวนต์ (ไม่บังคับ)</Label>{" "}
                       <button
                         type="button"
                         className="text-xs text-primary hover:underline"
                         onClick={() =>
-                          setSelectedEventTypes(prev =>
-                            prev.length === eventTypes.length ? [] : [...eventTypes]
+                          setSelectedEventTypes((prev) =>
+                            prev.length === eventTypes.length
+                              ? []
+                              : [...eventTypes],
                           )
                         }
                       >
-                        {selectedEventTypes.length === eventTypes.length ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด'}
-                      </button>
-                    </div>
+                        {" "}
+                        {selectedEventTypes.length === eventTypes.length
+                          ? "ยกเลิกทั้งหมด"
+                          : "เลือกทั้งหมด"}{" "}
+                      </button>{" "}
+                    </div>{" "}
                     {selectedEventTypes.length > 0 && (
-                      <p className="text-xs text-muted-foreground">เลือกแล้ว {selectedEventTypes.length} / {eventTypes.length}</p>
-                    )}
+                      <p className="text-xs text-muted-foreground">
+                        เลือกแล้ว {selectedEventTypes.length} /{" "}
+                        {eventTypes.length}
+                      </p>
+                    )}{" "}
                     <div className="space-y-1.5 max-h-32 overflow-y-auto rounded-md border border-border p-2">
+                      {" "}
                       {eventTypes.map((type) => (
-                        <label key={type} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <label
+                          key={type}
+                          className="flex items-center gap-2 text-sm cursor-pointer"
+                        >
+                          {" "}
                           <input
                             type="checkbox"
                             checked={selectedEventTypes.includes(type)}
                             onChange={(e) => {
-                              setSelectedEventTypes(prev =>
+                              setSelectedEventTypes((prev) =>
                                 e.target.checked
                                   ? [...prev, type]
-                                  : prev.filter(t => t !== type)
-                              )
+                                  : prev.filter((t) => t !== type),
+                              );
                             }}
                             className="rounded border-border"
-                          />
-                          {type}
+                          />{" "}
+                          {type}{" "}
                         </label>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">ไม่เลือกเพื่อรวมอีเวนต์ทุกประเภท</p>
+                      ))}{" "}
+                    </div>{" "}
+                    <p className="text-xs text-muted-foreground">
+                      ไม่เลือกเพื่อรวมอีเวนต์ทุกประเภท
+                    </p>{" "}
                   </div>
-                )}
-
+                )}{" "}
                 <div className="space-y-2">
-                  <Label>วันที่เริ่มต้น (ไม่บังคับ)</Label>
-                  <Input type="date" {...register('date_from')} />
-                </div>
-
+                  {" "}
+                  <Label>วันที่เริ่มต้น (ไม่บังคับ)</Label>{" "}
+                  <Input type="date" {...register("date_from")} />{" "}
+                </div>{" "}
                 <div className="space-y-2">
-                  <Label>วันที่สิ้นสุด (ไม่บังคับ)</Label>
-                  <Input type="date" {...register('date_to')} />
-                  {errors.date_to && <p className="text-sm text-red-500">{errors.date_to.message}</p>}
-                </div>
-
+                  {" "}
+                  <Label>วันที่สิ้นสุด (ไม่บังคับ)</Label>{" "}
+                  <Input type="date" {...register("date_to")} />{" "}
+                  {errors.date_to && (
+                    <p className="text-sm text-red-500">
+                      {errors.date_to.message}
+                    </p>
+                  )}{" "}
+                </div>{" "}
                 <div className="space-y-2">
-                  <Label>โหมดเวลา</Label>
+                  {" "}
+                  <Label>โหมดเวลา</Label>{" "}
                   <select
                     className="flex h-9 w-full rounded-md border border-border bg-transparent px-3 py-1 text-sm"
-                    {...register('time_mode')}
+                    {...register("time_mode")}
                   >
-                    <option value="original">ต้นฉบับ (ใช้เวลาเดิมของอีเวนต์)</option>
-                    <option value="current">ปัจจุบัน (ใช้เวลาปัจจุบันสำหรับทุกอีเวนต์)</option>
-                  </select>
+                    {" "}
+                    <option value="original">
+                      ต้นฉบับ (ใช้เวลาเดิมของอีเวนต์)
+                    </option>{" "}
+                    <option value="current">
+                      ปัจจุบัน (ใช้เวลาปัจจุบันสำหรับทุกอีเวนต์)
+                    </option>{" "}
+                  </select>{" "}
                   <div className="space-y-1 text-xs text-muted-foreground">
-                    <p><span className="font-medium text-foreground">Original:</span> Events will be sent with their original timestamps</p>
-                    <p><span className="font-medium text-foreground">Current:</span> Events will be sent with current timestamps (recommended for Facebook)</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">ใช้ "ปัจจุบัน" หากอีเวนต์เก่ากว่า 7 วัน เพื่อป้องกัน Facebook ปฏิเสธ</p>
-                </div>
-
+                    {" "}
+                    <p>
+                      <span className="font-medium text-foreground">
+                        Original:
+                      </span>{" "}
+                      Events will be sent with their original timestamps
+                    </p>{" "}
+                    <p>
+                      <span className="font-medium text-foreground">
+                        Current:
+                      </span>{" "}
+                      Events will be sent with current timestamps (recommended
+                      for Facebook)
+                    </p>{" "}
+                  </div>{" "}
+                  <p className="text-xs text-muted-foreground">
+                    ใช้ "ปัจจุบัน" หากอีเวนต์เก่ากว่า 7 วัน เพื่อป้องกัน
+                    Facebook ปฏิเสธ
+                  </p>{" "}
+                </div>{" "}
                 <div className="space-y-2">
-                  <Label>ดีเลย์ต่อชุด (ms)</Label>
+                  {" "}
+                  <Label>ดีเลย์ต่อชุด (ms)</Label>{" "}
                   <Input
                     type="number"
                     min={0}
                     max={60000}
                     placeholder="0"
-                    {...register('batch_delay_ms', { valueAsNumber: true })}
-                  />
-                  <p className="text-xs text-muted-foreground">ดีเลย์ระหว่างชุด (0-60000ms) ใช้สำหรับ warm-up พิกเซลใหม่</p>
-                </div>
-
-                <Button type="submit" className="w-full" disabled={previewReplay.isPending}>
-                  <Eye className="h-4 w-4" />
-                  {previewReplay.isPending ? 'กำลังโหลดตัวอย่าง...' : 'ตัวอย่าง'}
-                </Button>
+                    {...register("batch_delay_ms", { valueAsNumber: true })}
+                  />{" "}
+                  <p className="text-xs text-muted-foreground">
+                    ดีเลย์ระหว่างชุด (0-60000ms) ใช้สำหรับ warm-up พิกเซลใหม่
+                  </p>{" "}
+                </div>{" "}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={previewReplay.isPending}
+                >
+                  {" "}
+                  <Eye className="h-4 w-4" />{" "}
+                  {previewReplay.isPending
+                    ? "กำลังโหลดตัวอย่าง..."
+                    : "ตัวอย่าง"}{" "}
+                </Button>{" "}
               </form>
             ) : (
               <div className="space-y-4">
+                {" "}
                 <div className="rounded-lg border border-border p-3 space-y-2">
-                  <p className="text-sm font-medium text-foreground">สรุปตัวอย่าง</p>
+                  {" "}
+                  <p className="text-sm font-medium text-foreground">
+                    สรุปตัวอย่าง
+                  </p>{" "}
                   <p className="text-sm text-muted-foreground">
-                    จะรีเพลย์ <span className="font-semibold">{preview.total_events}</span> อีเวนต์
-                  </p>
+                    {" "}
+                    จะรีเพลย์{" "}
+                    <span className="font-semibold">
+                      {preview.total_events}
+                    </span>{" "}
+                    อีเวนต์{" "}
+                  </p>{" "}
                   <p className="text-xs text-muted-foreground">
-                    จาก: {pixelMap.get(getValues('source_pixel_id')) || 'ไม่ทราบ'} → ไปยัง: {pixelMap.get(getValues('target_pixel_id')) || 'ไม่ทราบ'}
-                  </p>
-                </div>
-
+                    {" "}
+                    จาก:{" "}
+                    {pixelMap.get(getValues("source_pixel_id")) || "ไม่ทราบ"} →
+                    ไปยัง:{" "}
+                    {pixelMap.get(getValues("target_pixel_id")) ||
+                      "ไม่ทราบ"}{" "}
+                  </p>{" "}
+                </div>{" "}
                 {preview.warning && (
                   <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                    <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                    <p className="text-sm text-amber-700">{preview.warning}</p>
+                    {" "}
+                    <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />{" "}
+                    <p className="text-sm text-amber-700">
+                      {preview.warning}
+                    </p>{" "}
                   </div>
-                )}
-
+                )}{" "}
                 {(preview.sample_events?.length ?? 0) > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">ตัวอย่างอีเวนต์</p>
+                    {" "}
+                    <p className="text-xs font-medium text-muted-foreground">
+                      ตัวอย่างอีเวนต์
+                    </p>{" "}
                     <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
+                      {" "}
                       <table className="w-full text-xs">
+                        {" "}
                         <thead className="bg-muted sticky top-0">
+                          {" "}
                           <tr>
-                            <th className="text-left px-2 py-1.5 font-medium text-muted-foreground">อีเวนต์</th>
-                            <th className="text-left px-2 py-1.5 font-medium text-muted-foreground">เวลา</th>
-                          </tr>
-                        </thead>
+                            {" "}
+                            <th className="text-left px-2 py-1.5 font-medium text-muted-foreground">
+                              อีเวนต์
+                            </th>{" "}
+                            <th className="text-left px-2 py-1.5 font-medium text-muted-foreground">
+                              เวลา
+                            </th>{" "}
+                          </tr>{" "}
+                        </thead>{" "}
                         <tbody className="divide-y divide-border">
+                          {" "}
                           {preview.sample_events.map((event) => (
                             <tr key={event.id}>
-                              <td className="px-2 py-1.5 text-foreground">{event.event_name}</td>
-                              <td className="px-2 py-1.5 text-muted-foreground">{new Date(event.event_time).toLocaleString()}</td>
+                              {" "}
+                              <td className="px-2 py-1.5 text-foreground">
+                                {event.event_name}
+                              </td>{" "}
+                              <td className="px-2 py-1.5 text-muted-foreground">
+                                {new Date(event.event_time).toLocaleString()}
+                              </td>{" "}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          ))}{" "}
+                        </tbody>{" "}
+                      </table>{" "}
+                    </div>{" "}
                   </div>
-                )}
-
+                )}{" "}
                 <div className="flex gap-2">
+                  {" "}
                   <Button
                     variant="outline"
                     className="flex-1"
-                    onClick={() => { setPreview(null); setPendingFormData(null) }}
+                    onClick={() => {
+                      setPreview(null);
+                      setPendingFormData(null);
+                    }}
                   >
-                    ย้อนกลับ
-                  </Button>
+                    {" "}
+                    ย้อนกลับ{" "}
+                  </Button>{" "}
                   <Button
                     className="flex-1"
                     onClick={onConfirmReplay}
                     disabled={createReplay.isPending}
                   >
-                    <RotateCcw className="h-4 w-4" />
-                    {createReplay.isPending ? 'กำลังเริ่ม...' : 'ยืนยันรีเพลย์'}
-                  </Button>
-                </div>
+                    {" "}
+                    <RotateCcw className="h-4 w-4" />{" "}
+                    {createReplay.isPending
+                      ? "กำลังเริ่ม..."
+                      : "ยืนยันรีเพลย์"}{" "}
+                  </Button>{" "}
+                </div>{" "}
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Active Replay Progress */}
+            )}{" "}
+          </CardContent>{" "}
+        </Card>{" "}
+        {/* Active Replay Progress */}{" "}
         {activeReplay && (
           <Card className="lg:col-span-2">
+            {" "}
             <CardHeader>
+              {" "}
               <CardTitle className="flex items-center justify-between text-base">
-                <span>ความคืบหน้ารีเพลย์</span>
-                <ReplayStatusBadge status={activeReplay.status} />
-              </CardTitle>
-            </CardHeader>
+                {" "}
+                <span>ความคืบหน้ารีเพลย์</span>{" "}
+                <ReplayStatusBadge status={activeReplay.status} />{" "}
+              </CardTitle>{" "}
+            </CardHeader>{" "}
             <CardContent>
+              {" "}
               <div className="space-y-4">
-                {/* Error message */}
-                {activeReplay.status === 'failed' && activeReplay.error_message && (
-                  <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
-                    <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-red-800">รีเพลย์ล้มเหลว</p>
-                      <p className="text-sm text-red-600 mt-1">{truncateMessage(activeReplay.error_message)}</p>
+                {" "}
+                {/* Error message */}{" "}
+                {activeReplay.status === "failed" &&
+                  activeReplay.error_message && (
+                    <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                      {" "}
+                      <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />{" "}
+                      <div>
+                        {" "}
+                        <p className="text-sm font-medium text-red-800">
+                          รีเพลย์ล้มเหลว
+                        </p>{" "}
+                        <p className="text-sm text-red-600 mt-1">
+                          {truncateMessage(activeReplay.error_message)}
+                        </p>{" "}
+                      </div>{" "}
                     </div>
-                  </div>
-                )}
-
+                  )}{" "}
                 <div className="w-full bg-border rounded-full h-3 overflow-hidden flex">
+                  {" "}
                   {activeReplay.total_events > 0 && (
                     <>
+                      {" "}
                       <div
                         className="bg-emerald-500 h-3 transition-all duration-500"
                         style={{
-                          width: `${(activeReplay.replayed_events / activeReplay.total_events) * 100}%`
+                          width: `${(activeReplay.replayed_events / activeReplay.total_events) * 100}%`,
                         }}
                       />
                       {activeReplay.failed_events > 0 && (
                         <div
                           className="bg-red-400 h-3 transition-all duration-500"
                           style={{
-                            width: `${(activeReplay.failed_events / activeReplay.total_events) * 100}%`
+                            width: `${(activeReplay.failed_events / activeReplay.total_events) * 100}%`,
                           }}
                         />
                       )}
@@ -440,23 +614,28 @@ export function ReplayPage() {
                 <p className="text-xs text-muted-foreground text-right">
                   {activeReplay.total_events > 0
                     ? `${Math.round((activeReplay.replayed_events / activeReplay.total_events) * 100)}% สำเร็จ`
-                    : '0%'}
+                    : "0%"}
                 </p>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <p className="text-2xl font-bold text-foreground">{activeReplay.total_events}</p>
+                    <p className="text-2xl font-bold text-foreground">
+                      {activeReplay.total_events}
+                    </p>
                     <p className="text-xs text-muted-foreground">ทั้งหมด</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-emerald-600">{activeReplay.replayed_events}</p>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      {activeReplay.replayed_events}
+                    </p>
                     <p className="text-xs text-muted-foreground">รีเพลย์แล้ว</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-red-600">{activeReplay.failed_events}</p>
+                    <p className="text-2xl font-bold text-red-600">
+                      {activeReplay.failed_events}
+                    </p>
                     <p className="text-xs text-muted-foreground">ล้มเหลว</p>
                   </div>
                 </div>
-
                 {/* Action buttons */}
                 <div className="flex gap-2">
                   {canCancel && (
@@ -466,8 +645,8 @@ export function ReplayPage() {
                       onClick={() => setCancelConfirm(activeReplay.id)}
                       disabled={cancelReplay.isPending}
                     >
-                      <StopCircle className="h-4 w-4" />
-                      {cancelReplay.isPending ? 'กำลังยกเลิก...' : 'ยกเลิก'}
+                      <StopCircle className="size-4" />
+                      {cancelReplay.isPending ? "กำลังยกเลิก..." : "ยกเลิก"}
                     </Button>
                   )}
                   {canRetry && (
@@ -477,22 +656,29 @@ export function ReplayPage() {
                       onClick={() => handleRetry(activeReplay.id)}
                       disabled={retryReplay.isPending}
                     >
-                      <RotateCcw className="h-4 w-4" />
-                      {retryReplay.isPending ? 'กำลังลองใหม่...' : 'ลองใหม่ที่ล้มเหลว'}
+                      <RotateCcw className="size-4" />
+                      {retryReplay.isPending
+                        ? "กำลังลองใหม่..."
+                        : "ลองใหม่ที่ล้มเหลว"}
                     </Button>
                   )}
                 </div>
-
                 {/* Replay config info */}
                 <div className="flex gap-3 text-xs text-muted-foreground border-t border-border pt-3">
-                  <span>โหมด: {activeReplay.time_mode === 'original' ? 'ต้นฉบับ' : 'ปัจจุบัน'}</span>
-                  {activeReplay.batch_delay_ms > 0 && <span>ดีเลย์: {activeReplay.batch_delay_ms}ms</span>}
+                  <span>
+                    โหมด:{" "}
+                    {activeReplay.time_mode === "original"
+                      ? "ต้นฉบับ"
+                      : "ปัจจุบัน"}
+                  </span>
+                  {activeReplay.batch_delay_ms > 0 && (
+                    <span>ดีเลย์: {activeReplay.batch_delay_ms}ms</span>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
         )}
-
         {/* Replay History */}
         {!activeReplay && (
           <Card className="lg:col-span-2">
@@ -509,17 +695,33 @@ export function ReplayPage() {
                   {replays.map((replay) => (
                     <div
                       key={replay.id}
+                      role="button"
+                      tabIndex={0}
                       className="flex items-center justify-between p-3 rounded-lg border border-border cursor-pointer hover:bg-accent"
                       onClick={() => setActiveReplayId(replay.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setActiveReplayId(replay.id);
+                        }
+                      }}
                     >
                       <div>
                         <p className="text-sm font-medium text-foreground">
-                          {pixelMap.get(replay.source_pixel_id) || replay.source_pixel_id.slice(0, 8)} → {pixelMap.get(replay.target_pixel_id) || replay.target_pixel_id.slice(0, 8)}
+                          {pixelMap.get(replay.source_pixel_id) ||
+                            replay.source_pixel_id.slice(0, 8)}{" "}
+                          →{" "}
+                          {pixelMap.get(replay.target_pixel_id) ||
+                            replay.target_pixel_id.slice(0, 8)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {replay.replayed_events}/{replay.total_events} อีเวนต์ &middot; {new Date(replay.created_at).toLocaleString()}
+                          {replay.replayed_events}/{replay.total_events} อีเวนต์
+                          &middot;{" "}
+                          {new Date(replay.created_at).toLocaleString()}
                           {replay.error_message && (
-                            <span className="text-red-500 ml-2">{truncateMessage(replay.error_message)}</span>
+                            <span className="text-red-500 ml-2">
+                              {truncateMessage(replay.error_message)}
+                            </span>
                           )}
                         </p>
                       </div>
@@ -532,13 +734,16 @@ export function ReplayPage() {
           </Card>
         )}
       </div>
-
-      <Dialog open={cancelConfirm !== null} onOpenChange={(open) => !open && setCancelConfirm(null)}>
+      <Dialog
+        open={cancelConfirm !== null}
+        onOpenChange={(open) => !open && setCancelConfirm(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>ยกเลิกรีเพลย์?</DialogTitle>
             <DialogDescription>
-              คุณแน่ใจหรือไม่ว่าต้องการยกเลิกรีเพลย์นี้? อีเวนต์ที่รีเพลย์ไปแล้วจะไม่ถูกย้อนกลับ
+              คุณแน่ใจหรือไม่ว่าต้องการยกเลิกรีเพลย์นี้?
+              อีเวนต์ที่รีเพลย์ไปแล้วจะไม่ถูกย้อนกลับ
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -549,17 +754,17 @@ export function ReplayPage() {
               variant="destructive"
               onClick={() => {
                 if (cancelConfirm) {
-                  handleCancel(cancelConfirm)
-                  setCancelConfirm(null)
+                  handleCancel(cancelConfirm);
+                  setCancelConfirm(null);
                 }
               }}
               disabled={cancelReplay.isPending}
             >
-              {cancelReplay.isPending ? 'กำลังยกเลิก...' : 'ใช่ ยกเลิกรีเพลย์'}
+              {cancelReplay.isPending ? "กำลังยกเลิก..." : "ใช่ ยกเลิกรีเพลย์"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

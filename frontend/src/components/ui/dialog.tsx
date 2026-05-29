@@ -12,7 +12,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50">
-      <div className="fixed inset-0 bg-black/80" onClick={() => onOpenChange(false)} />
+      <div aria-hidden="true" className="fixed inset-0 bg-black/80" onClick={() => onOpenChange(false)} />
       <div className="fixed inset-0 flex items-center justify-center p-4">
         {children}
       </div>
@@ -24,8 +24,8 @@ export function DialogContent({ className, children, ...props }: React.HTMLAttri
   return (
     <div className={cn('relative z-50 w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg', className)} {...props}>
       {props.onClose && (
-        <button onClick={props.onClose} className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100">
-          <X className="h-4 w-4" />
+        <button type="button" onClick={props.onClose} aria-label="Close dialog" className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100">
+          <X className="size-4" />
         </button>
       )}
       {children}
@@ -37,8 +37,12 @@ export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLD
   return <div className={cn('flex flex-col space-y-1.5 text-center sm:text-left', className)} {...props} />
 }
 
-export function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cn('text-lg font-semibold leading-none tracking-tight', className)} {...props} />
+export function DialogTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h2 className={cn('text-lg font-semibold leading-none tracking-tight', className)} {...props}>
+      {children ?? <span className="sr-only">Dialog</span>}
+    </h2>
+  )
 }
 
 export function DialogDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {

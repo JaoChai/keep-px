@@ -234,6 +234,7 @@ export function AdminBillingPage() {
         {TABS.map((tab) => (
           <button
             key={tab.key}
+            type="button"
             onClick={() => setActiveTab(tab.key)}
             className={cn(
               'px-4 py-1.5 text-sm font-medium rounded-md transition-colors',

@@ -97,14 +97,14 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
               {getTypeBadge(block.type)}
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={index === 0} onClick={() => moveBlock(index, -1)}>
-                <ChevronUp className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="size-7" disabled={index === 0} onClick={() => moveBlock(index, -1)}>
+                <ChevronUp className="size-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" disabled={index === blocks.length - 1} onClick={() => moveBlock(index, 1)}>
-                <ChevronDown className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="size-7" disabled={index === blocks.length - 1} onClick={() => moveBlock(index, 1)}>
+                <ChevronDown className="size-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDeleteBlockConfirm(index)}>
-                <Trash2 className="h-4 w-4 text-red-500" />
+              <Button variant="ghost" size="icon" className="size-7" onClick={() => setDeleteBlockConfirm(index)}>
+                <Trash2 className="size-4 text-red-500" />
               </Button>
             </div>
           </div>
@@ -115,6 +115,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
               <input
                 type="file"
                 accept="image/*"
+                aria-label="Upload image"
                 className="hidden"
                 id={`img-upload-${block.id}`}
                 onChange={(e) => handleSingleImageUpload(index, e)}
@@ -263,7 +264,7 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
       <div className="border-2 border-dashed border-border rounded-lg p-4">
         <p className="text-xs font-medium text-muted-foreground mb-3 text-center">เพิ่มเนื้อหา</p>
         <div className="flex flex-wrap justify-center gap-2">
-          <input ref={imageFileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
+          <input ref={imageFileRef} type="file" accept="image/*" multiple aria-label="Upload images" className="hidden" onChange={handleImageUpload} />
           <Button
             type="button"
             variant="outline"
@@ -275,27 +276,27 @@ export function BlockEditor({ blocks, onChange }: BlockEditorProps) {
             {uploadImages.isPending && uploadImages.progress > 0 ? `${uploadImages.progress}%` : 'รูปภาพ'}
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={addTextBlock}>
-            <Type className="h-3.5 w-3.5" />
+            <Type className="size-3.5" />
             ข้อความ
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={() => addButtonBlock('line')}>
-            <MessageCircle className="h-3.5 w-3.5" />
+            <MessageCircle className="size-3.5" />
             ปุ่ม LINE
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={() => addButtonBlock('website')}>
-            <Globe className="h-3.5 w-3.5" />
+            <Globe className="size-3.5" />
             ปุ่มเว็บ
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={() => addButtonBlock('custom')}>
-            <Link className="h-3.5 w-3.5" />
+            <Link className="size-3.5" />
             ปุ่มลิงก์
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={addVideoBlock}>
-            <Film className="h-3.5 w-3.5" />
+            <Film className="size-3.5" />
             วิดีโอ
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={addDividerBlock}>
-            <Minus className="h-3.5 w-3.5" />
+            <Minus className="size-3.5" />
             เส้นคั่น
           </Button>
         </div>

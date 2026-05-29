@@ -98,7 +98,8 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
   )
   const { clearDraft } = useAutoSaveDraft(draftKey, draftData)
 
-  // Restore draft
+  // Restore draft (mount-only hydration from localStorage)
+  /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
   useEffect(() => {
     const draft = loadDraft<typeof draftData>(draftKey)
     if (!draft) return
@@ -116,8 +117,8 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
     setTrackingContentValue(draft.trackingContentValue ?? 0)
     setTrackingCurrency(draft.trackingCurrency ?? 'THB')
     toast.info('กู้คืนแบบร่างจากการบันทึกอัตโนมัติ')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
   const buildContent = (): SalePageContentV2 => ({
     version: 2,
@@ -460,7 +461,7 @@ function BlockEditorInner({ existingPage }: { existingPage?: SalePage }) {
               variant="outline"
               onClick={() => publishedDialog && window.open(`/p/${publishedDialog.slug}`, '_blank')}
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="size-4" />
               เปิดหน้าเพจ
             </Button>
             <Button onClick={() => { setPublishedDialog(null); navigate('/sale-pages') }}>

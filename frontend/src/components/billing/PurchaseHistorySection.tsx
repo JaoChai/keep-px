@@ -40,7 +40,7 @@ export function PurchaseHistorySection({ purchases, isLoading }: PurchaseHistory
       <Collapsible title={title}>
         {count === 0 ? (
           <div className="text-center py-6">
-            <CreditCard className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <CreditCard className="size-8 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">
               ยังไม่มีประวัติการซื้อ
             </p>

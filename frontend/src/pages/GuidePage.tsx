@@ -48,7 +48,7 @@ function FlowStep({ step, label, last }: { step: number; label: string; last?: b
   return (
     <div className="flex items-start gap-3">
       <div className="flex flex-col items-center">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
           {step}
         </div>
         {!last && <div className="w-px grow bg-border mt-1 min-h-[20px]" />}
@@ -77,7 +77,7 @@ function InfoBox({ type, children }: { type: 'tip' | 'warning' | 'important'; ch
   const Icon = icons[type]
   return (
     <div className={cn('flex gap-3 rounded-lg border p-3 text-sm', styles[type])}>
-      <Icon className="h-4 w-4 mt-0.5 shrink-0" />
+      <Icon className="size-4 mt-0.5 shrink-0" />
       <div>
         <span className="font-semibold">{labels[type]}:</span> {children}
       </div>
@@ -339,7 +339,7 @@ const guideSections: GuideSection[] = [
               ดู Event ที่เข้ามาแบบสด ๆ ขณะที่ลูกค้าเข้าเซลเพจ
             </p>
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="gap-1"><Play className="h-3 w-3" /> Play/Pause</Badge>
+              <Badge variant="secondary" className="gap-1"><Play className="size-3" /> Play/Pause</Badge>
               <Badge variant="secondary" className="gap-1">Refresh</Badge>
               <Badge variant="secondary" className="gap-1">Clear</Badge>
             </div>
@@ -1086,8 +1086,8 @@ export function GuidePage() {
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                <BookOpen className="h-5 w-5 text-primary" />
+              <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
+                <BookOpen className="size-5 text-primary" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">คู่มือการใช้งาน</h1>
@@ -1098,7 +1098,7 @@ export function GuidePage() {
 
           {/* Search */}
           <div className="relative mb-8">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
@@ -1115,9 +1115,10 @@ export function GuidePage() {
           {/* No Results */}
           {filteredSections.length === 0 && (
             <div className="text-center py-12">
-              <Search className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+              <Search className="size-10 text-muted-foreground/30 mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">ไม่พบหัวข้อที่ค้นหา</p>
               <button
+                type="button"
                 onClick={() => setSearchQuery('')}
                 className="text-sm text-primary hover:underline mt-1 cursor-pointer"
               >
@@ -1139,12 +1140,13 @@ export function GuidePage() {
                 >
                   {/* Section Header */}
                   <button
+                    type="button"
                     onClick={() => toggleSection(section.id)}
                     className="flex items-center justify-between w-full px-5 py-4 hover:bg-accent/30 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-                        <section.icon className="h-4 w-4 text-foreground" />
+                      <div className="flex size-8 items-center justify-center rounded-lg bg-muted">
+                        <section.icon className="size-4 text-foreground" />
                       </div>
                       <span className="text-base font-semibold text-foreground">{section.title}</span>
                       {section.badge && (
@@ -1153,7 +1155,7 @@ export function GuidePage() {
                     </div>
                     <ChevronDown
                       className={cn(
-                        'h-4 w-4 text-muted-foreground transition-transform duration-200',
+                        'size-4 text-muted-foreground transition-transform duration-200',
                         isExpanded && 'rotate-180'
                       )}
                     />
@@ -1172,12 +1174,13 @@ export function GuidePage() {
                             )}
                           >
                             <button
+                              type="button"
                               onClick={() => toggleSubsection(sub.id)}
                               className="flex items-center gap-2 w-full px-5 py-3 text-sm hover:bg-accent/20 transition-colors cursor-pointer"
                             >
                               <ChevronRight
                                 className={cn(
-                                  'h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 shrink-0',
+                                  'size-3.5 text-muted-foreground transition-transform duration-200 shrink-0',
                                   isSubExpanded && 'rotate-90'
                                 )}
                               />

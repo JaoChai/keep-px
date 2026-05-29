@@ -31,8 +31,8 @@ export function PixelSlotSection({
       <CardContent className="p-5 flex flex-col flex-1">
         {/* Header with icon */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-9 w-9 rounded-lg bg-primary/5 flex items-center justify-center">
-            <Radio className="h-5 w-5 text-primary" />
+          <div className="size-9 rounded-lg bg-primary/5 flex items-center justify-center">
+            <Radio className="size-5 text-primary" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-foreground">Pixel Slots</h3>
@@ -46,11 +46,11 @@ export function PixelSlotSection({
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="size-8"
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
               disabled={quantity <= 1}
             >
-              <Minus className="h-3.5 w-3.5" />
+              <Minus className="size-3.5" />
             </Button>
             <div className="text-center min-w-[60px]">
               <p className="text-2xl font-bold text-foreground">{quantity}</p>
@@ -59,10 +59,10 @@ export function PixelSlotSection({
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="size-8"
               onClick={() => setQuantity(quantity + 1)}
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="size-3.5" />
             </Button>
           </div>
           <div className="text-right">
@@ -111,9 +111,9 @@ export function PixelSlotSection({
               disabled={isPending}
             >
               {pendingType === 'pixel_slots' ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
               ) : (
-                <CreditCard className="h-4 w-4" />
+                <CreditCard className="size-4" />
               )}
               สมัครสมาชิก
             </Button>

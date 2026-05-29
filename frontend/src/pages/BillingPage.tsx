@@ -49,9 +49,9 @@ function PricingComparisonSection() {
                   <td className="py-3 px-4 text-center">
                     {typeof row.free === 'boolean' ? (
                       row.free ? (
-                        <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                        <Check className="size-4 text-emerald-600 mx-auto" />
                       ) : (
-                        <X className="h-4 w-4 text-muted-foreground mx-auto" />
+                        <X className="size-4 text-muted-foreground mx-auto" />
                       )
                     ) : (
                       <span className="text-muted-foreground">{row.free}</span>
@@ -60,9 +60,9 @@ function PricingComparisonSection() {
                   <td className="py-3 px-4 text-center bg-primary/5">
                     {typeof row.paid === 'boolean' ? (
                       row.paid ? (
-                        <Check className="h-4 w-4 text-emerald-600 mx-auto" />
+                        <Check className="size-4 text-emerald-600 mx-auto" />
                       ) : (
-                        <X className="h-4 w-4 text-muted-foreground mx-auto" />
+                        <X className="size-4 text-muted-foreground mx-auto" />
                       )
                     ) : (
                       <span className="font-medium text-foreground">{row.paid}</span>
@@ -71,8 +71,8 @@ function PricingComparisonSection() {
                 </tr>
               ))}
               <tr>
-                <td className="py-4 px-4" />
-                <td className="py-4 px-4" />
+                <td aria-hidden="true" className="py-4 px-4" />
+                <td aria-hidden="true" className="py-4 px-4" />
                 <td className="py-4 px-4 bg-primary/5 rounded-b-lg">
                   <div className="flex flex-col items-center gap-1">
                     <Button

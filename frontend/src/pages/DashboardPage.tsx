@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, Suspense, lazy } from 'react'
 import { Link } from 'react-router'
 import {
   Radio,
@@ -15,6 +15,7 @@ import {
   Key,
   FileText,
   Rocket,
+  Loader2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -34,15 +35,9 @@ import { ReplayStatusBadge } from '@/components/shared/ReplayStatusBadge'
 import { eventBadgeVariant, getEventColor } from '@/lib/event-utils'
 import { timeAgo } from '@/lib/utils'
 import type { RealtimeEvent } from '@/types'
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
+const DashboardEventVolumeChart = lazy(
+  () => import('@/components/charts/DashboardEventVolumeChart')
+)
 
 // --- Stat Card ---
 
@@ -92,9 +87,9 @@ function StatCard({ title, value, subtitle, icon, trend, indicator, isLoading }:
                 }`}
               >
                 {trend.value > 0 ? (
-                  <TrendingUp className="h-3 w-3" />
+                  <TrendingUp className="size-3" />
                 ) : trend.value < 0 ? (
-                  <TrendingDown className="h-3 w-3" />
+                  <TrendingDown className="size-3" />
                 ) : null}
                 {trend.value > 0 ? '+' : ''}
                 {trend.value}% {trend.label}
@@ -104,7 +99,7 @@ function StatCard({ title, value, subtitle, icon, trend, indicator, isLoading }:
               <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
             )}
           </div>
-          <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-foreground">
+          <div className="size-10 rounded-lg bg-muted flex items-center justify-center text-foreground">
             {icon}
           </div>
         </div>
@@ -150,48 +145,9 @@ function EventVolumeChart() {
       </CardHeader>
       <CardContent>
         {chartData && chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#18181B" stopOpacity={0.1} />
-                  <stop offset="95%" stopColor="#18181B" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 12, fill: '#737373' }}
-                tickFormatter={(val: string) => {
-                  const d = new Date(val)
-                  return `${d.getMonth() + 1}/${d.getDate()}`
-                }}
-              />
-              <YAxis tick={{ fontSize: 12, fill: '#737373' }} />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: '8px',
-                  border: '1px solid #e5e5e5',
-                  fontSize: '12px',
-                }}
-                labelFormatter={(val) => {
-                  const d = new Date(String(val))
-                  return d.toLocaleDateString('th-TH', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="count"
-                stroke="#18181B"
-                fillOpacity={1}
-                fill="url(#colorEvents)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <Suspense fallback={<div className="h-[300px] flex items-center justify-center"><Loader2 className="size-5 animate-spin text-muted-foreground" /></div>}>
+            <DashboardEventVolumeChart data={chartData} height={300} />
+          </Suspense>
         ) : (
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
             ยังไม่มีข้อมูลอีเวนต์
@@ -216,7 +172,7 @@ function RecentActivityFeed({ events }: { events: RealtimeEvent[] }) {
             to="/events"
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            ดูทั้งหมด <ArrowRight className="h-4 w-4 ml-1" />
+            ดูทั้งหมด <ArrowRight className="size-4 ml-1" />
           </Link>
         </div>
       </CardHeader>
@@ -238,9 +194,9 @@ function RecentActivityFeed({ events }: { events: RealtimeEvent[] }) {
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-2">
                   {event.forwarded_to_capi ? (
-                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    <Check className="size-3.5 text-emerald-600" />
                   ) : (
-                    <X className="h-3.5 w-3.5 text-red-400" />
+                    <X className="size-3.5 text-red-400" />
                   )}
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {timeAgo(event.event_time)}
@@ -273,7 +229,7 @@ function PixelStatusList() {
             to="/pixels"
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            จัดการ <ArrowRight className="h-4 w-4 ml-1" />
+            จัดการ <ArrowRight className="size-4 ml-1" />
           </Link>
         </div>
       </CardHeader>
@@ -388,7 +344,7 @@ function RecentReplays() {
             to="/replay"
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            ดูทั้งหมด <ArrowRight className="h-4 w-4 ml-1" />
+            ดูทั้งหมด <ArrowRight className="size-4 ml-1" />
           </Link>
         </div>
       </CardHeader>
@@ -498,7 +454,7 @@ function OnboardingWizard() {
             </p>
           </div>
           <Button variant="ghost" size="sm" onClick={handleDismiss}>
-            <X className="h-4 w-4 mr-1" />
+            <X className="size-4 mr-1" />
             ซ่อน
           </Button>
         </div>
@@ -511,10 +467,10 @@ function OnboardingWizard() {
               <Link key={s.step} to={s.link} className="block">
                 <div className="rounded-lg border border-border bg-background p-4 hover:border-blue-400 hover:shadow-sm transition-all h-full">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-sm font-bold shrink-0">
+                    <div className="flex size-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 text-sm font-bold shrink-0">
                       {s.step}
                     </div>
-                    <Icon className="h-4 w-4 text-blue-600" />
+                    <Icon className="size-4 text-blue-600" />
                   </div>
                   <p className="text-sm font-medium text-foreground">{s.title}</p>
                   <p className="text-xs text-muted-foreground mt-1">{s.description}</p>
@@ -581,14 +537,14 @@ export function DashboardPage() {
           title="พิกเซลที่ใช้งาน"
           value={`${stats?.active_pixels ?? 0}/${stats?.total_pixels ?? 0}`}
           subtitle={`ทั้งหมด ${stats?.total_pixels ?? 0}`}
-          icon={<Radio className="h-5 w-5" />}
+          icon={<Radio className="size-5" />}
           isLoading={statsLoading}
         />
         <StatCard
           title="อีเวนต์วันนี้"
           value={(stats?.events_today ?? 0).toLocaleString()}
           trend={eventsTrend}
-          icon={<Zap className="h-5 w-5" />}
+          icon={<Zap className="size-5" />}
           isLoading={statsLoading}
         />
         <StatCard
@@ -596,20 +552,20 @@ export function DashboardPage() {
           value={stats ? `${capiRate}%` : '-'}
           subtitle="ส่งต่อไป Facebook แล้ว"
           indicator={stats ? capiIndicator : undefined}
-          icon={<Send className="h-5 w-5" />}
+          icon={<Send className="size-5" />}
           isLoading={statsLoading}
         />
         <StatCard
           title="อีเวนต์สัปดาห์นี้"
           value={(stats?.events_this_week ?? 0).toLocaleString()}
-          icon={<Activity className="h-5 w-5" />}
+          icon={<Activity className="size-5" />}
           isLoading={statsLoading}
         />
         <StatCard
           title="รีเพลย์ที่ทำงาน"
           value={stats?.active_replays ?? 0}
           subtitle={`ทั้งหมด ${stats?.total_replays ?? 0}`}
-          icon={<RotateCcw className="h-5 w-5" />}
+          icon={<RotateCcw className="size-5" />}
           isLoading={statsLoading}
         />
       </div>
@@ -620,8 +576,8 @@ export function DashboardPage() {
           <Link to="/pixels">
             <Card className="hover:border-primary/50 transition-colors cursor-pointer">
               <CardContent className="p-6 flex items-center gap-4">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Plus className="h-5 w-5 text-primary" />
+                <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Plus className="size-5 text-primary" />
                 </div>
                 <div>
                   <p className="font-medium text-foreground">สร้างพิกเซลแรกของคุณ</p>
@@ -633,8 +589,8 @@ export function DashboardPage() {
           <Link to="/sale-pages">
             <Card className="hover:border-primary/50 transition-colors cursor-pointer">
               <CardContent className="p-6 flex items-center gap-4">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-primary" />
+                <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText className="size-5 text-primary" />
                 </div>
                 <div>
                   <p className="font-medium text-foreground">สร้างเซลเพจ</p>

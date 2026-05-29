@@ -28,7 +28,7 @@ const AdminReplaysPage = lazy(() => import('@/pages/admin/AdminReplaysPage').the
 const AdminEventsPage = lazy(() => import('@/pages/admin/AdminEventsPage').then(m => ({ default: m.AdminEventsPage })))
 const AdminAuditLogPage = lazy(() => import('@/pages/admin/AdminAuditLogPage').then(m => ({ default: m.AdminAuditLogPage })))
 
-const lazyFallback = <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+const lazyFallback = <div className="flex items-center justify-center py-24"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
 
 export const router = createBrowserRouter([
   {

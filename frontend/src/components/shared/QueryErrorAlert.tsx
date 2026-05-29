@@ -12,7 +12,7 @@ export function QueryErrorAlert({ error, onRetry, className }: QueryErrorAlertPr
 
   return (
     <div className={cn("flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4", className)}>
-      <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+      <AlertTriangle className="size-5 text-red-600 mt-0.5 shrink-0" />
       <div className="flex-1">
         <p className="text-sm font-medium text-red-800">
           เกิดข้อผิดพลาดในการโหลดข้อมูล
@@ -22,10 +22,11 @@ export function QueryErrorAlert({ error, onRetry, className }: QueryErrorAlertPr
         )}
         {onRetry && (
           <button
+            type="button"
             onClick={onRetry}
             className="inline-flex items-center gap-1.5 mt-3 rounded-md bg-red-100 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-200 transition-colors"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className="size-3.5" />
             ลองใหม่
           </button>
         )}

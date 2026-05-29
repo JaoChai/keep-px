@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useReducer } from 'react'
 import { ScrollText } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -46,16 +46,56 @@ const ACTIONS = [
   'cancel_replay',
 ]
 
+type FilterState = {
+  action: string
+  adminID: string
+  targetCustomerID: string
+  from: string
+  to: string
+  page: number
+}
+
+type FilterAction =
+  | { type: 'SET_ACTION'; payload: string }
+  | { type: 'SET_ADMIN_ID'; payload: string }
+  | { type: 'SET_TARGET_CUSTOMER_ID'; payload: string }
+  | { type: 'SET_FROM'; payload: string }
+  | { type: 'SET_TO'; payload: string }
+  | { type: 'SET_PAGE'; payload: number }
+
+const initialFilterState: FilterState = {
+  action: '',
+  adminID: '',
+  targetCustomerID: '',
+  from: '',
+  to: '',
+  page: 1,
+}
+
+function filterReducer(state: FilterState, action: FilterAction): FilterState {
+  switch (action.type) {
+    case 'SET_ACTION':
+      return { ...state, action: action.payload, page: 1 }
+    case 'SET_ADMIN_ID':
+      return { ...state, adminID: action.payload, page: 1 }
+    case 'SET_TARGET_CUSTOMER_ID':
+      return { ...state, targetCustomerID: action.payload, page: 1 }
+    case 'SET_FROM':
+      return { ...state, from: action.payload, page: 1 }
+    case 'SET_TO':
+      return { ...state, to: action.payload, page: 1 }
+    case 'SET_PAGE':
+      return { ...state, page: action.payload }
+    default:
+      return state
+  }
+}
+
 export function AdminAuditLogPage() {
-  const [action, setAction] = useState('')
-  const [adminID, setAdminID] = useState('')
-  const [targetCustomerID, setTargetCustomerID] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [page, setPage] = useState(1)
+  const [state, dispatch] = useReducer(filterReducer, initialFilterState)
   const perPage = 20
 
-  const { data, isLoading } = useAdminAuditLog(adminID, action, targetCustomerID, from, to, page, perPage)
+  const { data, isLoading } = useAdminAuditLog(state.adminID, state.action, state.targetCustomerID, state.from, state.to, state.page, perPage)
 
   const formatDetails = (details: unknown): string => {
     if (!details) return '-'
@@ -76,7 +116,7 @@ export function AdminAuditLogPage() {
         </div>
         {data && (
           <Badge variant="secondary" className="text-sm">
-            <ScrollText className="h-3.5 w-3.5 mr-1" />
+            <ScrollText className="size-3.5 mr-1" />
             {data.total} รายการ
           </Badge>
         )}
@@ -84,8 +124,8 @@ export function AdminAuditLogPage() {
 
       <div className="flex flex-wrap gap-3 mb-4">
         <select
-          value={action}
-          onChange={(e) => { setAction(e.target.value); setPage(1) }}
+          value={state.action}
+          onChange={(e) => dispatch({ type: 'SET_ACTION', payload: e.target.value })}
           className="h-9 rounded-md border border-border bg-background px-3 text-sm text-foreground"
         >
           <option value="">ทุกการกระทำ</option>
@@ -95,26 +135,26 @@ export function AdminAuditLogPage() {
         </select>
         <Input
           placeholder="Admin ID"
-          value={adminID}
-          onChange={(e) => { setAdminID(e.target.value); setPage(1) }}
+          value={state.adminID}
+          onChange={(e) => dispatch({ type: 'SET_ADMIN_ID', payload: e.target.value })}
           className="max-w-[180px]"
         />
         <Input
           placeholder="Customer ID เป้าหมาย"
-          value={targetCustomerID}
-          onChange={(e) => { setTargetCustomerID(e.target.value); setPage(1) }}
+          value={state.targetCustomerID}
+          onChange={(e) => dispatch({ type: 'SET_TARGET_CUSTOMER_ID', payload: e.target.value })}
           className="max-w-[200px]"
         />
         <Input
           type="datetime-local"
-          value={from}
-          onChange={(e) => { setFrom(e.target.value); setPage(1) }}
+          value={state.from}
+          onChange={(e) => dispatch({ type: 'SET_FROM', payload: e.target.value })}
           className="max-w-[200px]"
         />
         <Input
           type="datetime-local"
-          value={to}
-          onChange={(e) => { setTo(e.target.value); setPage(1) }}
+          value={state.to}
+          onChange={(e) => dispatch({ type: 'SET_TO', payload: e.target.value })}
           className="max-w-[200px]"
         />
       </div>
@@ -176,10 +216,10 @@ export function AdminAuditLogPage() {
             หน้า {data.page} จาก {data.total_pages}
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            <Button variant="outline" size="sm" disabled={state.page <= 1} onClick={() => dispatch({ type: 'SET_PAGE', payload: state.page - 1 })}>
               ก่อนหน้า
             </Button>
-            <Button variant="outline" size="sm" disabled={page >= data.total_pages} onClick={() => setPage((p) => p + 1)}>
+            <Button variant="outline" size="sm" disabled={state.page >= data.total_pages} onClick={() => dispatch({ type: 'SET_PAGE', payload: state.page + 1 })}>
               ถัดไป
             </Button>
           </div>

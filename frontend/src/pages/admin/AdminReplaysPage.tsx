@@ -42,7 +42,7 @@ export function AdminReplaysPage() {
         </div>
         {data && (
           <Badge variant="secondary" className="text-sm">
-            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            <RefreshCw className="size-3.5 mr-1" />
             {data.total} เซสชัน
           </Badge>
         )}

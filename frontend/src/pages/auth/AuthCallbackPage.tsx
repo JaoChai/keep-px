@@ -46,7 +46,7 @@ export function AuthCallbackPage() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
-        <div className="h-8 w-8 mx-auto animate-spin rounded-full border-4 border-muted border-t-foreground" />
+        <div className="size-8 mx-auto animate-spin rounded-full border-4 border-muted border-t-foreground" />
         <p className="mt-4 text-sm text-muted-foreground">กำลังเข้าสู่ระบบ...</p>
       </div>
     </div>
