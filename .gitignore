@@ -29,3 +29,8 @@ test-results/
 
 # Git worktrees
 .worktrees/
+
+# Local agent / skill configs (Claude Code, Codex, etc.)
+.claude/skills/learned/
+frontend/.agents/
+frontend/.claude/

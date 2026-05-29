@@ -1,4 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
+import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Load .env.e2e.local first (production/real FB testing), then override with shell env.
+// Resolve relative to this config so the file is found regardless of cwd.
+dotenv.config({ path: path.resolve(__dirname, '.env.e2e.local'), override: false })
 
 const isCI = !!process.env.CI
 const useExternalURL = !!process.env.E2E_BASE_URL
