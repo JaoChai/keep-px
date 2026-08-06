@@ -432,7 +432,7 @@ git commit -m "chore(billing): upgrade stripe-go to v84"
 
 **Files:**
 - Modify: `backend/go.mod`, `backend/go.sum`
-- Modify: the same four billing files as Task 4 (import blocks)
+- Modify: the same three billing files as Task 4 (import blocks)
 
 **Interfaces:**
 - Consumes: `stripe-go/v84` from Task 4.
@@ -528,7 +528,7 @@ git commit -m "chore(billing): upgrade stripe-go to v85"
 
 **Files:**
 - Modify: `backend/go.mod`, `backend/go.sum`
-- Modify: the same four billing files (import blocks)
+- Modify: the same three billing files (import blocks)
 
 **Interfaces:**
 - Consumes: `stripe-go/v85` from Task 5.

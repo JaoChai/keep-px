@@ -55,7 +55,7 @@ Pre-existing defects found during the scan, unrelated to any version bump. Shipp
 
 ### PR2 — Frontend Dependencies
 
-- `react-router` 7.13.0 → 8.3.0
+- `react-router` 7.13.0 → 8.3.0. **This raises hard floors the repo must keep meeting:** `engines.node >= 22.22.0` (v7 asked only for `>=20`) and peer `react`/`react-dom` `>= 19.2.7` (v7 accepted `>=18`). Both are satisfied — `node:22-alpine` currently resolves to v22.23.2 and react is on 19.2.8 — but this is why Node 22 is now a requirement rather than a preference. Dropping either below its floor breaks routing at runtime, and `frontend/package.json` declares no `engines` field to catch it.
 - 29 remaining minor/patch upgrades: `react`/`react-dom` 19.2.4→19.2.8, `@tanstack/react-query` 5.90→5.101, `tailwindcss` + `@tailwindcss/vite` 4.2→4.3, `@playwright/test` 1.59→1.62, `axios` 1.13→1.19, `react-hook-form` 7.71→7.84, `recharts` 3.7→3.10, `zod` 4.3→4.4, `zustand` 5.0.11→5.0.14, `vite` 7.3.1→7.3.6 (stays on 7), `vitest` 4.0→4.1, `typescript-eslint` 8.56→8.66, `@types/node` 24.10→24.13, and the Radix UI set.
 
 Six packages have no minor/patch available at all — only a major — and are therefore left untouched: `typescript`, `lucide-react`, `dotenv`, `globals`, `jsdom`, `eslint-plugin-react-refresh`.
@@ -65,7 +65,7 @@ Six packages have no minor/patch available at all — only a major — and are t
 ### PR3 — Backend Dependencies + Go 1.26
 
 - `jackc/pgx/v5` 5.8.0 → 5.10.0
-- `go-chi/chi/v5` 5.2.5 → 5.3.1
+- ~~`go-chi/chi/v5` 5.2.5 → 5.3.1~~ — **dropped during execution.** v5.3.1 deprecates `middleware.RealIP` over an IP-spoofing advisory this codebase is exposed to through its per-IP rate limiter. Fixing it changes request-IP behaviour behind the proxy, so it moved to its own PR: see `2026-08-06-dependency-update-followups.md` §1.
 - `aws-sdk-go-v2` 1.41.2 → 1.43.4, `aws-sdk-go-v2/service/s3` 1.96.1 → 1.106.5, `aws-sdk-go-v2/credentials` 1.19.10 → 1.19.34
 - `go-playground/validator/v10` 10.30.1 → 10.30.3
 - `golang.org/x/sync` 0.19.0 → 0.22.0, `golang.org/x/time` 0.14.0 → 0.15.0
@@ -116,7 +116,7 @@ Folded into the relevant PRs rather than shipped separately.
 ## Success Criteria
 
 1. `npm outdated` shows no remaining minor/patch drift. Exactly 12 rows remain, all of them deliberately-deferred majors: `typescript`, `vite`, `eslint`, `@eslint/js`, `eslint-plugin-react-refresh`, `@vitejs/plugin-react`, `@types/node`, `dotenv`, `globals`, `jsdom`, `lucide-react`, `react-doctor`. `react-router` no longer appears.
-2. `go list -m -u -f '{{if and (not .Indirect) .Update}}...'` returns empty for direct modules.
+2. `go list -m -u -f '{{if and (not .Indirect) .Update}}...'` returns nothing but `go-chi/chi/v5`, which is held at 5.2.5 on purpose (see above).
 3. `stripe-go` is at v86.2.0 and the full billing test suite passes.
 4. CI is green on Go 1.26 and Node 22.
 5. `docs/user-guide-th.md` contains no reference to removed features.
