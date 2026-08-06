@@ -635,7 +635,7 @@ func TestBillingHandler_Webhook_ValidCheckoutSessionCompleted(t *testing.T) {
 	webhookRepo.AssertNumberOfCalls(t, "CreateIfNotExists", 1)
 	webhookRepo.AssertExpectations(t)
 	// Claim kept (process succeeded) -> no rollback delete.
-	webhookRepo.AssertNotCalled(t, "Delete")
+	webhookRepo.AssertNumberOfCalls(t, "Delete", 0)
 }
 
 func TestBillingHandler_Webhook_ValidSubscriptionUpdated(t *testing.T) {
@@ -678,7 +678,7 @@ func TestBillingHandler_Webhook_ValidSubscriptionUpdated(t *testing.T) {
 	webhookRepo.AssertCalled(t, "CreateIfNotExists", mock.Anything, evtID, "customer.subscription.updated")
 	customerRepo.AssertCalled(t, "GetByStripeCustomerID", mock.Anything, stripeCus)
 	subRepo.AssertCalled(t, "Create", mock.Anything, mock.AnythingOfType("*domain.Subscription"))
-	purchaseRepo.AssertNotCalled(t, "GetByID")
+	purchaseRepo.AssertNumberOfCalls(t, "GetByID", 0)
 
 	webhookRepo.AssertExpectations(t)
 	customerRepo.AssertExpectations(t)
@@ -701,7 +701,7 @@ func TestBillingHandler_Webhook_InvalidSignature(t *testing.T) {
 	h.Webhook(rec, req)
 
 	assert.Equal(t, 400, rec.Code)
-	webhookRepo.AssertNotCalled(t, "CreateIfNotExists")
+	webhookRepo.AssertNumberOfCalls(t, "CreateIfNotExists", 0)
 }
 
 func TestBillingHandler_Webhook_NonEventObjectRejected(t *testing.T) {
@@ -722,7 +722,7 @@ func TestBillingHandler_Webhook_NonEventObjectRejected(t *testing.T) {
 	h.Webhook(rec, req)
 
 	assert.Equal(t, 400, rec.Code)
-	webhookRepo.AssertNotCalled(t, "CreateIfNotExists")
+	webhookRepo.AssertNumberOfCalls(t, "CreateIfNotExists", 0)
 }
 
 func TestBillingHandler_Webhook_DuplicateEventIsNoOp(t *testing.T) {
@@ -747,11 +747,11 @@ func TestBillingHandler_Webhook_DuplicateEventIsNoOp(t *testing.T) {
 
 	assert.Equal(t, 200, rec.Code)
 	webhookRepo.AssertNumberOfCalls(t, "CreateIfNotExists", 1)
-	webhookRepo.AssertNotCalled(t, "Delete")
+	webhookRepo.AssertNumberOfCalls(t, "Delete", 0)
 	// No purchase / credit write happened downstream.
-	purchaseRepo.AssertNotCalled(t, "GetByID")
-	purchaseRepo.AssertNotCalled(t, "UpdateStatus")
-	creditRepo.AssertNotCalled(t, "Create")
+	purchaseRepo.AssertNumberOfCalls(t, "GetByID", 0)
+	purchaseRepo.AssertNumberOfCalls(t, "UpdateStatus", 0)
+	creditRepo.AssertNumberOfCalls(t, "Create", 0)
 
 	webhookRepo.AssertExpectations(t)
 }
@@ -772,6 +772,6 @@ func TestBillingHandler_Webhook_UnknownEventType(t *testing.T) {
 
 	assert.Equal(t, 200, rec.Code)
 	// Never reaches ProcessWebhookEvent, so no repo is called.
-	webhookRepo.AssertNotCalled(t, "CreateIfNotExists")
-	purchaseRepo.AssertNotCalled(t, "GetByID")
+	webhookRepo.AssertNumberOfCalls(t, "CreateIfNotExists", 0)
+	purchaseRepo.AssertNumberOfCalls(t, "GetByID", 0)
 }

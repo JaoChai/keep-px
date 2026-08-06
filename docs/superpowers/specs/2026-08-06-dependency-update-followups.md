@@ -110,6 +110,8 @@ Why not an XFF-based middleware instead? The two ingress paths have different ho
 
 **Residual risk, stated plainly:** if `X-Real-IP` ever arrives empty, `GetClientIP` returns `""` and every consumer falls back to `r.RemoteAddr` — for Nginx-proxied traffic that is the shared internal address again. That is a degradation to today's behaviour, not a spoofing hole.
 
+A second residual risk is historical, not forward-looking. Events recorded before this change still hold whatever `client_ip` an attacker supplied at the time, and `backend/internal/service/replay_service.go` sends that stored value back to CAPI on replay. This change only stops new spoofing; it does not clean up the data already in the database.
+
 ## Verification
 
 - Unit test: a request carrying a forged `True-Client-IP` must not change the IP the rate limiter keys on.
@@ -118,7 +120,9 @@ Why not an XFF-based middleware instead? The two ingress paths have different ho
 - Unit test: with no proxy headers, the resolved IP falls back to `RemoteAddr`.
 - Unit test: two requests with *different* forged `True-Client-IP` values share one limiter bucket (this is the bypass, expressed as a test).
 - Existing rate-limit tests must keep passing.
-- **Manual, after deploy** — the one claim unit tests cannot cover is that Railway's edge sets `X-Real-IP` for the `pixlinks-web` service too. Probe A proves it for `pixlinks-api`; both sit behind the same Railway HTTP proxy, so this is expected but unverified. Re-run probes B, E and F against the deployed build: B and F must return the real client IP, and E must no longer return `100.64.0.3`.
+- **Manual, after deploy** — the one claim unit tests cannot cover is that Railway's edge sets `X-Real-IP` for the `pixlinks-web` service too. Probe A proves it for `pixlinks-api`; both sit behind the same Railway HTTP proxy, so this is expected but unverified. Re-run probes A, B, E and F against the deployed build: B and F must return the real client IP, and E must no longer return `100.64.0.3`.
+
+  Probe A must be re-run for a second reason, unrelated to the `pixlinks-web` claim. chi v5.3.1's `ClientIPFromHeader` resolves the **last** value when `X-Real-IP` arrives with multiple values (chi `middleware/client_ip.go:47`), whereas the deprecated `RealIP` it replaces took the **first**. Probe A as measured on 2026-08-06 was observed under the take-the-first semantics, so it only proves the edge places its value in the first position. It cannot distinguish "the edge overwrites the whole header" (safe) from "the edge prepends its value and leaves any client-supplied value behind it" (the forged value would win under the new last-value semantics). Re-running probe A against the deployed build closes that gap. (The Nginx path is unaffected by this, because `proxy_set_header` emits a single-valued header.)
 
 ---
 

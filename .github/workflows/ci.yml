@@ -65,6 +65,17 @@ jobs:
           version: v2.12.1
           working-directory: backend
 
+      - name: guard client IP middleware
+        run: |
+          if grep -q 'chimiddleware.RealIP' internal/router/router.go; then
+            echo "::error::router.go uses chimiddleware.RealIP — it trusts client-supplied True-Client-IP. Use ClientIPFromHeader(\"X-Real-IP\"). See docs/superpowers/specs/2026-08-06-dependency-update-followups.md"
+            exit 1
+          fi
+          if ! grep -q 'ClientIPFromHeader("X-Real-IP")' internal/router/router.go; then
+            echo "::error::router.go no longer registers ClientIPFromHeader(\"X-Real-IP\") — the rate limiter would fall back to the proxy address for every request"
+            exit 1
+          fi
+
       - name: go vet
         run: go vet ./...
 
