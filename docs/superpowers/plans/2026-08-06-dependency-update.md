@@ -607,8 +607,10 @@ git commit -m "chore(billing): upgrade stripe-go to v86"
 
 ## Task 7: Documentation Sync
 
+> **Outcome: no change was needed.** Executed 2026-08-06 and closed as a no-op. This task was written on the assumption that a guide predating PRs #202/#203/#204 must describe the removed notification feature and a popup OAuth flow. That assumption was never checked against the file, and it was wrong: both greps in Step 1 return no matches, and §1.1 describes the login without promising a popup, so it already reads correctly for the redirect flow. The only `เตือน` hit is `คำเตือนถ้า Event เก่าเกินไป` at line 202 — a warning inside Replay Preview, unrelated to the deleted feature, correctly kept. Success criterion 5 was already satisfied by the file as it stood. Steps below are retained as the record of what was checked.
+
 **Files:**
-- Modify: `docs/user-guide-th.md`
+- Modify: `docs/user-guide-th.md` — *(not modified; nothing to change)*
 
 **Interfaces:**
 - Consumes: nothing.
@@ -641,12 +643,7 @@ grep -n 'แจ้งเตือน\|notification\|Notification\|ป๊อป�
 
 Expected: no matches for removed features, `exit=1`. Words like "notification" appearing inside an unrelated sentence are acceptable if they do not describe the deleted feature — judge each hit.
 
-- [ ] **Step 5: Commit**
-
-```bash
-git add docs/user-guide-th.md
-git commit -m "docs: remove references to deleted notification feature and popup OAuth"
-```
+- [ ] **Step 5: Commit** — *skipped.* There was nothing to stage. Committing the prescribed message would have claimed a removal that never happened.
 
 ---
 
@@ -684,7 +681,7 @@ Implements docs/superpowers/specs/2026-08-06-dependency-update-design.md
 - Backend: 10 direct module bumps, Go 1.25.6→1.26.5
 - Billing: stripe-go v82→v86, applied one major at a time
 - Config: Node 23→22 in Dockerfile, removed redundant baseUrl
-- Docs: removed references to the deleted notification feature
+- Docs: checked docs/user-guide-th.md against the removed notification feature and the popup→redirect OAuth change; it was already accurate, so no edit was made
 
 Deliberately deferred: Vite 8 (Rolldown), TypeScript 7 (tsgo), ESLint 10.
 
