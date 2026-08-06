@@ -68,10 +68,24 @@ rate limiter keys on. Verified live in production (probes B and F in the spec).
    | `TestRateLimitKey_SeparatesDistinctXRealIP` | limiter rps=1, 5 requests each with a different `X-Real-IP` | all 200 — genuine distinct clients still get their own bucket |
    | `TestRateLimitKey_FallsBackToRemoteAddr` | no proxy headers at all, rps=1, 5 requests from one `RemoteAddr` | at least one 429 |
 
-   Run `go test ./internal/middleware/ -run TestRateLimitKey -race -count=1` and
-   confirm they FAIL for the right reason (the forged-header tests pass all 5
-   requests today because each forged IP gets its own bucket). Paste that failing
-   output into your report.
+   Run `go test ./internal/middleware/ -run TestRateLimitKey -race -count=1`.
+
+   **Expect exactly one RED: `TestRateLimitKey_SeparatesDistinctXRealIP`.** Today
+   the limiter keys on `r.RemoteAddr`, so five requests sharing one `RemoteAddr`
+   collapse into a single bucket and that test's "all 200" assertion fails. After
+   step 4 it keys on the resolved client IP and passes.
+
+   The other three are expected to pass already, and that is correct — they are
+   regression guards, not RED drivers. The test chain wires
+   `ClientIPFromHeader`, which never touches `r.RemoteAddr`, so forged
+   `True-Client-IP` / `X-Forwarded-For` values cannot move the key even before
+   the fix. The production bug needs `RealIP` in the chain to reproduce, and
+   `RealIP` is what step 3 deletes; pinning a test to it would only test code
+   being removed. What these three lock in is that the *new* wiring stays immune.
+   The guard against someone re-introducing `RealIP` is the `grep` in **Verify**.
+
+   Report the real `go test` output. Do not describe a test as failing when it
+   passed.
 
 3. `internal/router/router.go:30` — replace
    `r.Use(chimiddleware.RealIP)` with
@@ -131,8 +145,9 @@ rate limiter keys on. Verified live in production (probes B and F in the spec).
    ```
 
    Then remove the `headerCFConnectingIP` and `headerTrueClientIP` constants at
-   lines 23–24 — your change is what orphaned them. Check whether `strings` is
-   still used elsewhere in the file before removing that import; it probably is.
+   lines 23–24 — your change is what orphaned them. The `strings` import is
+   orphaned too: its only use in this file is the `strings.TrimSpace` on line 245
+   inside the function you are replacing. Remove it as well.
 
 7. `internal/handler/event_handler_test.go` — the existing `extractClientIP`
    table test asserts the old header-trusting behaviour and will now fail.
