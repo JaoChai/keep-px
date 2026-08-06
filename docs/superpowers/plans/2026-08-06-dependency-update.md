@@ -209,16 +209,25 @@ cd frontend && npm outdated
 
 Expected: exactly 12 rows, all deferred majors — `typescript`, `vite`, `eslint`, `@eslint/js`, `eslint-plugin-react-refresh`, `@vitejs/plugin-react`, `@types/node`, `dotenv`, `globals`, `jsdom`, `lucide-react`, `react-doctor`. `react-router` must be gone. Any other row means something was missed.
 
-- [ ] **Step 9: Run the E2E suite**
+- [ ] **Step 9: Run the E2E suite — against local infrastructure only**
 
-Start Postgres first, since Playwright boots the real backend:
+⚠️ A bare `npx playwright test` in this repo hits **production**. Two defaults conspire:
+
+- `frontend/.env.e2e.local` sets `E2E_BASE_URL=https://pixlinks.xyz`, and `playwright.config.ts:10` loads that file on every run. `playwright.config.ts:13` then sets `useExternalURL`, which skips starting any local server.
+- `backend/.env` points `DATABASE_URL` at the Neon **main** branch — production data. So even a local backend writes to production unless the variable is overridden.
+
+Override both. `godotenv` does not overwrite variables that already exist (`backend/internal/config/config.go:60-62`), so an exported `DATABASE_URL` wins over `.env`:
 
 ```bash
 docker compose up -d postgres
-cd frontend && npx playwright test
+cd frontend && E2E_BASE_URL= \
+  DATABASE_URL='postgres://pixlinks:pixlinks_dev@localhost:5432/pixlinks?sslmode=disable' \
+  npx playwright test
 ```
 
-Playwright's `webServer` config starts `go run ./cmd/server` on :8080 and `npm run dev` on :5173 automatically. Expected: all 19 specs in `frontend/e2e/tests/` pass. Routing regressions surface here — `navigation.spec.ts` and `auth.spec.ts` are the ones that exercise React Router hardest.
+With `E2E_BASE_URL` emptied, Playwright's `webServer` config starts `go run ./cmd/server` on :8080 and `npm run dev` on :5173 itself. The backend runs its migrations against the empty Docker database on boot.
+
+Expected: routing specs pass — `navigation.spec.ts` and `auth.spec.ts` exercise React Router hardest and are the reason this step exists. Specs that need seeded data or a real Facebook pixel (`production-smoke.spec.ts`, `production-workflow.spec.ts`, and anything reading `REAL_PIXEL_A_ID`) will fail against an empty database. That is expected here and is not a React Router regression — record which specs failed and why in the report; do not chase them.
 
 - [ ] **Step 10: Commit**
 
@@ -573,10 +582,14 @@ If `stripe` CLI is unavailable, stop and report rather than skipping. Merging PR
 
 ```bash
 docker compose up -d postgres
-cd frontend && npx playwright test e2e/tests/billing.spec.ts
+cd frontend && E2E_BASE_URL= \
+  DATABASE_URL='postgres://pixlinks:pixlinks_dev@localhost:5432/pixlinks?sslmode=disable' \
+  npx playwright test e2e/tests/billing.spec.ts
 ```
 
-Expected: pass.
+Both overrides are mandatory — see Task 2 Step 9 for why a bare `npx playwright test` hits production.
+
+Expected: pass, or fail only on assertions that need seeded billing data. Record which, and why.
 
 - [ ] **Step 7: Commit**
 
@@ -641,8 +654,12 @@ docker compose up -d postgres
 cd backend && go vet ./... && go test -race -count=1 ./... && \
   TEST_DATABASE_URL='postgres://pixlinks:pixlinks_dev@localhost:5432/pixlinks?sslmode=disable' \
   go test -race -tags=integration ./internal/repository/postgres/...
-cd ../frontend && npm run lint && npm run test && npm run build && npx playwright test
+cd ../frontend && npm run lint && npm run test && npm run build && \
+  E2E_BASE_URL= DATABASE_URL='postgres://pixlinks:pixlinks_dev@localhost:5432/pixlinks?sslmode=disable' \
+  npx playwright test
 ```
+
+Never drop those two overrides — see Task 2 Step 9.
 
 - [ ] **Confirm the spec's success criteria**
 
