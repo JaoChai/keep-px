@@ -23,7 +23,7 @@ func resolvedClientIP(r *http.Request) string {
 	return got
 }
 
-func TestExtractClientIP(t *testing.T) {
+func TestResolvedClientIP(t *testing.T) {
 	tests := []struct {
 		name     string
 		headers  map[string]string
