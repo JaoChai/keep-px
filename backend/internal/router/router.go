@@ -27,7 +27,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 	// Global middleware
 	r.Use(chimiddleware.Recoverer)
-	r.Use(chimiddleware.RealIP)
+	r.Use(chimiddleware.ClientIPFromHeader("X-Real-IP"))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.CORS(cfg.CORSAllowedOrigins))

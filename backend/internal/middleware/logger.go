@@ -30,6 +30,7 @@ func Logger(logger *slog.Logger) func(http.Handler) http.Handler {
 				"status", rw.status,
 				"duration", time.Since(start).String(),
 				"remote_addr", r.RemoteAddr,
+				"client_ip", ClientIP(r),
 			}
 
 			switch {

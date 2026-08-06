@@ -1,13 +1,19 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/stripe/stripe-go/v86/webhook"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -36,6 +42,19 @@ func nbBillingConfig() *config.Config {
 		JWTRefreshTTL: 7 * 24 * time.Hour,
 		// Stripe keys intentionally empty to test non-Stripe paths
 	}
+}
+
+// nbWebhookSecret is the Stripe signing secret embedded in the webhook test
+// handler config. Payloads are signed with webhook.ComputeSignature using it.
+const nbWebhookSecret = "whsec_test_secret"
+
+// nbBillingConfigWithWebhook returns nbBillingConfig with the webhook signing
+// secret set, so Webhook can verify signed test payloads. Stripe API keys stay
+// empty — the handler only needs the secret for ConstructEventWithOptions.
+func nbBillingConfigWithWebhook() *config.Config {
+	cfg := nbBillingConfig()
+	cfg.StripeWebhookSecret = nbWebhookSecret
+	return cfg
 }
 
 // nbNewTestBillingService creates a BillingService with mock repos and no Stripe config.
@@ -524,4 +543,235 @@ func TestBillingHandler_CreatePortalSession(t *testing.T) {
 		rec := doRequest(r, "POST", "/billing/portal", nil, "")
 		assert.Equal(t, 401, rec.Code)
 	})
+}
+
+// ---------------------------------------------------------------------------
+// Webhook tests
+// ---------------------------------------------------------------------------
+//
+// These tests exercise the real signature-verification path: every payload is
+// signed with webhook.ComputeSignature (stripe-go's own test helper), so
+// BillingHandler.Webhook -> webhook.ConstructEventWithOptions genuinely
+// verifies it. No signature logic is stubbed — that would defeat the point.
+
+// nbNewWebhookHandler wires a BillingHandler to the given mock repos (backing a
+// real *service.BillingService) with the test webhook secret. The Webhook
+// handler only ever reaches billingService -> webhookRepo and the per-event
+// business repos; QuotaService is unused by Webhook but required by the
+// constructor.
+func nbNewWebhookHandler(
+	purchaseRepo *mocks.MockPurchaseRepo,
+	creditRepo *mocks.MockReplayCreditRepo,
+	subRepo *mocks.MockSubscriptionRepo,
+	customerRepo *mocks.MockCustomerRepo,
+	webhookRepo *mocks.MockWebhookEventRepo,
+) *BillingHandler {
+	billingSvc := nbNewTestBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookRepo)
+	quotaSvc := nbNewTestQuotaService(
+		&mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{}, &mocks.MockEventUsageRepo{},
+		&mocks.MockPixelRepo{}, &mocks.MockSalePageRepo{}, &mocks.MockCustomerRepo{},
+	)
+	return NewBillingHandler(billingSvc, quotaSvc, nbBillingConfigWithWebhook(), testLogger())
+}
+
+// nbEventPayload marshals a Stripe webhook event envelope. topObject is the
+// top-level "object" field ("event" for a genuine event); dataObject becomes
+// event.Data.Raw, which the handler unmarshals into the per-type Stripe struct.
+func nbEventPayload(topObject, eventID, eventType string, dataObject map[string]interface{}) []byte {
+	payload := map[string]interface{}{
+		"id":     eventID,
+		"object": topObject,
+		"type":   eventType,
+		"data":   map[string]interface{}{"object": dataObject},
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		panic("failed to marshal webhook event payload: " + err.Error())
+	}
+	return b
+}
+
+// nbSignPayload builds the Stripe-Signature header value for payload using
+// webhook.ComputeSignature (the SDK's own test helper). The format
+// t=<unix>,v1=<hex> matches what parseSignatureHeader in webhook/client.go
+// expects.
+func nbSignPayload(payload []byte, secret string, ts time.Time) string {
+	sig := webhook.ComputeSignature(ts, payload, secret)
+	return fmt.Sprintf("t=%d,v1=%s", ts.Unix(), hex.EncodeToString(sig))
+}
+
+// nbSignedWebhookPOST builds a POST request carrying the exact signed payload
+// bytes plus the Stripe-Signature header, and returns a recorder to capture it.
+func nbSignedWebhookPOST(payload []byte, sigHeader string) (*httptest.ResponseRecorder, *http.Request) {
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/stripe", bytes.NewReader(payload))
+	req.Header.Set("Stripe-Signature", sigHeader)
+	return httptest.NewRecorder(), req
+}
+
+func TestBillingHandler_Webhook_ValidCheckoutSessionCompleted(t *testing.T) {
+	const evtID = "evt_checkout_completed"
+	webhookRepo := &mocks.MockWebhookEventRepo{}
+
+	// Present (but un-expectanted) so we can assert the checkout path leaves
+	// them untouched.
+	purchaseRepo := &mocks.MockPurchaseRepo{}
+	creditRepo := &mocks.MockReplayCreditRepo{}
+
+	h := nbNewWebhookHandler(purchaseRepo, creditRepo,
+		&mocks.MockSubscriptionRepo{}, &mocks.MockCustomerRepo{}, webhookRepo)
+
+	// Session has no purchase_id metadata, so HandleCheckoutCompleted returns nil
+	// immediately (not a replay_single purchase) without touching the tx pool.
+	payload := nbEventPayload("event", evtID, "checkout.session.completed",
+		map[string]interface{}{"id": "cs_test_1"})
+
+	webhookRepo.On("CreateIfNotExists", mock.Anything, evtID, "checkout.session.completed").
+		Return(true, nil)
+
+	rec, req := nbSignedWebhookPOST(payload, nbSignPayload(payload, nbWebhookSecret, time.Now()))
+	h.Webhook(rec, req)
+
+	assert.Equal(t, 200, rec.Code)
+	webhookRepo.AssertNumberOfCalls(t, "CreateIfNotExists", 1)
+	webhookRepo.AssertExpectations(t)
+	// Claim kept (process succeeded) -> no rollback delete.
+	webhookRepo.AssertNumberOfCalls(t, "Delete", 0)
+}
+
+func TestBillingHandler_Webhook_ValidSubscriptionUpdated(t *testing.T) {
+	const (
+		evtID     = "evt_sub_updated"
+		stripeCus = "cus_test_123"
+		stripeSub = "sub_test_1"
+	)
+	webhookRepo := &mocks.MockWebhookEventRepo{}
+	customerRepo := &mocks.MockCustomerRepo{}
+	subRepo := &mocks.MockSubscriptionRepo{}
+	// Present so we can assert the subscription path did NOT route into checkout.
+	purchaseRepo := &mocks.MockPurchaseRepo{}
+
+	h := nbNewWebhookHandler(purchaseRepo, &mocks.MockReplayCreditRepo{}, subRepo, customerRepo, webhookRepo)
+
+	// Empty items -> addonType stays "unknown", so no plan/credit activation runs
+	// and the test stays focused on routing.
+	payload := nbEventPayload("event", evtID, "customer.subscription.updated",
+		map[string]interface{}{
+			"id":       stripeSub,
+			"customer": stripeCus,
+			"status":   "active",
+			"items":    map[string]interface{}{"object": "list", "data": []interface{}{}},
+		})
+
+	webhookRepo.On("CreateIfNotExists", mock.Anything, evtID, "customer.subscription.updated").
+		Return(true, nil)
+	customerRepo.On("GetByStripeCustomerID", mock.Anything, stripeCus).
+		Return(&domain.Customer{ID: "cust-internal-1"}, nil)
+	subRepo.On("GetByStripeSubscriptionID", mock.Anything, stripeSub).Return((*domain.Subscription)(nil), nil)
+	subRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.Subscription")).Return(nil)
+
+	rec, req := nbSignedWebhookPOST(payload, nbSignPayload(payload, nbWebhookSecret, time.Now()))
+	h.Webhook(rec, req)
+
+	assert.Equal(t, 200, rec.Code)
+
+	// Routed down the subscription branch, NOT the checkout branch.
+	webhookRepo.AssertCalled(t, "CreateIfNotExists", mock.Anything, evtID, "customer.subscription.updated")
+	customerRepo.AssertCalled(t, "GetByStripeCustomerID", mock.Anything, stripeCus)
+	subRepo.AssertCalled(t, "Create", mock.Anything, mock.AnythingOfType("*domain.Subscription"))
+	purchaseRepo.AssertNumberOfCalls(t, "GetByID", 0)
+
+	webhookRepo.AssertExpectations(t)
+	customerRepo.AssertExpectations(t)
+	subRepo.AssertExpectations(t)
+}
+
+func TestBillingHandler_Webhook_InvalidSignature(t *testing.T) {
+	webhookRepo := &mocks.MockWebhookEventRepo{}
+
+	h := nbNewWebhookHandler(
+		&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+		&mocks.MockCustomerRepo{}, webhookRepo)
+
+	payload := nbEventPayload("event", "evt_bad_sig", "checkout.session.completed",
+		map[string]interface{}{"id": "cs_test_1"})
+
+	// Signed with the WRONG secret — ConstructEvent must reject before any repo
+	// is touched.
+	rec, req := nbSignedWebhookPOST(payload, nbSignPayload(payload, "whsec_wrong_secret", time.Now()))
+	h.Webhook(rec, req)
+
+	assert.Equal(t, 400, rec.Code)
+	webhookRepo.AssertNumberOfCalls(t, "CreateIfNotExists", 0)
+}
+
+func TestBillingHandler_Webhook_NonEventObjectRejected(t *testing.T) {
+	webhookRepo := &mocks.MockWebhookEventRepo{}
+
+	h := nbNewWebhookHandler(
+		&mocks.MockPurchaseRepo{}, &mocks.MockReplayCreditRepo{}, &mocks.MockSubscriptionRepo{},
+		&mocks.MockCustomerRepo{}, webhookRepo)
+
+	// Correctly signed, but the top-level object is "payment_intent", not "event".
+	// This trips checkEventNotification inside ConstructEventWithOptions — the
+	// v85 thin-event-notification guard. Regression test: a thin event must NOT
+	// be silently accepted as a full Event.
+	payload := nbEventPayload("payment_intent", "evt_thin", "payment_intent.created",
+		map[string]interface{}{"id": "pi_test_1"})
+
+	rec, req := nbSignedWebhookPOST(payload, nbSignPayload(payload, nbWebhookSecret, time.Now()))
+	h.Webhook(rec, req)
+
+	assert.Equal(t, 400, rec.Code)
+	webhookRepo.AssertNumberOfCalls(t, "CreateIfNotExists", 0)
+}
+
+func TestBillingHandler_Webhook_DuplicateEventIsNoOp(t *testing.T) {
+	const evtID = "evt_duplicate"
+	webhookRepo := &mocks.MockWebhookEventRepo{}
+	purchaseRepo := &mocks.MockPurchaseRepo{}
+	creditRepo := &mocks.MockReplayCreditRepo{}
+
+	h := nbNewWebhookHandler(purchaseRepo, creditRepo,
+		&mocks.MockSubscriptionRepo{}, &mocks.MockCustomerRepo{}, webhookRepo)
+
+	payload := nbEventPayload("event", evtID, "checkout.session.completed",
+		map[string]interface{}{"id": "cs_test_1"})
+
+	// CreateIfNotExists reports the event was already claimed ->
+	// ProcessWebhookEvent short-circuits and never invokes the business handler.
+	webhookRepo.On("CreateIfNotExists", mock.Anything, evtID, "checkout.session.completed").
+		Return(false, nil)
+
+	rec, req := nbSignedWebhookPOST(payload, nbSignPayload(payload, nbWebhookSecret, time.Now()))
+	h.Webhook(rec, req)
+
+	assert.Equal(t, 200, rec.Code)
+	webhookRepo.AssertNumberOfCalls(t, "CreateIfNotExists", 1)
+	webhookRepo.AssertNumberOfCalls(t, "Delete", 0)
+	// No purchase / credit write happened downstream.
+	purchaseRepo.AssertNumberOfCalls(t, "GetByID", 0)
+	purchaseRepo.AssertNumberOfCalls(t, "UpdateStatus", 0)
+	creditRepo.AssertNumberOfCalls(t, "Create", 0)
+
+	webhookRepo.AssertExpectations(t)
+}
+
+func TestBillingHandler_Webhook_UnknownEventType(t *testing.T) {
+	webhookRepo := &mocks.MockWebhookEventRepo{}
+	purchaseRepo := &mocks.MockPurchaseRepo{}
+
+	h := nbNewWebhookHandler(purchaseRepo, &mocks.MockReplayCreditRepo{},
+		&mocks.MockSubscriptionRepo{}, &mocks.MockCustomerRepo{}, webhookRepo)
+
+	// A type the handler does not switch on -> default branch logs and returns 200.
+	payload := nbEventPayload("event", "evt_unknown", "invoice.payment_succeeded",
+		map[string]interface{}{"id": "in_test_1"})
+
+	rec, req := nbSignedWebhookPOST(payload, nbSignPayload(payload, nbWebhookSecret, time.Now()))
+	h.Webhook(rec, req)
+
+	assert.Equal(t, 200, rec.Code)
+	// Never reaches ProcessWebhookEvent, so no repo is called.
+	webhookRepo.AssertNumberOfCalls(t, "CreateIfNotExists", 0)
+	purchaseRepo.AssertNumberOfCalls(t, "GetByID", 0)
 }
