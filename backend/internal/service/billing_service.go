@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/stripe/stripe-go/v82"
-	portalsession "github.com/stripe/stripe-go/v82/billingportal/session"
-	checkoutsession "github.com/stripe/stripe-go/v82/checkout/session"
-	stripecustomer "github.com/stripe/stripe-go/v82/customer"
-	stripesub "github.com/stripe/stripe-go/v82/subscription"
+	"github.com/stripe/stripe-go/v84"
+	portalsession "github.com/stripe/stripe-go/v84/billingportal/session"
+	checkoutsession "github.com/stripe/stripe-go/v84/checkout/session"
+	stripecustomer "github.com/stripe/stripe-go/v84/customer"
+	stripesub "github.com/stripe/stripe-go/v84/subscription"
 
 	"golang.org/x/sync/errgroup"
 
