@@ -67,12 +67,14 @@ jobs:
 
       - name: guard client IP middleware
         run: |
+          # Presence of ClientIPFromHeader("X-Real-IP") is enforced by the
+          # router test TestRouter_ForgedHeadersCannotBuyFreshBuckets
+          # (internal/router/clientip_test.go), which fails when the middleware
+          # is absent or commented out. This step only guards against
+          # reintroducing chimiddleware.RealIP, which trusts the client-supplied
+          # True-Client-IP header.
           if grep -q 'chimiddleware.RealIP' internal/router/router.go; then
             echo "::error::router.go uses chimiddleware.RealIP — it trusts client-supplied True-Client-IP. Use ClientIPFromHeader(\"X-Real-IP\"). See docs/superpowers/specs/2026-08-06-dependency-update-followups.md"
-            exit 1
-          fi
-          if ! grep -q 'ClientIPFromHeader("X-Real-IP")' internal/router/router.go; then
-            echo "::error::router.go no longer registers ClientIPFromHeader(\"X-Real-IP\") — the rate limiter would fall back to the proxy address for every request"
             exit 1
           fi
 
@@ -117,6 +119,16 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      # Runs before npm ci: nginx.conf does not depend on node_modules, and a
+      # broken install would otherwise skip this guard entirely.
+      - name: guard nginx client IP forwarding
+        run: |
+          n=$(grep -c 'proxy_set_header X-Real-IP $http_x_real_ip;' nginx.conf || true)
+          if [ "$n" != "2" ]; then
+            echo "::error::nginx.conf must forward \$http_x_real_ip in both proxy blocks; \$remote_addr is Railway's edge proxy, not the visitor. See docs/superpowers/specs/2026-08-06-dependency-update-followups.md"
+            exit 1
+          fi
 
       - run: npm ci
       - run: npm run lint

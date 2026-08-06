@@ -295,8 +295,11 @@ every push.
    | `DuplicateEventIsNoOp` | correctly signed envelope; `CreateIfNotExists` returns `(false, nil)` | 200; the downstream handler is never reached — assert via the repo mocks that no purchase/credit/subscription write happened |
    | `UnknownEventType` | correctly signed envelope with a type the handler does not switch on | 200; no repo mock called |
 
-   Use `mock.AssertExpectations` / `AssertNotCalled` as the existing tests in
-   this file do.
+   Use `mock.AssertExpectations` for the positive cases as the existing tests
+   in this file do, but assert "never called" with
+   `mock.AssertNumberOfCalls(method, 0)` rather than `mock.AssertNotCalled` —
+   `AssertNotCalled` with no matcher passes silently, so it cannot actually
+   prove a method was not called.
 
 4. Keep the five existing tests in the file passing untouched.
 

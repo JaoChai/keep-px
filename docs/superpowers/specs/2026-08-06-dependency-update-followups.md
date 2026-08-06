@@ -92,7 +92,7 @@ Two changes, both required. Either alone leaves a real defect standing.
 | File | Change |
 |---|---|
 | `internal/router/router.go:30` | `chimiddleware.RealIP` → `chimiddleware.ClientIPFromHeader("X-Real-IP")` |
-| `internal/middleware/ratelimit.go:52` | read `GetClientIP(r.Context())`, fall back to `r.RemoteAddr` when empty |
+| `internal/middleware/ratelimit.go:52` | read `GetClientIP(r.Context())`, fall back to the host of `r.RemoteAddr` (port stripped) when empty |
 | `internal/handler/event_handler.go:250` | drop the `True-Client-IP` / `CF-Connecting-IP` header reads; use `GetClientIP`, fall back to `r.RemoteAddr` |
 | `internal/middleware/logger.go:32` | log the resolved client IP alongside `RemoteAddr` |
 
