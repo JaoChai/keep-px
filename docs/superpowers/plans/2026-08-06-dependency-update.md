@@ -162,11 +162,15 @@ cd frontend && npm update
 
 - [ ] **Step 3: Verify nothing crossed a major boundary**
 
+`npm update` on npm 11 advances `package-lock.json` and `node_modules` to the "Wanted" versions but leaves the `^` floors in `package.json` untouched — those ranges already admit the new versions. Expect `git diff package.json` to be **empty**; that is correct, not a failure. `npm ci` (used by CI and by `frontend/Dockerfile`) installs strictly from the lockfile, so the upgrade is real and durable.
+
+Verify against installed versions instead:
+
 ```bash
-cd frontend && git diff package.json
+cd frontend && npm outdated
 ```
 
-Inspect every changed line. Each version's leading number must be unchanged (e.g. `^5.90.21` → `^5.101.4` is fine; `^7.13.0` → `^8.0.0` is not, and `npm update` should not have produced it). If any major moved, revert with `git checkout package.json package-lock.json` and re-run with explicit package names.
+Compare with `/tmp/outdated-before.txt`. Every deferred major must still show the same leading version in its Current column: `typescript` 5.9.x, `vite` 7.x, `eslint` and `@eslint/js` 9.x, `eslint-plugin-react-refresh` 0.4.x, `@vitejs/plugin-react` 5.x, `@types/node` 24.x, `dotenv` 16.x, `globals` 16.x, `jsdom` 28.x, `lucide-react` 0.575.x, `react-doctor` 0.2.x. If any of them moved a major, revert with `git checkout package-lock.json && npm ci` and re-run with explicit package names.
 
 - [ ] **Step 4: Run the full frontend check on the minor/patch bump alone**
 
@@ -179,11 +183,11 @@ Expected: all three pass. Fixing failures here is in scope — but only the mini
 - [ ] **Step 5: Commit the minor/patch bump separately**
 
 ```bash
-git add frontend/package.json frontend/package-lock.json
+git add frontend/package-lock.json
 git commit -m "chore(frontend): update minor and patch dependencies"
 ```
 
-Committing before React Router keeps the two changes attributable.
+Only the lockfile is staged — per Step 3, `package.json` is byte-identical to HEAD after `npm update`. Committing before React Router keeps the two changes attributable.
 
 - [ ] **Step 6: Upgrade React Router to v8**
 
