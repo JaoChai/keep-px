@@ -1,4 +1,10 @@
-# Client IP Spoofing — Rate Limiter Bypass
+# Follow-ups Found During the 2026-08-06 Dependency Update
+
+Two issues surfaced while upgrading dependencies. Neither was caused by that work; both were found because the upgrade made tooling look at code nobody had looked at in a while. Each needs its own PR.
+
+---
+
+## 1. Client IP Spoofing — Rate Limiter Bypass
 
 **Date**: 2026-08-06
 **Status**: Found during the dependency update; not yet scheduled
@@ -66,3 +72,38 @@ This also unblocks the `go-chi/chi/v5` upgrade to v5.3.1, which was excluded fro
 - Unit test: with no proxy headers, the resolved IP falls back to `RemoteAddr`.
 - Manual: on a deployed instance, send a request with a forged `X-Forwarded-For` and confirm the logged IP is the real one.
 - Existing rate-limit tests must keep passing.
+
+---
+
+## 2. Stripe Webhook Handler Has No Test Coverage
+
+### The Problem
+
+`internal/handler/billing_handler.go:167` verifies Stripe webhook signatures with `webhook.ConstructEventWithOptions` and dispatches on event type — `checkout.session.completed`, `customer.subscription.created/updated/deleted`. Everything that grants credits, activates pixel slots, and records purchases flows through this one function.
+
+Nothing tests it.
+
+`internal/handler/billing_handler_test.go` holds five tests — `GetBillingOverview`, `GetQuota`, `CreateCheckout`, `UpdateSlots`, `CreatePortalSession` — and none of them touch the `Webhook` method. A repo-wide `grep -rn 'ConstructEvent' --include='*.go'` returns exactly one hit: the production call site. No test constructs a signed payload, and no test asserts what happens when a signature is invalid, when an event type is unknown, or when the same event arrives twice.
+
+This was found on 2026-08-06 while upgrading stripe-go to v85. That release added a guard inside `ConstructEvent*` that rejects V2 thin-event payloads, and the plan called for proving the guard harmless by running "the existing webhook tests" — which turned out not to exist. A throwaway test was written to get the evidence, then deleted to keep the dependency commit clean.
+
+### Why It Matters
+
+Every Stripe SDK major bump changes struct shapes and, through the pinned API version, the payload the handler parses. Between v82 and v86 the pinned API version moved `2025-03-31.basil` → `2025-09-30.clover` → `2025-11-17.clover` → `2026-03-25.dahlia`. The only thing standing between a payload-shape change and silently dropped payments is a human running the Stripe CLI by hand. CI cannot do that — it has no Stripe credentials — so the regression net for the payment path is currently a manual step someone has to remember.
+
+### Scope
+
+Add tests to `billing_handler_test.go` covering:
+
+- A correctly signed `checkout.session.completed` envelope parses, and the handler calls the billing service with the right session.
+- A correctly signed `customer.subscription.updated` envelope parses and routes to the subscription path.
+- An invalid signature returns 400 and does not touch the service.
+- A body whose top-level `object` is not `"event"` is rejected by the v85 guard — this is the regression test for the thin-event case.
+- A duplicate `stripe_event_id` is a no-op, exercising the idempotency path through `webhook_events`.
+
+Use `webhook.ComputeSignature` to sign fixtures; no network and no Stripe CLI. These run in CI on every push, which is the point.
+
+### Non-Goals
+
+- Not a replacement for the Stripe CLI check on a real SDK upgrade — that verifies the live payload shape, which fixtures cannot.
+- No change to `billing_handler.go` itself unless a test exposes a real defect.
