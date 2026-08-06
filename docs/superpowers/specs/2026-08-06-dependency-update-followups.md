@@ -110,7 +110,9 @@ Why not an XFF-based middleware instead? The two ingress paths have different ho
 
 **Residual risk, stated plainly:** if `X-Real-IP` ever arrives empty, `GetClientIP` returns `""` and every consumer falls back to `r.RemoteAddr` — for Nginx-proxied traffic that is the shared internal address again. That is a degradation to today's behaviour, not a spoofing hole.
 
-A second residual risk is historical, not forward-looking. Events recorded before this change still hold whatever `client_ip` an attacker supplied at the time, and `backend/internal/service/replay_service.go` sends that stored value back to CAPI on replay. This change only stops new spoofing; it does not clean up the data already in the database.
+A second residual risk was historical rather than forward-looking, and it turned out to carry no exposure. Events recorded before this change hold whatever `client_ip` the request headers claimed at the time — a value an attacker could set directly, or, for anything arriving through Nginx, the shared internal address rather than the visitor. `backend/internal/service/replay_service.go` sends that stored value straight back to CAPI on replay, so those rows would have kept mis-attributing events after the fix landed.
+
+**Measured 2026-08-06, after deploying `57c23ef`: `pixel_events` holds 0 rows and `replay_sessions` holds 0 rows** (production Neon instance `ep-cool-butterfly-ai3qizfi`, confirmed to be the same host the `pixlinks-api` service uses). The per-retention cleanup job had already removed everything ingested before the fix. There is nothing to clean up, and every row written from now on carries an IP the client cannot choose — so no backfill or migration is warranted. If pre-fix rows ever resurface from a restored backup, they would need clearing before any replay runs against them.
 
 ## Verification
 
