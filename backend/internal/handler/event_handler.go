@@ -5,10 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"math"
-	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -17,11 +15,6 @@ import (
 
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
 	"github.com/jaochai/pixlinks/backend/internal/service"
-)
-
-const (
-	headerCFConnectingIP = "CF-Connecting-IP"
-	headerTrueClientIP   = "True-Client-IP"
 )
 
 type EventHandler struct {
@@ -51,7 +44,7 @@ func (h *EventHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientIP := extractClientIP(r)
+	clientIP := middleware.ClientIP(r)
 	clientUA := r.Header.Get("User-Agent")
 
 	var fbc, fbp string
@@ -231,24 +224,4 @@ func (h *EventHandler) EventTypes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	JSON(w, http.StatusOK, APIResponse{Data: types})
-}
-
-// extractClientIP returns the real client IP by checking CDN/proxy headers first,
-// then falling back to r.RemoteAddr. This improves Facebook EMQ score by providing
-// the actual visitor IP instead of a load balancer or proxy address.
-//
-// Note: r.RemoteAddr may already be normalised by chimiddleware.RealIP (registered
-// globally in router.go), which rewrites it from X-Real-IP / X-Forwarded-For.
-func extractClientIP(r *http.Request) string {
-	for _, h := range []string{headerCFConnectingIP, headerTrueClientIP} {
-		if raw := r.Header.Get(h); raw != "" {
-			if ip := net.ParseIP(strings.TrimSpace(raw)); ip != nil {
-				return ip.String()
-			}
-		}
-	}
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		return host
-	}
-	return r.RemoteAddr
 }

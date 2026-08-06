@@ -2,10 +2,26 @@ package handler
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jaochai/pixlinks/backend/internal/middleware"
 )
+
+// resolvedClientIP drives r through the same ClientIPFromHeader("X-Real-IP")
+// middleware that router.go registers, then reports what middleware.ClientIP
+// observes — the path a real request takes through the chain.
+func resolvedClientIP(r *http.Request) string {
+	var got string
+	h := chimiddleware.ClientIPFromHeader("X-Real-IP")(http.HandlerFunc(func(_ http.ResponseWriter, req *http.Request) {
+		got = middleware.ClientIP(req)
+	}))
+	h.ServeHTTP(httptest.NewRecorder(), r)
+	return got
+}
 
 func TestExtractClientIP(t *testing.T) {
 	tests := []struct {
@@ -15,31 +31,31 @@ func TestExtractClientIP(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "CF-Connecting-IP header takes priority",
-			headers:  map[string]string{"CF-Connecting-IP": "1.2.3.4"},
+			name:     "client IP resolved from X-Real-IP via middleware",
+			headers:  map[string]string{"X-Real-IP": "203.0.113.10"},
 			remote:   "10.0.0.1:12345",
-			expected: "1.2.3.4",
+			expected: "203.0.113.10",
 		},
 		{
-			name:     "True-Client-IP fallback when no CF header",
+			name:     "forged CF-Connecting-IP ignored, falls back to RemoteAddr",
+			headers:  map[string]string{"CF-Connecting-IP": "9.9.9.9"},
+			remote:   "10.0.0.1:12345",
+			expected: "10.0.0.1",
+		},
+		{
+			name:     "forged True-Client-IP ignored, falls back to RemoteAddr",
 			headers:  map[string]string{"True-Client-IP": "5.6.7.8"},
-			remote:   "10.0.0.1:12345",
-			expected: "5.6.7.8",
+			remote:   "10.0.0.2:12345",
+			expected: "10.0.0.2",
 		},
 		{
-			name:     "CF-Connecting-IP wins over True-Client-IP",
-			headers:  map[string]string{"CF-Connecting-IP": "1.2.3.4", "True-Client-IP": "5.6.7.8"},
-			remote:   "10.0.0.1:12345",
-			expected: "1.2.3.4",
-		},
-		{
-			name:     "RemoteAddr with port stripped",
+			name:     "no headers falls back to RemoteAddr",
 			headers:  map[string]string{},
 			remote:   "192.168.1.1:54321",
 			expected: "192.168.1.1",
 		},
 		{
-			name:     "RemoteAddr without port returned as-is",
+			name:     "RemoteAddr without port returned verbatim",
 			headers:  map[string]string{},
 			remote:   "192.168.1.1",
 			expected: "192.168.1.1",
@@ -51,28 +67,10 @@ func TestExtractClientIP(t *testing.T) {
 			expected: "::1",
 		},
 		{
-			name:     "invalid header value falls back to RemoteAddr",
-			headers:  map[string]string{"CF-Connecting-IP": "not-an-ip"},
-			remote:   "10.0.0.1:12345",
-			expected: "10.0.0.1",
-		},
-		{
-			name:     "header with leading/trailing whitespace trimmed",
-			headers:  map[string]string{"CF-Connecting-IP": " 1.2.3.4 "},
-			remote:   "10.0.0.1:12345",
-			expected: "1.2.3.4",
-		},
-		{
-			name:     "comma-separated list in header falls back to RemoteAddr",
-			headers:  map[string]string{"CF-Connecting-IP": "1.2.3.4, 10.0.0.1"},
-			remote:   "172.16.0.1:8080",
-			expected: "172.16.0.1",
-		},
-		{
-			name:     "empty header value ignored",
-			headers:  map[string]string{"CF-Connecting-IP": "", "True-Client-IP": ""},
-			remote:   "10.0.0.1:12345",
-			expected: "10.0.0.1",
+			name:     "forged headers cannot override resolved X-Real-IP",
+			headers:  map[string]string{"X-Real-IP": "203.0.113.20", "CF-Connecting-IP": "9.9.9.9", "True-Client-IP": "5.6.7.8"},
+			remote:   "10.0.0.3:12345",
+			expected: "203.0.113.20",
 		},
 	}
 
@@ -84,7 +82,7 @@ func TestExtractClientIP(t *testing.T) {
 			}
 			r.RemoteAddr = tt.remote
 
-			got := extractClientIP(r)
+			got := resolvedClientIP(r)
 			assert.Equal(t, tt.expected, got)
 		})
 	}

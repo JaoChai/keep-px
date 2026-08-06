@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
 type responseWriter struct {
@@ -30,6 +32,7 @@ func Logger(logger *slog.Logger) func(http.Handler) http.Handler {
 				"status", rw.status,
 				"duration", time.Since(start).String(),
 				"remote_addr", r.RemoteAddr,
+				"client_ip", chimiddleware.GetClientIP(r.Context()),
 			}
 
 			switch {
