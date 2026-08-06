@@ -47,12 +47,23 @@ func TestCleanup_BatchLoopStopsWhenDeletedLessThanBatchSize(t *testing.T) {
 func TestCleanup_StopsOnContextCancellation(t *testing.T) {
 	svc, repo := newTestCleanupService()
 
+	// Permit the call so the mock does not panic if it happens. Without this the
+	// test would fail on the panic rather than on the assertion, and the
+	// assertion below — the thing that is supposed to express the contract —
+	// would never be what catches the regression.
+	repo.On("DeleteExpiredByRetention", mock.Anything, cleanupBatchSize).
+		Return(int64(0), nil).Maybe()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
 	svc.RunOnce(ctx)
 
-	repo.AssertNotCalled(t, "DeleteExpiredByRetention")
+	// AssertNumberOfCalls, not AssertNotCalled: the latter takes argument
+	// matchers, and with none supplied it diffs an empty expectation against the
+	// real arguments, counts every position as a mismatch, and reports the method
+	// as never called — so it passes even when the method ran.
+	repo.AssertNumberOfCalls(t, "DeleteExpiredByRetention", 0)
 }
 
 func TestCleanup_StopsOnError(t *testing.T) {
