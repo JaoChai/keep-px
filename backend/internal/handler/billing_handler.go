@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/stripe/stripe-go/v85"
-	"github.com/stripe/stripe-go/v85/webhook"
+	"github.com/stripe/stripe-go/v86"
+	"github.com/stripe/stripe-go/v86/webhook"
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"

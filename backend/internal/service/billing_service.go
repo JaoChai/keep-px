@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/stripe/stripe-go/v85"
-	portalsession "github.com/stripe/stripe-go/v85/billingportal/session"
-	checkoutsession "github.com/stripe/stripe-go/v85/checkout/session"
-	stripecustomer "github.com/stripe/stripe-go/v85/customer"
-	stripesub "github.com/stripe/stripe-go/v85/subscription"
+	"github.com/stripe/stripe-go/v86"
+	portalsession "github.com/stripe/stripe-go/v86/billingportal/session"
+	checkoutsession "github.com/stripe/stripe-go/v86/checkout/session"
+	stripecustomer "github.com/stripe/stripe-go/v86/customer"
+	stripesub "github.com/stripe/stripe-go/v86/subscription"
 
 	"golang.org/x/sync/errgroup"
 
@@ -519,7 +519,7 @@ func (s *BillingService) upsertSubscription(ctx context.Context, sub *stripe.Sub
 
 	status := string(sub.Status)
 
-	// In stripe-go v85, period dates are on SubscriptionItem, not Subscription.
+	// In stripe-go v86, period dates are on SubscriptionItem, not Subscription.
 	var periodStart, periodEnd *time.Time
 	if len(sub.Items.Data) > 0 {
 		item := sub.Items.Data[0]
