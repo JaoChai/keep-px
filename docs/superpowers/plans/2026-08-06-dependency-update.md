@@ -269,7 +269,6 @@ cd backend && go get \
   github.com/aws/aws-sdk-go-v2/credentials@v1.19.34 \
   github.com/aws/aws-sdk-go-v2/service/s3@v1.106.5 \
   github.com/caarlos0/env/v11@v11.4.1 \
-  github.com/go-chi/chi/v5@v5.3.1 \
   github.com/go-playground/validator/v10@v10.30.3 \
   github.com/jackc/pgx/v5@v5.10.0 \
   golang.org/x/sync@v0.22.0 \
@@ -278,7 +277,9 @@ cd backend && go get \
 go mod tidy
 ```
 
-`stripe-go` is deliberately absent from this list.
+`stripe-go` is deliberately absent from this list — Tasks 4–6 own it.
+
+**`go-chi/chi/v5` is also excluded and stays at v5.2.5.** v5.3.1 marks `middleware.RealIP` deprecated over an IP-spoofing advisory (GHSA-3fxj-6jh8-hvhx, GHSA-rjr7-jggh-pgcp, GHSA-9g5q-2w5x-hmxf), which trips the `staticcheck` gate at `internal/router/router.go:30`. Suppressing it would hide a hole this codebase genuinely has: `frontend/nginx.conf:50` sets `X-Forwarded-For $proxy_add_x_forwarded_for`, which appends to whatever the client sent, and `RealIP` trusts the leftmost value — so the IP that reaches `internal/middleware/ratelimit.go:52` is attacker-controlled, and per-IP rate limiting can be bypassed by rotating a forged header. The proper fix (`ClientIPFromHeader` + `GetClientIP`) touches four files and changes request-IP behaviour behind the proxy, so it belongs in its own PR with its own verification. **The vulnerability predates this task; upgrading chi merely made the linter report it.**
 
 - [ ] **Step 3: Verify compilation and the unit suite**
 
