@@ -10,8 +10,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/middleware"
@@ -424,4 +426,105 @@ func TestAuthHandler_RegenerateAPIKey(t *testing.T) {
 			customerRepo.AssertExpectations(t)
 		})
 	}
+}
+
+// ---------------------------------------------------------------------------
+// TestAuthHandler_Session
+//
+// Session ตรวจ JWT เอง (ไม่ใช้ middleware JWTAuth) เพราะต้องสร้าง/ผูก customer
+// ก่อน — middleware ตัวเดิมจะปฏิเสธด้วย customer_not_provisioned ก่อนจะทัน
+// เคส "token ถูกต้อง + emailVerified:true → 200" เป็นเคสที่พิสูจน์ชื่อ claim
+// "emailVerified" (camelCase) — ถ้าใครแก้เป็น "email_verified" จะดึงได้ false
+// เสมอ → ErrEmailNotVerified → 403 แทน 200 → เทสต์นี้แดงทันที
+// ---------------------------------------------------------------------------
+
+func TestAuthHandler_Session(t *testing.T) {
+	// newSessionHandler สร้าง handler จริง (real AuthService) ผูกกับ mock repo
+	// ตามรูปแบบเดียวกับ handler test อื่น — AuthService เป็น concrete struct
+	// จึง mock ไม่ได้ ต้องใช้ real service + mock repo
+	newSessionHandler := func(t *testing.T, customerRepo *mocks.MockCustomerRepo) (http.Handler, *mocks.MockCustomerRepo) {
+		t.Helper()
+		refreshTokenRepo := &mocks.MockRefreshTokenRepo{}
+		h := NewAuthHandler(
+			newTestAuthService(customerRepo, refreshTokenRepo),
+			testConfig(), testLogger(), testAuth.KeyFunc(), testAuthIssuer,
+		)
+		r := chi.NewRouter()
+		r.Post("/auth/session", h.Session)
+		return r, customerRepo
+	}
+
+	t.Run("token ถูกต้อง + email ยืนยันแล้ว → 200 พร้อม customer", func(t *testing.T) {
+		customerRepo := &mocks.MockCustomerRepo{}
+		customerRepo.On("GetByAuthUserID", mock.Anything, "neon-1").Return(nil, nil)
+		customerRepo.On("GetByEmail", mock.Anything, "new@example.com").Return(nil, nil)
+		customerRepo.On("Create", mock.Anything, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
+			args.Get(1).(*domain.Customer).ID = "cust-new"
+		})
+		r, _ := newSessionHandler(t, customerRepo)
+
+		token := testAuth.MintNeonToken(jwt.MapClaims{
+			"sub": "neon-1", "email": "new@example.com", "name": "คนใหม่", "emailVerified": true,
+		})
+		rec := doRequest(r, "POST", "/auth/session", nil, token)
+
+		assert.Equal(t, http.StatusOK, rec.Code)
+		var resp struct {
+			Data domain.Customer `json:"data"`
+		}
+		require.NoError(t, json.NewDecoder(rec.Body).Decode(&resp))
+		assert.Equal(t, "new@example.com", resp.Data.Email)
+		assert.Equal(t, "คนใหม่", resp.Data.Name)
+		customerRepo.AssertExpectations(t)
+	})
+
+	t.Run("ไม่มี Authorization header → 401", func(t *testing.T) {
+		customerRepo := &mocks.MockCustomerRepo{}
+		r, _ := newSessionHandler(t, customerRepo)
+
+		rec := doRequest(r, "POST", "/auth/session", nil, "")
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("token เซ็นผิด → 401", func(t *testing.T) {
+		customerRepo := &mocks.MockCustomerRepo{}
+		r, _ := newSessionHandler(t, customerRepo)
+
+		rec := doRequest(r, "POST", "/auth/session", nil, "not-a-real-token")
+
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("claims[emailVerified] เป็น false → ส่ง EmailVerified:false ให้ service → 403", func(t *testing.T) {
+		customerRepo := &mocks.MockCustomerRepo{}
+		customerRepo.On("GetByAuthUserID", mock.Anything, "neon-x").Return(nil, nil)
+		// ไม่ตั้ง GetByEmail — service ต้องคืน ErrEmailNotVerified ก่อนถึง
+
+		r, _ := newSessionHandler(t, customerRepo)
+		token := testAuth.MintNeonToken(jwt.MapClaims{
+			"sub": "neon-x", "email": "x@example.com", "emailVerified": false,
+		})
+		rec := doRequest(r, "POST", "/auth/session", nil, token)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+		customerRepo.AssertExpectations(t)
+	})
+
+	t.Run("ProvisionCustomer คืน ErrAccountSuspended → 403", func(t *testing.T) {
+		customerRepo := &mocks.MockCustomerRepo{}
+		suspended := time.Now()
+		customerRepo.On("GetByAuthUserID", mock.Anything, "neon-s").Return(&domain.Customer{
+			ID: "cust-s", Email: "s@example.com", SuspendedAt: &suspended,
+		}, nil)
+
+		r, _ := newSessionHandler(t, customerRepo)
+		token := testAuth.MintNeonToken(jwt.MapClaims{
+			"sub": "neon-s", "email": "s@example.com", "emailVerified": true,
+		})
+		rec := doRequest(r, "POST", "/auth/session", nil, token)
+
+		assert.Equal(t, http.StatusForbidden, rec.Code)
+		customerRepo.AssertExpectations(t)
+	})
 }

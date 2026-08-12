@@ -64,6 +64,24 @@ func (ta *TestAuth) MintToken(authUserID string, customer *domain.Customer) stri
 	return tokenStr
 }
 
+// MintNeonToken เซ็น JWT เหมือนที่ Neon Auth ออกให้จริง — caller ใส่ claim เองทั้งหมด
+// (sub/email/name/emailVerified) เพื่อทดสอบ handler ที่อ่าน claim เอง เช่น Session
+// ต่างจาก MintToken ที่สร้างแค่ sub/iss/exp (พอสำหรับ middleware ที่อ่านสิทธิ์จาก lookup)
+// ใช้กุญแจเดียวกัน (ta.priv) จึงผ่าน KeyFunc ของ testAuth ตัวเดียวกัน
+func (ta *TestAuth) MintNeonToken(claims jwt.MapClaims) string {
+	if claims["iss"] == nil {
+		claims["iss"] = TestAuthIssuer
+	}
+	if claims["exp"] == nil {
+		claims["exp"] = time.Now().Add(time.Hour).Unix()
+	}
+	tokenStr, err := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims).SignedString(ta.priv)
+	if err != nil {
+		panic("testutil: failed to sign test JWT: " + err.Error())
+	}
+	return tokenStr
+}
+
 // Lookup คืน customer ที่ผูกกับ authUserID (nil ถ้ายังไม่มี) signature ตรงกับ
 // middleware.CustomerLookup ทำให้ส่ง ta.Lookup เข้า middleware.JWTAuth ได้ตรง ๆ
 // โดย testutil ไม่ต้อง import middleware (Go ยอมรับ method value ที่ underlying type ตรงกัน)
