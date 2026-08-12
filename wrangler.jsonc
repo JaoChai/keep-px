@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "keep-px",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-12",
+  "compatibility_flags": ["nodejs_compat"],
+  // ทั้งสองโดเมนชี้ Worker ตัวเดียวกัน — api.pixlinks.xyz ต้องเก็บไว้เพราะ
+  // Stripe webhook และ e2e ผูกกับมัน การยุบทิ้งจะทำให้ทั้งสองพังเงียบ
+  "routes": [
+    { "pattern": "pixlinks.xyz", "custom_domain": true },
+    { "pattern": "api.pixlinks.xyz", "custom_domain": true }
+  ],
+  "assets": {
+    "directory": "./frontend/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // ทุก request ต้องผ่าน Worker — ไม่ใช่แค่ path ของ backend
+    // เพราะ security headers ถูกใส่ในโค้ด Worker ถ้า static asset ถูกเสิร์ฟ
+    // ตรงจาก edge มันจะไม่มี header สักตัว (วัดจริง 2026-08-12: หน้า / ได้ 0 จาก 7)
+    "run_worker_first": true
+  },
+  "containers": [
+    {
+      "class_name": "Backend",
+      "image": "./backend/Dockerfile",
+      "image_build_context": "./backend",
+      "instance_type": "basic",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "class_name": "Backend", "name": "BACKEND" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Backend"] }],
+  // ทุก 30 นาที — สั้นกว่า sleepAfter (1h) มากพอที่ container จะไม่หลับ
+  // จนพลาดรอบ cleanup ที่เป็น ticker อยู่ใน Go (main.go:112)
+  "triggers": {
+    "crons": ["*/30 * * * *"]
+  }
+}

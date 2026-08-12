@@ -1,6 +1,0 @@
-#!/bin/sh
-# Read system DNS resolver for nginx dynamic resolution.
-# Railway doesn't use Docker's 127.0.0.11 — we must read /etc/resolv.conf.
-# This file is sourced (.envsh) by nginx entrypoint before envsubst runs.
-DNS_RESOLVER=$(grep -m1 '^nameserver' /etc/resolv.conf | awk '{print $2}')
-export DNS_RESOLVER="${DNS_RESOLVER:-8.8.8.8}"

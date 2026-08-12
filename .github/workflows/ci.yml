@@ -67,14 +67,23 @@ jobs:
 
       - name: guard client IP middleware
         run: |
-          # Presence of ClientIPFromHeader("X-Real-IP") is enforced by the
+          # Presence of ClientIPFromHeader("CF-Connecting-IP") is enforced by the
           # router test TestRouter_ForgedHeadersCannotBuyFreshBuckets
           # (internal/router/clientip_test.go), which fails when the middleware
-          # is absent or commented out. This step only guards against
-          # reintroducing chimiddleware.RealIP, which trusts the client-supplied
-          # True-Client-IP header.
+          # is absent or commented out. This step guards against reintroducing
+          # chimiddleware.RealIP, which trusts the client-supplied True-Client-IP
+          # header — a second, independent failure mode the CF-Connecting-IP guard
+          # below does not catch (RealIP overwrites RemoteAddr even when
+          # ClientIPFromHeader is also registered).
           if grep -q 'chimiddleware.RealIP' internal/router/router.go; then
-            echo "::error::router.go uses chimiddleware.RealIP — it trusts client-supplied True-Client-IP. Use ClientIPFromHeader(\"X-Real-IP\"). See docs/superpowers/specs/2026-08-06-dependency-update-followups.md"
+            echo "::error::router.go uses chimiddleware.RealIP — it trusts client-supplied True-Client-IP. Use ClientIPFromHeader(\"CF-Connecting-IP\"). See docs/superpowers/specs/2026-08-12-cloudflare-migration-design.md"
+            exit 1
+          fi
+
+      - name: guard client IP header
+        run: |
+          if ! grep -q 'ClientIPFromHeader("CF-Connecting-IP")' internal/router/router.go; then
+            echo "::error::router.go must resolve the client IP from CF-Connecting-IP. Any other header can be forged now that nginx is gone, and a wrong value silently breaks Meta CAPI attribution. See docs/superpowers/specs/2026-08-12-cloudflare-migration-design.md"
             exit 1
           fi
 
@@ -120,16 +129,6 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # Runs before npm ci: nginx.conf does not depend on node_modules, and a
-      # broken install would otherwise skip this guard entirely.
-      - name: guard nginx client IP forwarding
-        run: |
-          n=$(grep -c 'proxy_set_header X-Real-IP $http_x_real_ip;' nginx.conf || true)
-          if [ "$n" != "2" ]; then
-            echo "::error::nginx.conf must forward \$http_x_real_ip in both proxy blocks; \$remote_addr is Railway's edge proxy, not the visitor. See docs/superpowers/specs/2026-08-06-dependency-update-followups.md"
-            exit 1
-          fi
-
       - run: npm ci
       - run: npm run lint
       - run: npm run test
@@ -155,54 +154,54 @@ jobs:
           done
           echo "All jobs passed or were skipped"
 
-  deploy-verify:
-    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.ci-gate.result == 'success'
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.ci-gate.result == 'success'
     needs: ci-gate
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for Railway deploy
-        run: sleep 60
+      - uses: actions/checkout@v4
 
-      - name: Verify backend health
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+      - run: npm ci --prefix frontend
+
+      - name: Deploy to Cloudflare
+        run: npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Verify health
         run: |
-          URL="${{ vars.BACKEND_PROD_URL }}/health"
-          echo "Checking backend at: $URL"
+          URL="${{ vars.PROD_URL }}/health"
           for i in $(seq 1 10); do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" 2>/dev/null || echo "000")
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" || echo "000")
             if [ "$STATUS" = "200" ]; then
-              BODY=$(curl -s --max-time 10 "$URL")
-              echo "Backend is healthy: $BODY"
+              echo "Backend is healthy"
               exit 0
             fi
-            echo "Attempt $i/10: HTTP $STATUS — retrying in 30s..."
-            sleep 30
+            echo "Attempt $i/10: HTTP $STATUS — retrying in 15s..."
+            sleep 15
           done
-          echo "Backend health check failed after 10 attempts"
+          echo "Health check failed after 10 attempts"
           exit 1
 
-      - name: Verify frontend
+      - name: Verify security headers
         run: |
-          URL="${{ vars.FRONTEND_PROD_URL }}"
-          if [ -z "$URL" ]; then
-            echo "FRONTEND_PROD_URL not set, skipping"
-            exit 0
-          fi
-          echo "Checking frontend at: $URL"
-          for i in $(seq 1 5); do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" 2>/dev/null || echo "000")
-            if [ "$STATUS" = "200" ]; then
-              echo "Frontend is serving (HTTP 200)"
-              exit 0
-            fi
-            echo "Attempt $i/5: HTTP $STATUS — retrying in 30s..."
-            sleep 30
+          H=$(curl -sI "${{ vars.PROD_URL }}/")
+          for header in X-Content-Type-Options X-Frame-Options Referrer-Policy \
+                        Permissions-Policy Strict-Transport-Security \
+                        Cross-Origin-Opener-Policy Content-Security-Policy; do
+            echo "$H" | grep -qi "^$header:" || { echo "::error::missing $header"; exit 1; }
           done
-          echo "Frontend health check failed after 5 attempts"
-          exit 1
+          echo "All 7 security headers present"
 
   post-deploy-e2e:
-    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.deploy-verify.result == 'success'
-    needs: deploy-verify
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.deploy.result == 'success'
+    needs: deploy
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -224,7 +223,7 @@ jobs:
 
       - name: Verify backend before smoke tests
         run: |
-          URL="${{ vars.BACKEND_PROD_URL }}/health"
+          URL="${{ vars.PROD_URL }}/health"
           echo "Re-checking backend health before E2E..."
           for i in $(seq 1 5); do
             STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" 2>/dev/null || echo "000")
@@ -265,8 +264,8 @@ jobs:
       - name: Run smoke tests against production
         run: npx playwright test --grep @smoke
         env:
-          E2E_BASE_URL: ${{ vars.FRONTEND_PROD_URL }}
-          E2E_API_URL: ${{ vars.BACKEND_PROD_URL }}
+          E2E_BASE_URL: ${{ vars.PROD_URL }}
+          E2E_API_URL: ${{ vars.PROD_URL }}
 
       - name: Upload smoke test results
         if: failure()

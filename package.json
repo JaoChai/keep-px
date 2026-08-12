@@ -4,7 +4,12 @@
     "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.7"
+    "lint-staged": "^16.2.7",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.121.0"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^0.3.7"
   },
   "lint-staged": {
     "frontend/src/**/*.{ts,tsx}": [
@@ -12,6 +17,11 @@
     ]
   },
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "build": "npm run build --prefix frontend",
+    "deploy": "npm run build && wrangler deploy",
+    "dev": "wrangler dev",
+    "test": "vitest run",
+    "typecheck": "./frontend/node_modules/.bin/tsc --noEmit -p tsconfig.json"
   }
 }

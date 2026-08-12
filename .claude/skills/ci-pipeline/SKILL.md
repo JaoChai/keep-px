@@ -17,11 +17,11 @@ description: GitHub Actions CI pipeline structure and failure debugging — ใ�
 Read `.github/workflows/` for the current pipeline definition. Standard flow:
 
 ```
-changes → backend → frontend → e2e → ci-gate → deploy-verify → post-deploy-e2e
+changes → backend → frontend → e2e → ci-gate → deploy → post-deploy-e2e
 ```
 
 - `ci-gate` is the required status check for PR merges
-- `deploy-verify` runs after merge to main
+- `deploy` runs after merge to main — CI deploys via `npm run deploy` (wrangler) แล้ว verify `/health`; ดู skill `cloudflare-deploy`
 - `post-deploy-e2e` runs `@smoke` tagged tests against production
 
 ## Debugging Decision Tree
@@ -72,20 +72,21 @@ Strict mode violation?
   → See e2e-debug skill for detailed patterns
 ```
 
-### deploy-verify / post-deploy-e2e Failed
+### deploy / post-deploy-e2e Failed
 
 ```
 Health check failed?
-  → Check Railway logs: `railway logs`
+  → Check Worker logs: `npx wrangler tail`
+  → Container ไม่ตื่น / cold start ช้า / secret หาย? ดู `cloudflare-deploy` skill
   → Did migration fail? Check startup logs for golang-migrate errors
 
 Smoke test failed?
-  → Production URL changed? Check VITE_API_URL
-  → CSP blocking? See nginx-csp skill
+  → Production URL changed? Check FRONTEND_URL / BASE_URL secret
+  → CSP blocking? See `worker-headers` skill
 ```
 
 ## Related
 
 - `e2e-debug` — detailed E2E failure analysis
-- `railway-deploy` — deployment issues
-- `nginx-csp` — CSP/proxy issues
+- `cloudflare-deploy` — deployment issues (Worker + Container)
+- `worker-headers` — CSP / security headers

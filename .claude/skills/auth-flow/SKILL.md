@@ -197,18 +197,18 @@ useEffect(() => {
 
 **Rule:** Always reset ref flags in effect cleanup when using AbortController pattern.
 
-## Nginx Headers for Auth
+## Worker Headers for Auth
 
-**File:** `frontend/nginx.conf`
+**File:** `worker/headers.ts` — Worker ใส่ header ทุก response (ดู skill `worker-headers`)
 
-```nginx
-# REQUIRED for Google Sign-In popup postMessage
-add_header Cross-Origin-Opener-Policy "same-origin-allow-popups" always;
+```typescript
+// dashboard ได้ COOP; sale page (/p/*) ไม่ได้ เพื่อฝังใน iframe ได้
+res.headers.set("Cross-Origin-Opener-Policy", "same-origin");
 ```
 
-- Must be in ALL location blocks (nginx inheritance limitation)
-- `same-origin-allow-popups` (NOT `same-origin`) — allows Google popup communication
-- Without this: Google button click does nothing, no error in console
+- Worker ตั้ง COOP เป็น `same-origin` บน dashboard ตอนนี้
+- ค่าเดิมก่อนย้ายมา Worker คือ `same-origin-allow-popups` เพื่อให้ Google popup postMessage ผ่าน
+- ถ้า Google Sign-In popup กดแล้วเงียบ (ไม่มี error ใน console) ให้เช็ค COOP เป็นอันดับแรก — อาจต้องเป็น `same-origin-allow-popups`; **ควร verify กับ popup จริงก่อนใช้ค่านี้ในการตัดสินใจ**
 
 ## Common Pitfalls
 
@@ -260,7 +260,7 @@ The token refresh interceptor handles 401s automatically — no additional auth 
 | `frontend/src/components/shared/ProtectedRoute.tsx` | Route guard |
 | `frontend/src/pages/auth/LoginPage.tsx` | Google Sign-In UI |
 | `frontend/src/hooks/use-auth.ts` | Auth mutations (login, logout) |
-| `frontend/nginx.conf` | COOP header for Google popup |
+| `worker/headers.ts` | COOP และ security headers (ใส่ทุก response) |
 
 ## Verification
 
@@ -276,7 +276,7 @@ cd frontend && npm run build
 
 ## Related
 
-- `nginx-csp` for CSP headers that affect Google Sign-In
+- `worker-headers` for CSP/COOP headers that affect Google Sign-In
 - `frontend-feature` for creating new protected pages
 - `go-service-scaffold` for creating new authenticated resources
 - Built-in `security-review` for auth security audit

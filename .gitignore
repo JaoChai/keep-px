@@ -34,3 +34,12 @@ test-results/
 .claude/skills/learned/
 frontend/.agents/
 frontend/.claude/
+
+# Cloudflare Workers
+worker-configuration.d.ts
+.dev.vars
+.wrangler/
+
+# Cloudflare Workers (worker เสริม)
+workers/*/worker-configuration.d.ts
+workers/*/.wrangler/

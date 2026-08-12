@@ -246,7 +246,7 @@ StripePriceNewType string `env:"STRIPE_PRICE_NEW_TYPE"`
 ```
 
 4. Create the Price in Stripe Dashboard or via API
-5. Set the env var in Railway
+5. Set the env var as a Worker secret: `npx wrangler secret put STRIPE_PRICE_NEW_TYPE`
 
 ## Adding a New Subscription Add-on
 
