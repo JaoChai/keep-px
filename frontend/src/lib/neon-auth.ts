@@ -21,16 +21,20 @@ export async function getAccessToken(): Promise<string | null> {
     return cached.token
   }
 
-  const res = await fetch(`${authURL}/token`, { credentials: 'include' })
-  if (!res.ok) {
+  try {
+    const res = await fetch(`${authURL}/token`, { credentials: 'include' })
+    if (!res.ok) {
+      cached = null
+      return null
+    }
+    const { token } = (await res.json()) as { token: string }
+    const payload = JSON.parse(atob(token.split('.')[1]!)) as { exp: number }
+    cached = { token, expiresAt: payload.exp * 1000 }
+    return token
+  } catch {
     cached = null
     return null
   }
-
-  const { token } = (await res.json()) as { token: string }
-  const payload = JSON.parse(atob(token.split('.')[1]!)) as { exp: number }
-  cached = { token, expiresAt: payload.exp * 1000 }
-  return token
 }
 
 export function clearAccessToken() {

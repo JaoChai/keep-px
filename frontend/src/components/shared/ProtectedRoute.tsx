@@ -27,7 +27,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         })
       })
       .then((token) => setHasSession(!!token))
-      .catch(() => setHasSession(false))
+      .catch((err) => {
+        // มี response แปลว่า backend ตอบจริง (401/403/etc) = auth ไม่ผ่านจริง → ไป /login
+        // ไม่มี response แปลว่า network error/timeout ระหว่างทาง → treat as "มี session"
+        // ให้ children แสดงต่อ (page/hook อื่นจะเจอ error เดียวกันซ้ำตอนเรียก API จริง)
+        setHasSession(!err.response)
+      })
       .finally(() => setChecking(false))
   }, [])
 
