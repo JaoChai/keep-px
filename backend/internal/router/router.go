@@ -64,7 +64,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 	// Repositories
 	customerRepo := postgres.NewCustomerRepo(pool)
-	refreshTokenRepo := postgres.NewRefreshTokenRepo(pool)
 	pixelRepo := postgres.NewPixelRepo(pool, encryptor)
 	eventRepo := postgres.NewEventRepo(pool)
 	replaySessionRepo := postgres.NewReplaySessionRepo(pool)
@@ -103,7 +102,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	}
 
 	// Services
-	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
+	authService := service.NewAuthService(customerRepo)
 	billingService := service.NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookEventRepo, pool, cfg)
 	quotaService := service.NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger, quotaService)
@@ -118,7 +117,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 	// Handlers
 	healthHandler := handler.NewHealthHandler(pool)
-	authHandler := handler.NewAuthHandler(authService, cfg, logger, jwks.Keyfunc, issuer)
+	authHandler := handler.NewAuthHandler(authService, logger, jwks.Keyfunc, issuer)
 	pixelHandler := handler.NewPixelHandler(pixelService, logger)
 	eventHandler := handler.NewEventHandler(eventService, logger)
 	replayHandler := handler.NewReplayHandler(replayService, logger)
@@ -159,15 +158,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 			// Auth routes (public)
 			r.Route("/auth", func(r chi.Router) {
 				r.Post("/session", authHandler.Session)
-				r.Post("/google", authHandler.GoogleAuth)
-				r.Post("/google/callback", authHandler.GoogleAuthCallback)
-				r.Post("/refresh", authHandler.Refresh)
-
-				// Dev-only login (no Google OAuth required)
-				if cfg.Env == "development" {
-					r.Post("/dev-login", authHandler.DevLogin)
-					logger.Warn("dev-login endpoint enabled (development mode)")
-				}
 			})
 
 			// Event ingestion (API key auth)
@@ -182,7 +172,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 				// Auth - get current user
 				r.Get("/auth/me", authHandler.Me)
-				r.Post("/auth/logout", authHandler.Logout)
 				r.Post("/auth/regenerate-api-key", authHandler.RegenerateAPIKey)
 
 				// Pixel routes - Phase 3

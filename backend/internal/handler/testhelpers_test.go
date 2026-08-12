@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 	"github.com/jaochai/pixlinks/backend/internal/service"
@@ -17,7 +16,6 @@ import (
 )
 
 const (
-	testJWTSecret    = "test-secret"
 	testCustomerID   = "cust-1"
 	testPixelID      = "px-1"
 	testPixelMissing = "px-nonexistent"
@@ -62,16 +60,6 @@ func doRequest(handler http.Handler, method, path string, body interface{}, toke
 	return rec
 }
 
-// testConfig returns a minimal config suitable for handler tests.
-func testConfig() *config.Config {
-	return &config.Config{
-		JWTSecret:     testJWTSecret,
-		JWTAccessTTL:  15 * time.Minute,
-		JWTRefreshTTL: 7 * 24 * time.Hour,
-		FrontendURL:   "http://localhost:5173",
-	}
-}
-
 // testLogger returns a discard logger for tests.
 func testLogger() *slog.Logger {
 	return slog.Default()
@@ -81,9 +69,9 @@ func testLogger() *slog.Logger {
 // Service factory helpers — create real services backed by shared mock repos.
 // ---------------------------------------------------------------------------
 
-// newTestAuthService creates an AuthService with mock repos and test config.
-func newTestAuthService(customerRepo *mocks.MockCustomerRepo, refreshTokenRepo *mocks.MockRefreshTokenRepo) *service.AuthService {
-	return service.NewAuthService(customerRepo, refreshTokenRepo, testConfig())
+// newTestAuthService creates an AuthService with a mock customer repo.
+func newTestAuthService(customerRepo *mocks.MockCustomerRepo) *service.AuthService {
+	return service.NewAuthService(customerRepo)
 }
 
 // newTestQuotaService creates a QuotaService with mock repos.

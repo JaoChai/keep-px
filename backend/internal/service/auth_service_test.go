@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -11,130 +10,21 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 )
 
-func newTestAuthService() (*AuthService, *mocks.MockCustomerRepo, *mocks.MockRefreshTokenRepo) {
+func newTestAuthService() (*AuthService, *mocks.MockCustomerRepo) {
 	customerRepo := new(mocks.MockCustomerRepo)
-	refreshTokenRepo := new(mocks.MockRefreshTokenRepo)
-	cfg := &config.Config{
-		JWTSecret:     "test-secret",
-		JWTAccessTTL:  15 * time.Minute,
-		JWTRefreshTTL: 168 * time.Hour,
-	}
-	svc := NewAuthService(customerRepo, refreshTokenRepo, cfg)
-	return svc, customerRepo, refreshTokenRepo
-}
-
-func TestAuthService_RefreshTokens(t *testing.T) {
-	tests := []struct {
-		name      string
-		token     string
-		setup     func(*mocks.MockCustomerRepo, *mocks.MockRefreshTokenRepo)
-		wantErr   error
-		wantToken bool
-	}{
-		{
-			name:  "success",
-			token: "valid-refresh-token",
-			setup: func(cr *mocks.MockCustomerRepo, rt *mocks.MockRefreshTokenRepo) {
-				rt.On("GetByTokenHash", mock.Anything, mock.AnythingOfType("string")).
-					Return("cust-1", time.Now().Add(time.Hour), nil)
-				rt.On("DeleteByTokenHash", mock.Anything, mock.AnythingOfType("string")).Return(nil)
-				cr.On("GetByID", mock.Anything, "cust-1").Return(&domain.Customer{
-					ID:    "cust-1",
-					Email: "test@example.com",
-				}, nil)
-				rt.On("Create", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string"), mock.AnythingOfType("time.Time")).Return(nil)
-			},
-			wantErr:   nil,
-			wantToken: true,
-		},
-		{
-			name:  "invalid token",
-			token: "invalid-token",
-			setup: func(cr *mocks.MockCustomerRepo, rt *mocks.MockRefreshTokenRepo) {
-				rt.On("GetByTokenHash", mock.Anything, mock.AnythingOfType("string")).
-					Return("", time.Time{}, nil)
-			},
-			wantErr:   ErrInvalidRefreshToken,
-			wantToken: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc, customerRepo, refreshTokenRepo := newTestAuthService()
-			tt.setup(customerRepo, refreshTokenRepo)
-
-			tokens, err := svc.RefreshTokens(context.Background(), tt.token)
-
-			if tt.wantErr != nil {
-				assert.ErrorIs(t, err, tt.wantErr)
-				assert.Nil(t, tokens)
-			} else {
-				assert.NoError(t, err)
-			}
-			if tt.wantToken {
-				assert.NotNil(t, tokens)
-				assert.NotEmpty(t, tokens.AccessToken)
-				assert.NotEmpty(t, tokens.RefreshToken)
-			}
-			customerRepo.AssertExpectations(t)
-			refreshTokenRepo.AssertExpectations(t)
-		})
-	}
-}
-
-func TestAuthService_Logout(t *testing.T) {
-	tests := []struct {
-		name       string
-		customerID string
-		setup      func(*mocks.MockRefreshTokenRepo)
-		wantErr    bool
-	}{
-		{
-			name:       "success",
-			customerID: "cust-1",
-			setup: func(rt *mocks.MockRefreshTokenRepo) {
-				rt.On("DeleteByCustomerID", mock.Anything, "cust-1").Return(nil)
-			},
-			wantErr: false,
-		},
-		{
-			name:       "repo error",
-			customerID: "cust-2",
-			setup: func(rt *mocks.MockRefreshTokenRepo) {
-				rt.On("DeleteByCustomerID", mock.Anything, "cust-2").Return(errors.New("db error"))
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc, _, refreshTokenRepo := newTestAuthService()
-			tt.setup(refreshTokenRepo)
-
-			err := svc.Logout(context.Background(), tt.customerID)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-			refreshTokenRepo.AssertExpectations(t)
-		})
-	}
+	svc := NewAuthService(customerRepo)
+	return svc, customerRepo
 }
 
 func TestProvisionCustomer(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("สร้างบัญชีใหม่เมื่อยังไม่เคยมี", func(t *testing.T) {
-		svc, customerRepo, _ := newTestAuthService()
+		svc, customerRepo := newTestAuthService()
 		customerRepo.On("GetByAuthUserID", mock.Anything, "neon-1").Return(nil, nil)
 		customerRepo.On("GetByEmail", mock.Anything, "new@example.com").Return(nil, nil)
 		customerRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
@@ -153,7 +43,7 @@ func TestProvisionCustomer(t *testing.T) {
 	})
 
 	t.Run("ผูกกับบัญชีเดิมที่ email ตรงกัน ไม่สร้างซ้ำ", func(t *testing.T) {
-		svc, customerRepo, _ := newTestAuthService()
+		svc, customerRepo := newTestAuthService()
 		existing := &domain.Customer{
 			ID: "cust-เดิม", Email: "old@example.com", APIKey: "pk_ของเดิม", Plan: domain.PlanPaid,
 		}
@@ -174,7 +64,7 @@ func TestProvisionCustomer(t *testing.T) {
 	})
 
 	t.Run("เรียกซ้ำได้ผลเดิม ไม่สร้างซ้ำ", func(t *testing.T) {
-		svc, customerRepo, _ := newTestAuthService()
+		svc, customerRepo := newTestAuthService()
 		second := &domain.Customer{ID: "cust-3", Email: "a@example.com"}
 		customerRepo.On("GetByAuthUserID", mock.Anything, "neon-3").Return(nil, nil).Once()
 		customerRepo.On("GetByAuthUserID", mock.Anything, "neon-3").Return(second, nil).Once()
@@ -194,7 +84,7 @@ func TestProvisionCustomer(t *testing.T) {
 	})
 
 	t.Run("email ที่ยังไม่ยืนยันต้องไม่ผูกกับบัญชีเดิม", func(t *testing.T) {
-		svc, customerRepo, _ := newTestAuthService()
+		svc, customerRepo := newTestAuthService()
 		customerRepo.On("GetByAuthUserID", mock.Anything, "neon-คนร้าย").Return(nil, nil)
 		// ไม่ตั้ง GetByEmail — ต้อง error ก่อนถึง ไม่งั้นคนร้ายสวมบัญชีคนอื่นได้
 
@@ -207,7 +97,7 @@ func TestProvisionCustomer(t *testing.T) {
 	})
 
 	t.Run("บัญชีถูกระงับต้องเข้าไม่ได้", func(t *testing.T) {
-		svc, customerRepo, _ := newTestAuthService()
+		svc, customerRepo := newTestAuthService()
 		suspended := time.Now()
 		customerRepo.On("GetByAuthUserID", mock.Anything, "neon-4").Return(&domain.Customer{
 			ID: "cust-ระงับ", Email: "s@example.com", SuspendedAt: &suspended,

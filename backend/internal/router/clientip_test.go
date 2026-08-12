@@ -27,7 +27,6 @@ func newTestRouter(t *testing.T) (http.Handler, func()) {
 	cfg := &config.Config{
 		Env:                  "test",
 		NeonAuthURL:          jwks.URL,
-		JWTSecret:            "x",
 		RateLimitRPS:         1,
 		RateLimitAPIKeyRPS:   100,
 		RateLimitAPIKeyBurst: 100,

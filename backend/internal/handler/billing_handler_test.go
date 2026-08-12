@@ -13,10 +13,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"github.com/stripe/stripe-go/v86/webhook"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-go/v86/webhook"
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
@@ -37,9 +37,6 @@ func (m *nbMockPool) Begin(_ context.Context) (pgx.Tx, error) { return nil, nil 
 // nbBillingConfig returns a minimal config with no Stripe keys configured.
 func nbBillingConfig() *config.Config {
 	return &config.Config{
-		JWTSecret:     testJWTSecret,
-		JWTAccessTTL:  15 * time.Minute,
-		JWTRefreshTTL: 7 * 24 * time.Hour,
 		// Stripe keys intentionally empty to test non-Stripe paths
 	}
 }
