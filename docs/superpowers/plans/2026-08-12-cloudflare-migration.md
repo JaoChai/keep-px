@@ -848,7 +848,22 @@ error-pages ย้ายจาก frontend/Dockerfile มาอยู่ใน b
 
 - [ ] **Step 1: ตั้ง secret ทั้ง 18 ตัว**
 
-ดึงค่าจริงจาก Railway dashboard มาก่อน แล้วรันทีละตัว:
+ค่าจริงดึงจาก Railway CLI (ตรวจแล้ว 2026-08-12 ว่ามีครบทั้ง 18 ตัว):
+
+```bash
+railway variables --project 1c9b113d-9d1d-4c3b-9296-7b6600173c0f \
+  --service pixlinks-api --environment production --json > "$TMPDIR/rw.json"
+chmod 600 "$TMPDIR/rw.json"
+```
+
+**MCP ของ Railway ใช้ไม่ได้กับงานนี้** — OAuth app ได้แค่ชื่อตัวแปร ค่าถูก redact ต้องใช้ CLI ที่ login แล้วเท่านั้น
+
+**ห้ามยกไป 18 ตัวนี้ — เป็นซากที่ไม่มีโค้ดอ่านแล้ว:**
+`CF_ACCOUNT_ID` `CF_API_TOKEN` `CF_CNAME_TARGET` `CF_KV_NAMESPACE_ID` `CF_ZONE_ID` (ซากฟีเจอร์ custom domain ที่ถูก drop ที่ migration 000009 — ตรวจแล้วไม่มีโค้ด Go อ่านสักตัว) และ `STRIPE_PRICE_EVENTS_1M` `STRIPE_PRICE_PIXELS_10` `STRIPE_PRICE_PIXELS_40` `STRIPE_PRICE_PLAN_LAUNCH` `STRIPE_PRICE_PLAN_SHIELD` `STRIPE_PRICE_PLAN_VAULT` `STRIPE_PRICE_REPLAY_1` `STRIPE_PRICE_REPLAY_3` `STRIPE_PRICE_REPLAY_UNLIMITED` `STRIPE_PRICE_RETENTION_180` `STRIPE_PRICE_RETENTION_365` `STRIPE_PRICE_SALE_PAGES_10` `STRIPE_PRICE_SALE_PAGES_25` (ซากราคาแบบ pack เดิม — `config.go:40-42` อ่านแค่ 3 ตัว)
+
+**`BASE_URL` และ `FRONTEND_URL` บน Railway เป็น `https://pixlinks.xyz` อยู่แล้ว** — ยกมาตรง ๆ ไม่ต้องแก้
+
+จากนั้นรันทีละตัว:
 
 ```bash
 for s in DATABASE_URL JWT_SECRET TOKEN_ENCRYPTION_KEY GOOGLE_CLIENT_ID \
