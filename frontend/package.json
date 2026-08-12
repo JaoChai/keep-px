@@ -9,9 +9,6 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui",
-    "e2e:headed": "playwright test --headed",
     "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
@@ -41,13 +38,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@playwright/test": "^1.59.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
-    "dotenv": "^16.4.5",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
