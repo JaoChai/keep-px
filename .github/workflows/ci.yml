@@ -19,6 +19,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      worker: ${{ steps.filter.outputs.worker }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -29,6 +30,11 @@ jobs:
               - 'backend/**'
             frontend:
               - 'frontend/**'
+            worker:
+              - 'worker/**'
+              - 'wrangler.jsonc'
+              - 'package.json'
+              - 'vitest.config.mts'
 
   backend:
     needs: changes
@@ -138,14 +144,33 @@ jobs:
         continue-on-error: true
         run: npm audit --audit-level=high
 
+  worker:
+    needs: changes
+    if: needs.changes.outputs.worker == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - run: npm ci
+      # typecheck borrows frontend's tsc, so its node_modules has to exist first
+      - run: npm ci --prefix frontend
+      - run: npm run typecheck
+      - run: npm test
+
   ci-gate:
     if: always()
-    needs: [backend, frontend]
+    needs: [backend, frontend, worker]
     runs-on: ubuntu-latest
     steps:
       - name: Check job results
         run: |
-          results=("${{ needs.backend.result }}" "${{ needs.frontend.result }}")
+          results=("${{ needs.backend.result }}" "${{ needs.frontend.result }}" "${{ needs.worker.result }}")
           for r in "${results[@]}"; do
             if [[ "$r" != "success" && "$r" != "skipped" ]]; then
               echo "Job failed with result: $r"
@@ -155,7 +180,12 @@ jobs:
           echo "All jobs passed or were skipped"
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.ci-gate.result == 'success'
+    # always() is load-bearing, not decoration. Without it a push whose paths
+    # skip both the backend and frontend jobs skips this one too, even though
+    # ci-gate runs and succeeds — measured on dd7d92b, a worker-only change that
+    # merged to main and never reached Cloudflare. The gate is still enforced by
+    # the result check below: ci-gate reports failure if any job actually failed.
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.ci-gate.result == 'success'
     needs: ci-gate
     runs-on: ubuntu-latest
     steps:
