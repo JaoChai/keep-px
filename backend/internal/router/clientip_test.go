@@ -20,9 +20,13 @@ import (
 // database — exactly what these guards need to observe.
 func newTestRouter(t *testing.T) (http.Handler, func()) {
 	t.Helper()
+	// JWKS stub: New() ดึงกุญแจตอน startup และ (หลังแก้ NoErrorReturnFirstHTTPReq=false)
+	// จะ fail จริงถ้าดึงไม่ได้ — เทสต์นี้ไม่ได้ลอง JWT จึงให้ server ตอบ JWKS ว่างๆ พอให้ New ผ่าน
+	jwks := startDummyJWKS(http.StatusOK, `{"keys":[]}`)
 	ctx, cancel := context.WithCancel(context.Background())
 	cfg := &config.Config{
 		Env:                  "test",
+		NeonAuthURL:          jwks.URL,
 		JWTSecret:            "x",
 		RateLimitRPS:         1,
 		RateLimitAPIKeyRPS:   100,
@@ -32,11 +36,14 @@ func newTestRouter(t *testing.T) (http.Handler, func()) {
 	}
 	h, cleanup, err := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), nil, ctx)
 	if err != nil {
+		jwks.Close()
+		cancel()
 		t.Fatalf("failed to build router: %v", err)
 	}
 	return h, func() {
 		cleanup()
 		cancel()
+		jwks.Close()
 	}
 }
 

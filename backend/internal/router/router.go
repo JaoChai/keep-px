@@ -82,8 +82,14 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	capiClient := facebook.NewCAPIClient(cfg.FBGraphAPIURL)
 
 	// โหลดกุญแจสาธารณะของ Neon Auth จาก JWKS endpoint
-	jwks, err := keyfunc.NewDefaultCtx(context.Background(),
-		[]string{cfg.NeonAuthURL + "/.well-known/jwks.json"})
+	// NoErrorReturnFirstHTTPReq=false: บังคับให้ fail ตอน startup ถ้าดึง JWKS ไม่สำเร็จ
+	// ค่า default ของ library (true) จะกลืน error แรกแล้วขึ้นระบบเงียบๆ ทำให้ login พังทุกคน
+	// จนกว่า background refresh goroutine จะสำเร็จ (นานถึง 1 ชม.) — ไม่ใช่พฤติกรรมที่ต้องการ
+	noSwallow := false
+	jwks, err := keyfunc.NewDefaultOverrideCtx(context.Background(),
+		[]string{cfg.NeonAuthURL + "/.well-known/jwks.json"},
+		keyfunc.Override{NoErrorReturnFirstHTTPReq: &noSwallow},
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("โหลดกุญแจของ Neon Auth ไม่ได้: %w", err)
 	}
