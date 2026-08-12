@@ -709,6 +709,9 @@ import { env } from "cloudflare:workers";
 import { applySecurityHeaders } from "./headers";
 import { normalizeClientIP } from "./client-ip";
 
+⚠️ **ไฟล์นี้มีอยู่แล้วจาก Task 2 และมีของที่ spike แก้ไว้ 2 อย่างซึ่งห้ามทำหาย** — `toContainerRequest` และ `fetch` override ที่ตั้ง timeout เอง ถ้าเขียนทับจะกลับไปเจอ error 1042 และ container start timeout อีกรอบ **ให้แก้ต่อยอดจากของเดิม อย่าเขียนใหม่ทั้งไฟล์**
+
+```ts
 export class Backend extends Container {
   defaultPort = 8080;
   sleepAfter = "1h";
@@ -740,6 +743,25 @@ export class Backend extends Container {
   override onError(error: unknown) {
     console.error("container error", error);
   }
+
+  // ⚠️ เก็บไว้ตามเดิมจาก Task 2 — spike พิสูจน์แล้วว่าขาดไม่ได้
+  // default ของ SDK ให้ container 8 วิ แต่ Go boot จริงใช้ 11 วิ
+  override async fetch(request: Request): Promise<Response> {
+    await this.startAndWaitForPorts({
+      ports: [8080],
+      cancellationOptions: {
+        instanceGetTimeoutMS: 60_000,
+        portReadyTimeoutMS: 180_000,
+      },
+    });
+    return super.fetch(request);
+  }
+}
+
+// ⚠️ เก็บไว้ตามเดิมจาก Task 2 — ถ้าลบจะได้ Cloudflare error 1042
+function toContainerRequest(request: Request): Request {
+  const url = new URL(request.url);
+  return new Request(`http://container${url.pathname}${url.search}`, request);
 }
 
 /** Serves the stored nginx error page for a given status, falling back to plain text. */
@@ -761,7 +783,11 @@ export default {
     const pathname = new URL(request.url).pathname;
 
     try {
-      const response = await getContainer(env.BACKEND).fetch(normalizeClientIP(request));
+      // ทั้งสองชั้นจำเป็น: normalizeClientIP ตัด header ปลอมทิ้ง
+      // toContainerRequest เปลี่ยน origin เป็น http://container กัน error 1042
+      const response = await getContainer(env.BACKEND).fetch(
+        toContainerRequest(normalizeClientIP(request)),
+      );
       return applySecurityHeaders(response, pathname);
     } catch (error) {
       console.error("failed to reach backend container", error);
