@@ -38,10 +38,12 @@ describe('getAccessToken', () => {
   it('returns cached token without refetching while valid', async () => {
     const now = Date.now()
     const token = makeJwt(now / 1000 + 600) // หมดอายุใน 600 วิ
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => ({ token }),
-    } as Response)
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ token }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
 
     const first = await mod.getAccessToken()
     expect(first).toBe(token)
@@ -56,10 +58,12 @@ describe('getAccessToken', () => {
   it('refetches when token is within 60s of expiry', async () => {
     const now = Date.now()
     const token = makeJwt(now / 1000 + 600) // expiresAt = now + 600_000ms
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => ({ token }),
-    } as Response)
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ token }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
 
     await mod.getAccessToken() // เติม cache
     expect(fetch).toHaveBeenCalledTimes(1)
@@ -72,7 +76,12 @@ describe('getAccessToken', () => {
   })
 
   it('returns null (no throw) when /token responds not-ok', async () => {
-    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 401 } as Response)
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Unauthorized', code: 'UNAUTHORIZED' }), {
+        status: 401,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
 
     await expect(mod.getAccessToken()).resolves.toBeNull()
     expect(fetch).toHaveBeenCalledTimes(1)

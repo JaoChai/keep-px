@@ -33,15 +33,18 @@ export async function getAccessToken(): Promise<string | null> {
   }
 
   try {
-    const res = await fetch(`${authURL}/token`, { credentials: 'include' })
-    if (!res.ok) {
+    // ต้องยิงผ่าน authClient.$fetch (ไม่ใช่ fetch() ตรง ๆ) — SDK จะอ่าน query param
+    // `neon_auth_session_verifier` จาก URL แล้วแนบเข้า request นี้ให้อัตโนมัติ
+    // จำเป็นสำหรับ request แรกหลัง redirect กลับจาก OAuth ถ้ายิง fetch() ตรง ๆ
+    // param นี้จะหายไป ฝั่ง Neon หา session challenge cookie คู่กันไม่เจอ → 401 ตลอด
+    const { data } = await authClient.$fetch<{ token: string }>('/token')
+    if (!data) {
       cached = null
       return null
     }
-    const { token } = (await res.json()) as { token: string }
-    const payload = decodeJwtPayload(token)
-    cached = { token, expiresAt: payload.exp * 1000 }
-    return token
+    const payload = decodeJwtPayload(data.token)
+    cached = { token: data.token, expiresAt: payload.exp * 1000 }
+    return data.token
   } catch {
     cached = null
     return null
