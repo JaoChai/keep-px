@@ -176,12 +176,6 @@ export interface RealtimeEvent {
   created_at: string
 }
 
-export interface AuthTokens {
-  access_token: string
-  refresh_token: string
-  customer: Customer
-}
-
 // Billing types
 export interface Purchase {
   id: string
