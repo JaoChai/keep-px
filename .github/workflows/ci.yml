@@ -162,6 +162,10 @@ jobs:
       - run: npm ci
       # typecheck borrows frontend's tsc, so its node_modules has to exist first
       - run: npm ci --prefix frontend
+      # worker-configuration.d.ts is gitignored (generated) — tsc needs it for
+      # the Cloudflare Workers ambient types (Env, ExecutionContext, etc.)
+      - run: npx wrangler types
+      - run: npx wrangler types --cwd workers/custom-domain
       - run: npm run typecheck
       - run: npm test
 
