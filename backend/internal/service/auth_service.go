@@ -15,6 +15,7 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrAccountSuspended   = errors.New("account suspended")
 	ErrEmailNotVerified   = errors.New("email not verified")
+	ErrEmailAlreadyLinked = errors.New("email already linked to a different account")
 )
 
 type AuthService struct {
@@ -70,6 +71,11 @@ func (s *AuthService) ProvisionCustomer(ctx context.Context, in ProvisionInput) 
 	if customer != nil {
 		if customer.SuspendedAt != nil {
 			return nil, ErrAccountSuspended
+		}
+		// บัญชีนี้ผูกกับ user อื่นของ Neon อยู่แล้ว (คนละ auth_user_id) — ห้าม relink ทับ
+		// ไม่งั้นคนที่สองที่ verified email ตรงกันจะยึดบัญชีเดิมได้ พร้อม api_key/plan/credit/is_admin
+		if customer.AuthUserID != nil && *customer.AuthUserID != in.AuthUserID {
+			return nil, ErrEmailAlreadyLinked
 		}
 		customer.AuthUserID = &in.AuthUserID
 		if err := s.customerRepo.Update(ctx, customer); err != nil {

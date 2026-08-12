@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
+import { authClient, clearAccessToken } from '@/lib/neon-auth'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'แดชบอร์ด' },
@@ -54,7 +55,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const customer = useAuthStore((s) => s.customer)
   const navigate = useNavigate()
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // ต้องสั่ง Neon Auth ออกจากระบบด้วย ไม่ใช่แค่ล้าง state ฝั่งเรา
+    // ไม่งั้น session ของ Neon ยังอยู่ กลับเข้า /dashboard ก็ login คืนอัตโนมัติ
+    clearAccessToken()
+    await authClient.signOut()
     logout()
     toast.success('ออกจากระบบสำเร็จ')
     navigate('/login', { replace: true })

@@ -63,6 +63,26 @@ func TestProvisionCustomer(t *testing.T) {
 		customerRepo.AssertExpectations(t)
 	})
 
+	t.Run("email ตรงกับบัญชีที่ผูกกับ auth_user_id อื่นแล้ว ต้องไม่ relink ทับ", func(t *testing.T) {
+		svc, customerRepo := newTestAuthService()
+		existingAuthUserID := "neon-เจ้าของเดิม"
+		taken := &domain.Customer{
+			ID: "cust-ถูกยึด", Email: "shared@example.com", AuthUserID: &existingAuthUserID,
+			APIKey: "pk_ของเดิม", Plan: domain.PlanPaid,
+		}
+		customerRepo.On("GetByAuthUserID", mock.Anything, "neon-คนที่สอง").Return(nil, nil)
+		customerRepo.On("GetByEmail", mock.Anything, "shared@example.com").Return(taken, nil)
+		// ไม่ตั้ง Update expectation — testify จะ fail เองถ้าถูกเรียก (ป้องกัน relink ทับ)
+
+		_, err := svc.ProvisionCustomer(ctx, ProvisionInput{
+			AuthUserID: "neon-คนที่สอง", Email: "shared@example.com", EmailVerified: true,
+		})
+
+		assert.ErrorIs(t, err, ErrEmailAlreadyLinked,
+			"ไม่งั้นคนที่สองที่ verified email ตรงกันจะยึดบัญชีเดิมได้ พร้อม api_key/plan/credit/is_admin")
+		customerRepo.AssertExpectations(t)
+	})
+
 	t.Run("เรียกซ้ำได้ผลเดิม ไม่สร้างซ้ำ", func(t *testing.T) {
 		svc, customerRepo := newTestAuthService()
 		second := &domain.Customer{ID: "cust-3", Email: "a@example.com"}

@@ -81,6 +81,10 @@ func (h *AuthHandler) Session(w http.ResponseWriter, r *http.Request) {
 			ErrorJSON(w, http.StatusForbidden, "account suspended")
 			return
 		}
+		if errors.Is(err, service.ErrEmailAlreadyLinked) {
+			ErrorJSON(w, http.StatusForbidden, "email already linked to a different account")
+			return
+		}
 		ErrorJSONWithLog(w, r, h.logger, http.StatusInternalServerError, "provision failed", err)
 		return
 	}

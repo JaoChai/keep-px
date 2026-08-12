@@ -15,6 +15,17 @@ export const authClient = createAuthClient(authURL)
 // ---------------------------------------------------------------------------
 let cached: { token: string; expiresAt: number } | null = null
 
+// JWT ใช้ base64url (ตัวอักษร -/_ แทน +// และไม่มี padding) ซึ่ง atob() ทำงานด้วยไม่ได้
+// (atob รับแค่ base64 มาตรฐาน) — ต้องแปลงก่อนเสมอ ไม่งั้น payload ที่มี -/_ จะ throw
+function decodeJwtPayload(token: string): { exp: number } {
+  const base64 = token
+    .split('.')[1]!
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
+  return JSON.parse(atob(padded)) as { exp: number }
+}
+
 export async function getAccessToken(): Promise<string | null> {
   // เผื่อเวลาไว้ 60 วินาที กัน token หมดอายุระหว่างทางไปถึง backend
   if (cached && Date.now() < cached.expiresAt - 60_000) {
@@ -28,7 +39,7 @@ export async function getAccessToken(): Promise<string | null> {
       return null
     }
     const { token } = (await res.json()) as { token: string }
-    const payload = JSON.parse(atob(token.split('.')[1]!)) as { exp: number }
+    const payload = decodeJwtPayload(token)
     cached = { token, expiresAt: payload.exp * 1000 }
     return token
   } catch {
