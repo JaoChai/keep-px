@@ -110,7 +110,8 @@ test.describe('Sale Page Public Serving', () => {
     await page.waitForLoadState('networkidle')
 
     // Backend renders sale pages server-side — non-existent slug may return
-    // 404 status OR 200 with "not found" content (depending on nginx config).
+    // 404 status OR 200 with "not found" content (depending on how the Worker
+    // and backend handle the miss).
     // Check page content for any error/not-found indicator.
     const body = await page.locator('body').textContent()
     const isNotFound =

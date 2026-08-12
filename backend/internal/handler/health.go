@@ -69,7 +69,7 @@ func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 }
 
 // Ready is a lightweight liveness check that does not touch the DB.
-// Use this for Railway/Kubernetes liveness probes; use /health for readiness with DB ping.
+// Use this for Cloudflare Containers liveness probes; use /health for readiness with DB ping.
 func (h *HealthHandler) Ready(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
