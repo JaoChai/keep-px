@@ -78,7 +78,7 @@ func TestAuthHandler_Me(t *testing.T) {
 			h := NewAuthHandler(authService, testConfig(), testLogger())
 
 			r := chi.NewRouter()
-			r.Use(middleware.JWTAuth(testJWTSecret))
+			r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 			r.Get("/auth/me", h.Me)
 
 			rec := doRequest(r, "GET", "/auth/me", nil, tt.token)
@@ -145,7 +145,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 			h := NewAuthHandler(authService, testConfig(), testLogger())
 
 			r := chi.NewRouter()
-			r.Use(middleware.JWTAuth(testJWTSecret))
+			r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 			r.Post("/auth/logout", h.Logout)
 
 			rec := doRequest(r, "POST", "/auth/logout", nil, tt.token)
@@ -401,7 +401,7 @@ func TestAuthHandler_RegenerateAPIKey(t *testing.T) {
 			h := NewAuthHandler(authService, testConfig(), testLogger())
 
 			r := chi.NewRouter()
-			r.Use(middleware.JWTAuth(testJWTSecret))
+			r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 			r.Post("/auth/regenerate-api-key", h.RegenerateAPIKey)
 
 			rec := doRequest(r, "POST", "/auth/regenerate-api-key", nil, tt.token)

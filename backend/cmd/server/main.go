@@ -105,7 +105,11 @@ func main() {
 	}
 
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
-	handler, cleanupReplay := router.New(cfg, logger, pool, shutdownCtx)
+	handler, cleanupReplay, err := router.New(cfg, logger, pool, shutdownCtx)
+	if err != nil {
+		logger.Error("failed to create router", "error", err)
+		os.Exit(1)
+	}
 
 	// Start event retention cleanup service (daily, deletes events older than 365 days)
 	eventRepo := postgres.NewEventRepo(pool)

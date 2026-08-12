@@ -26,6 +26,9 @@ type Config struct {
 	// Google OAuth
 	GoogleClientID string `env:"GOOGLE_CLIENT_ID"`
 
+	// Neon Auth (base URL ของ Neon Auth — ใช้ดึง JWKS และเป็น issuer)
+	NeonAuthURL string `env:"NEON_AUTH_URL,required"`
+
 	// S3/R2 Storage
 	S3Endpoint  string `env:"S3_ENDPOINT"`
 	S3Bucket    string `env:"S3_BUCKET"`

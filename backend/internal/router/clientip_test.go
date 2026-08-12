@@ -30,7 +30,10 @@ func newTestRouter(t *testing.T) (http.Handler, func()) {
 		DBQueryTimeout:       time.Second,
 		SalePageCacheTTL:     time.Minute,
 	}
-	h, cleanup := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), nil, ctx)
+	h, cleanup, err := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), nil, ctx)
+	if err != nil {
+		t.Fatalf("failed to build router: %v", err)
+	}
 	return h, func() {
 		cleanup()
 		cancel()

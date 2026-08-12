@@ -9,11 +9,11 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-
 	"github.com/jaochai/pixlinks/backend/internal/config"
+	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 	"github.com/jaochai/pixlinks/backend/internal/service"
+	"github.com/jaochai/pixlinks/backend/internal/testutil"
 )
 
 const (
@@ -22,21 +22,19 @@ const (
 	testPixelID      = "px-1"
 	testPixelMissing = "px-nonexistent"
 	testSalePageID   = "a0000000-0000-0000-0000-000000000001"
+	testAuthIssuer   = testutil.TestAuthIssuer
 )
 
-// testJWT generates a valid JWT token for testing with the given customerID and admin flag.
+// testAuth เป็น registry รวมกุญแจ Ed25519 + lookup สำหรับเทสต์ทุกตัวในแพ็กเกจนี้
+// (handler test ทั้งหมดเป็น package handler จึงเข้าถึงตัวแปรนี้ได้โดยตรง)
+// handler test รันตามลำดับ (ไม่มี t.Parallel) จึงใช้ map ร่วมกันได้ปลอดภัย
+var testAuth = testutil.NewTestAuth()
+
+// testJWT generates a valid EdDSA JWT for testing with the given customerID and admin flag.
+// สิทธิ์ isAdmin ถูกเก็บใน customer ที่ลงทะเบียนใน testAuth (ไม่ใช่ใน claim) สอดคล้องกับ
+// middleware ใหม่ที่อ่านสิทธิ์จาก lookup ไม่ใช่จาก claim ที่ปลอมได้
 func testJWT(customerID string, isAdmin bool) string {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":      customerID,
-		"is_admin": isAdmin,
-		"exp":      time.Now().Add(1 * time.Hour).Unix(),
-		"iat":      time.Now().Unix(),
-	})
-	tokenStr, err := token.SignedString([]byte(testJWTSecret))
-	if err != nil {
-		panic("failed to sign test JWT: " + err.Error())
-	}
-	return tokenStr
+	return testAuth.MintToken(customerID, &domain.Customer{ID: customerID, IsAdmin: isAdmin})
 }
 
 // doRequest creates an HTTP test request, optionally sets the Authorization header and JSON body,

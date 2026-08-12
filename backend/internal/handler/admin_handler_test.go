@@ -46,7 +46,7 @@ func setupAdminTest(t *testing.T) *adminTestEnv {
 	h := NewAdminHandler(adminService, testLogger())
 
 	r := chi.NewRouter()
-	r.Use(middleware.JWTAuth(testJWTSecret))
+	r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 	r.Use(middleware.AdminOnly)
 
 	// Customer management

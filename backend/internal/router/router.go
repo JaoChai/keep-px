@@ -3,10 +3,13 @@ package router
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
+	keyfunc "github.com/MicahParks/keyfunc/v3"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,7 +25,7 @@ import (
 
 type CleanupFunc func()
 
-func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCtx context.Context) (http.Handler, CleanupFunc) {
+func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCtx context.Context) (http.Handler, CleanupFunc, error) {
 	r := chi.NewRouter()
 
 	// Global middleware
@@ -77,6 +80,21 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 	// Facebook CAPI client
 	capiClient := facebook.NewCAPIClient(cfg.FBGraphAPIURL)
+
+	// โหลดกุญแจสาธารณะของ Neon Auth จาก JWKS endpoint
+	jwks, err := keyfunc.NewDefaultCtx(context.Background(),
+		[]string{cfg.NeonAuthURL + "/.well-known/jwks.json"})
+	if err != nil {
+		return nil, nil, fmt.Errorf("โหลดกุญแจของ Neon Auth ไม่ได้: %w", err)
+	}
+	// issuer = ส่วน origin ของ NeonAuthURL (scheme://host) ตัด path ทิ้ง
+	issuer := cfg.NeonAuthURL
+	if i := strings.Index(cfg.NeonAuthURL, "://"); i >= 0 {
+		schemeEnd := i + len("://")
+		if j := strings.Index(cfg.NeonAuthURL[schemeEnd:], "/"); j >= 0 {
+			issuer = cfg.NeonAuthURL[:schemeEnd+j]
+		}
+	}
 
 	// Services
 	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
@@ -153,7 +171,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 			// Dashboard routes (JWT auth)
 			r.Group(func(r chi.Router) {
-				r.Use(middleware.JWTAuth(cfg.JWTSecret))
+				r.Use(middleware.JWTAuth(jwks.Keyfunc, issuer, customerRepo.GetByAuthUserID))
 
 				// Auth - get current user
 				r.Get("/auth/me", authHandler.Me)
@@ -262,5 +280,5 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 		}) // end dbTimeout group
 	})
 
-	return r, func() { replayService.Shutdown() }
+	return r, func() { replayService.Shutdown() }, nil
 }

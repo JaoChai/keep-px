@@ -50,7 +50,7 @@ func setupPixelTest(t *testing.T) *pixelTestEnv {
 	h := NewPixelHandler(pixelService, testLogger())
 
 	r := chi.NewRouter()
-	r.Use(middleware.JWTAuth(testJWTSecret))
+	r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 	r.Get("/pixels", h.List)
 	r.Post("/pixels", h.Create)
 	r.Get("/pixels/{id}", h.Get)

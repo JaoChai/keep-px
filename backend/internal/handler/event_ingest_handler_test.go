@@ -34,7 +34,7 @@ const eventTestCustomerID = "cust-evt-test"
 // eventRouter sets up a chi router with JWT auth and all event-related routes.
 func eventRouter(h *EventHandler) chi.Router {
 	r := chi.NewRouter()
-	r.Use(middleware.JWTAuth(testJWTSecret))
+	r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 	r.Route("/events", func(r chi.Router) {
 		r.Get("/", h.List)
 		r.Get("/recent", h.ListRecent)
@@ -48,7 +48,7 @@ func eventRouter(h *EventHandler) chi.Router {
 // a customer ID in context; JWT is simpler for testing.
 func eventIngestRouter(h *EventHandler) chi.Router {
 	r := chi.NewRouter()
-	r.Use(middleware.JWTAuth(testJWTSecret))
+	r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 	r.Post("/events/ingest", h.Ingest)
 	return r
 }

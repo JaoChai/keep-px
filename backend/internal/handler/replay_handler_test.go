@@ -47,7 +47,7 @@ func replayParseResponse(t *testing.T, rr *httpResponseRecorder) map[string]inte
 // replayRouter creates a chi router with JWT auth and all replay routes wired up.
 func replayRouter(h *ReplayHandler) chi.Router {
 	r := chi.NewRouter()
-	r.Use(middleware.JWTAuth(testJWTSecret))
+	r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 	r.Route("/replays", func(r chi.Router) {
 		r.Post("/", h.Create)
 		r.Get("/", h.List)
