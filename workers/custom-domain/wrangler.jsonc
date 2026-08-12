@@ -1,0 +1,23 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "pixlinks-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-12",
+  "kv_namespaces": [
+    {
+      "binding": "DOMAIN_MAP",
+      "id": "07285dcbbd434c4ba63a396e574f2dbe"
+    }
+  ],
+  "vars": {
+    "PLATFORM_DOMAINS": "pixlinks.xyz,app.pixlinks.xyz,www.pixlinks.xyz,api.pixlinks.xyz"
+  },
+  // แทน BACKEND_ORIGIN เดิมที่เป็น URL — Worker เรียก Worker ในโซนเดียวกัน
+  // ผ่าน URL จะได้ Cloudflare error 1042 service binding ต่อตรงไม่ผ่าน DNS
+  "services": [
+    {
+      "binding": "SALE_PAGES",
+      "service": "keep-px"
+    }
+  ]
+}
