@@ -4,6 +4,12 @@
   "main": "worker/index.ts",
   "compatibility_date": "2026-08-12",
   "compatibility_flags": ["nodejs_compat"],
+  // ทั้งสองโดเมนชี้ Worker ตัวเดียวกัน — api.pixlinks.xyz ต้องเก็บไว้เพราะ
+  // Stripe webhook และ e2e ผูกกับมัน การยุบทิ้งจะทำให้ทั้งสองพังเงียบ
+  "routes": [
+    { "pattern": "pixlinks.xyz", "custom_domain": true },
+    { "pattern": "api.pixlinks.xyz", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./frontend/dist",
     "binding": "ASSETS",
