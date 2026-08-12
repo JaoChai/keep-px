@@ -141,9 +141,11 @@ LoginPage.tsx:168 (@react-oauth/google, redirect)
 - ลบ secret `JWT_SECRET` · `GOOGLE_CLIENT_ID` (18 → 16)
 - เพิ่มค่าตั้งต้นของ Neon Auth เป็น `vars` ใน `wrangler.jsonc` **ไม่ใช่ secret** เพราะเป็น URL
   สาธารณะไม่ใช่ความลับ และควรอยู่ใน version control ให้เห็นเวลามันเปลี่ยน:
-  `NEON_AUTH_JWKS_URL` (ที่ตั้งของกุญแจสาธารณะ) · `NEON_AUTH_ISSUER` (ใช้ตรวจว่าโทเค็นออกโดย
-  โครงการของเราจริง) · ฝั่ง frontend `VITE_NEON_AUTH_BASE_URL`
-  ค่าที่แน่นอนของทั้งสามตัวจะได้จาก spike ขั้น 0
+  `NEON_AUTH_URL` ฝั่ง Go และ `VITE_NEON_AUTH_URL` ฝั่ง frontend (ค่าเดียวกัน รูปแบบ
+  `https://ep-xxx.neon.tech/neondb/auth`)
+  ที่อยู่ของกุญแจคือ `{NEON_AUTH_URL}/.well-known/jwks.json` และผู้ออกโทเค็น (issuer) คือ
+  origin ของ URL นั้น — ทั้งสองค่าคำนวณจากตัวแปรเดียว ไม่ต้องตั้งเพิ่ม
+  ค่าจริงของ `ep-xxx` จะได้จาก spike ขั้น 0
 - `worker/headers.ts` — CSP เพิ่มโดเมนของ Neon Auth เข้า `connect-src` และเอา `accounts.google.com`
   ออกจาก `script-src`/`frame-src` ของหน้า dashboard
   (เก็บ `connect.facebook.net` ไว้ เป็นของ sale page คนละเรื่อง)
