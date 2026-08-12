@@ -10,6 +10,42 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-12-cloudflare-migration-design.md`
 
+## ⚠️ ข้อจำกัดลำดับ — อ่านก่อนแตะ git push
+
+**ห้าม push Task 1 ขึ้น `main` จนกว่า Worker จะรับ traffic จริงแล้ว**
+
+CI ตั้งไว้ให้ deploy อัตโนมัติเมื่อ push เข้า `main` และ DNS จริงเป็นแบบนี้ (ตรวจผ่าน Cloudflare API 2026-08-12):
+
+| hostname | ชี้ไป | ผ่าน Cloudflare |
+|---|---|---|
+| `pixlinks.xyz` | `7o0pp82y.up.railway.app` | ❌ grey cloud |
+| `api.pixlinks.xyz` | `plh1h140.up.railway.app` | ❌ grey cloud |
+| `customer.pixlinks.xyz` | → `api.pixlinks.xyz` | ✅ proxied |
+
+`api.pixlinks.xyz` ไม่ผ่าน Cloudflare → request ที่ยิงตรงเข้ามา**ไม่มี `CF-Connecting-IP`** ถ้า Task 1 ขึ้นโปรดักชันก่อน Worker จะขึ้น backend จะ fallback ไป RemoteAddr แล้วบันทึก IP ของ proxy แทน IP ลูกค้าจริง **เงียบ ๆ ไม่มี error** — คือความพังแบบเดียวกับที่ Task 1 ตั้งใจป้องกัน
+
+`docs/superpowers/specs/2026-08-06-dependency-update-followups.md` ยืนยันไว้แล้วว่า backend เข้าถึงได้ตรงที่ `api.pixlinks.xyz` — Nginx ไม่ใช่ทางเข้าเดียว
+
+**ลำดับที่ปลอดภัย:** Task 2-7 ให้ครบ → Worker รับ traffic → ค่อย push ทั้งชุดพร้อมกัน
+
+## สิ่งที่มีอยู่จริงในโปรดักชัน แต่ไม่มีในโค้ด repo นี้
+
+**1. zone `pixlinks.xyz` อยู่บน Cloudflare แล้ว (active)** → Task 8 step 1-2 (ย้าย nameserver) **ไม่ต้องทำ** เหลือแค่เปลี่ยน CNAME ให้ชี้ Worker
+
+**2. Worker ชื่อ `pixlinks-worker` ถูก deploy ไว้แล้ว** — ฟีเจอร์ custom domain ของลูกค้า source ไม่อยู่ใน repo นี้
+- bindings: `BACKEND_ORIGIN = https://api.pixlinks.xyz` · KV `DOMAIN_MAP` (`07285dcbbd434c4ba63a396e574f2dbe`) · `PLATFORM_DOMAINS`
+- ตอนนี้ **ไม่มี route ผูกอยู่** (`routes: []`) = ยังไม่รับ traffic
+- **KV `DOMAIN_MAP` ว่างเปล่า 0 key และ zone ไม่มี custom hostname เลย** (ตรวจ 2026-08-12)
+  → ฟีเจอร์นี้ยังไม่มีลูกค้าใช้จริงสักราย ความเสี่ยงตอน cutover ต่ำ ไม่ใช่ blocker
+- migration `000003_custom_domains` ถูก drop ไปแล้วที่ `000009` แต่ Worker กับ KV ยังอยู่
+- **ต้องอัปเดต `BACKEND_ORIGIN` ตอน cutover** ไม่งั้นพอเปิดใช้จะชี้ไป Railway ที่ตายแล้ว
+
+**3. สถาปัตยกรรมจริงเป็น 2 origin** — frontend `pixlinks.xyz` · backend `api.pixlinks.xyz`
+
+**ตัดสินแล้ว: เก็บ `api.pixlinks.xyz` ไว้ ชี้เข้า Worker ตัวเดียวกัน** — e2e ผูกไว้ 5 จุด (`production-smoke.spec.ts`, `global-setup.ts`) และ snippet ที่ลูกค้าอาจฝังไปแล้วชี้โดเมนนั้น การยุบทิ้งเสี่ยงทำ pixel พังโดยไม่มีสัญญาณเตือน เก็บไว้ต้นทุนเป็นศูนย์
+
+→ ผลต่อ Task 4: `VITE_API_URL` ตั้งเป็นค่าว่างได้ตามแผนเดิม (same-origin) แต่ Worker ต้องรับทั้งสอง hostname
+
 ## Global Constraints
 
 - **DB ไม่ย้าย** — Neon Postgres (`us-east-1`) คงเดิม ห้ามแตะ migration หรือ schema
@@ -212,10 +248,13 @@ attribution จะพังโดยไม่มี error ให้เห็น"
 - [ ] **Step 1b: ยืนยันว่า commit hook ยังทำงาน**
 
 ```bash
-git commit --allow-empty -m "test: verify commitlint still works" && git reset --hard HEAD~1
+git commit --allow-empty -m "test: verify commitlint still works" && git reset --soft HEAD~1
 ```
 
 Expected: commit ผ่าน แล้วถูกถอยกลับ — ถ้าล้มด้วย `module is not defined` แปลว่าเผลอใส่ `type: module` เข้าไป
+
+⚠️ **ต้องเป็น `--soft` เท่านั้น ห้ามใช้ `--hard`** — ขั้นตอนนี้รันตอนที่ `package.json` ยังมีงานค้างใน working tree `--hard` จะลบการแก้ทั้งหมดทิ้งเงียบ ๆ รวมทั้ง dependency ที่ npm เพิ่งเขียนลงไป แล้วจะไม่มีใครรู้จนกว่าจะ `npm ci` บนเครื่องใหม่แล้วพัง
+(เกิดขึ้นจริงตอนรันแผนนี้รอบแรก — แผนเดิมเขียน `--hard` ไว้)
 
 - [ ] **Step 2: ติดตั้ง**
 
@@ -1208,6 +1247,44 @@ npx wrangler tail keep-px --format pretty
 
 ---
 
-## ผล Spike
+## ผล Spike (2026-08-12) — ✅ ผ่าน
 
-_(Task 2 Step 8 มาเติมส่วนนี้)_
+**คำถามที่ spike ตอบ: Go + pgx pool + migration-on-boot รันบน Cloudflare Containers ได้ไหม → ได้**
+
+| วัด | ผล |
+|---|---|
+| `/health` cold start | HTTP 200 · **9.5 วิ** · `{"status":"ok","db":"ok","pool":{"total":4,"idle":4,"max":20}}` |
+| `/health` warm | HTTP 200 · **1.09 วิ** |
+| `/ready` | HTTP 200 · 1.8 วิ |
+| migration | รันผ่าน — log: `migrations: already up to date` |
+| memory `basic` (1 GiB) | พอ · ไม่มี OOM |
+| boot ในเครื่อง (Docker) | **11 วิ** — DB connect + migration 5.2 วิ · token migration 1 วิ |
+
+deploy: `keep-px-spike` · image `keep-px-spike-backend@sha256:087aa4a7…` · instance type `basic` (0.25 vCPU / 1 GiB / 4 GB)
+
+### 3 อุปสรรคที่เจอ และคำตอบ — ต้องเอาเข้า Task 4 ทั้งหมด
+
+**1. Cloudflare error 1042** — ส่ง request เดิมเข้า `container.fetch()` ตรง ๆ ไม่ได้
+URL สาธารณะของ Worker ทำให้ runtime วนกลับหาตัวเอง (*"Worker tried to fetch from another Worker on the same zone"*)
+→ ต้อง rewrite origin เป็น `http://container` ก่อนเสมอ (ฟังก์ชัน `toContainerRequest`)
+
+**2. SDK ตัด timeout เร็วเกินไป** — `TIMEOUT_TO_GET_CONTAINER_MS = 8_000` แต่ boot จริงใช้ 11 วิ
+อาการ: request ล้มที่ 8.5 วิ ด้วย `Failed to start container: The container is not running`
+→ ต้อง override `fetch` แล้วเรียก `startAndWaitForPorts` ด้วย `instanceGetTimeoutMS: 60_000` และ `portReadyTimeoutMS: 180_000`
+
+**3. `TOKEN_ENCRYPTION_KEY` ขาด = container ตายเงียบ** — `router.go:57` เรียก `os.Exit(1)`
+Worker มองเห็นแค่ `internal error connecting to the port` ซึ่ง**ไม่บอกสาเหตุจริงเลย**
+วิธีหาต้นเหตุที่ได้ผล: `docker run` image เดียวกันในเครื่องแล้วอ่าน log ตรง ๆ
+→ ตรวจแล้ว: production มี `os.Exit` จุดเดียวนี้เท่านั้น
+
+### ⚠️ คำเตือนสำหรับ Task 5 (secret จริง)
+
+**`TOKEN_ENCRYPTION_KEY` ต้องเป็นค่าเดิมจาก Railway เท่านั้น ห้ามสร้างใหม่**
+`fb_access_token` ใน DB ถูกเข้ารหัสด้วย key เดิม ถ้าใช้ key ใหม่จะถอดรหัสไม่ออก = pixel ทุกตัวส่ง CAPI ไม่ได้
+(spike ใช้ key ชั่วคราวได้เพราะ `migrateTokens` ข้าม token ที่มี prefix `enc:` อยู่แล้ว ไม่ไปแตะของเดิม)
+
+### เบ็ดเตล็ด
+
+- ต้องมี `tsconfig.json` ที่ root ไม่งั้น editor หา `Env` / `ExportedHandler` ไม่เจอ
+  typecheck ใช้ `./frontend/node_modules/.bin/tsc` ได้ ไม่ต้องลง TypeScript ที่ root
+- `wrangler types` ต้องรันใหม่ทุกครั้งที่แก้ binding หรือเพิ่ม secret ใน `.dev.vars`

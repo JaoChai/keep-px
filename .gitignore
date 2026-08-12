@@ -34,3 +34,8 @@ test-results/
 .claude/skills/learned/
 frontend/.agents/
 frontend/.claude/
+
+# Cloudflare Workers
+worker-configuration.d.ts
+.dev.vars
+.wrangler/
