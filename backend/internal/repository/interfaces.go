@@ -20,7 +20,7 @@ type CustomerRepository interface {
 	Create(ctx context.Context, customer *domain.Customer) error
 	GetByID(ctx context.Context, id string) (*domain.Customer, error)
 	GetByEmail(ctx context.Context, email string) (*domain.Customer, error)
-	GetByGoogleID(ctx context.Context, googleID string) (*domain.Customer, error)
+	GetByAuthUserID(ctx context.Context, authUserID string) (*domain.Customer, error)
 	GetByAPIKey(ctx context.Context, apiKey string) (*domain.Customer, error)
 	GetByStripeCustomerID(ctx context.Context, stripeCustomerID string) (*domain.Customer, error)
 	Update(ctx context.Context, customer *domain.Customer) error
@@ -80,13 +80,6 @@ type SalePageRepository interface {
 	Update(ctx context.Context, page *domain.SalePage) error
 	Delete(ctx context.Context, id string) error
 	SlugExists(ctx context.Context, slug string) (bool, error)
-}
-
-type RefreshTokenRepository interface {
-	Create(ctx context.Context, customerID, tokenHash string, expiresAt time.Time) error
-	GetByTokenHash(ctx context.Context, tokenHash string) (customerID string, expiresAt time.Time, err error)
-	DeleteByCustomerID(ctx context.Context, customerID string) error
-	DeleteByTokenHash(ctx context.Context, tokenHash string) error
 }
 
 type PurchaseRepository interface {

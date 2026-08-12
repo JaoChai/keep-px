@@ -9,34 +9,30 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
-
-	"github.com/jaochai/pixlinks/backend/internal/config"
+	"github.com/jaochai/pixlinks/backend/internal/domain"
 	"github.com/jaochai/pixlinks/backend/internal/repository/mocks"
 	"github.com/jaochai/pixlinks/backend/internal/service"
+	"github.com/jaochai/pixlinks/backend/internal/testutil"
 )
 
 const (
-	testJWTSecret    = "test-secret"
 	testCustomerID   = "cust-1"
 	testPixelID      = "px-1"
 	testPixelMissing = "px-nonexistent"
 	testSalePageID   = "a0000000-0000-0000-0000-000000000001"
+	testAuthIssuer   = testutil.TestAuthIssuer
 )
 
-// testJWT generates a valid JWT token for testing with the given customerID and admin flag.
+// testAuth เป็น registry รวมกุญแจ Ed25519 + lookup สำหรับเทสต์ทุกตัวในแพ็กเกจนี้
+// (handler test ทั้งหมดเป็น package handler จึงเข้าถึงตัวแปรนี้ได้โดยตรง)
+// handler test รันตามลำดับ (ไม่มี t.Parallel) จึงใช้ map ร่วมกันได้ปลอดภัย
+var testAuth = testutil.NewTestAuth()
+
+// testJWT generates a valid EdDSA JWT for testing with the given customerID and admin flag.
+// สิทธิ์ isAdmin ถูกเก็บใน customer ที่ลงทะเบียนใน testAuth (ไม่ใช่ใน claim) สอดคล้องกับ
+// middleware ใหม่ที่อ่านสิทธิ์จาก lookup ไม่ใช่จาก claim ที่ปลอมได้
 func testJWT(customerID string, isAdmin bool) string {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":      customerID,
-		"is_admin": isAdmin,
-		"exp":      time.Now().Add(1 * time.Hour).Unix(),
-		"iat":      time.Now().Unix(),
-	})
-	tokenStr, err := token.SignedString([]byte(testJWTSecret))
-	if err != nil {
-		panic("failed to sign test JWT: " + err.Error())
-	}
-	return tokenStr
+	return testAuth.MintToken(customerID, &domain.Customer{ID: customerID, IsAdmin: isAdmin})
 }
 
 // doRequest creates an HTTP test request, optionally sets the Authorization header and JSON body,
@@ -64,16 +60,6 @@ func doRequest(handler http.Handler, method, path string, body interface{}, toke
 	return rec
 }
 
-// testConfig returns a minimal config suitable for handler tests.
-func testConfig() *config.Config {
-	return &config.Config{
-		JWTSecret:     testJWTSecret,
-		JWTAccessTTL:  15 * time.Minute,
-		JWTRefreshTTL: 7 * 24 * time.Hour,
-		FrontendURL:   "http://localhost:5173",
-	}
-}
-
 // testLogger returns a discard logger for tests.
 func testLogger() *slog.Logger {
 	return slog.Default()
@@ -83,9 +69,9 @@ func testLogger() *slog.Logger {
 // Service factory helpers — create real services backed by shared mock repos.
 // ---------------------------------------------------------------------------
 
-// newTestAuthService creates an AuthService with mock repos and test config.
-func newTestAuthService(customerRepo *mocks.MockCustomerRepo, refreshTokenRepo *mocks.MockRefreshTokenRepo) *service.AuthService {
-	return service.NewAuthService(customerRepo, refreshTokenRepo, testConfig())
+// newTestAuthService creates an AuthService with a mock customer repo.
+func newTestAuthService(customerRepo *mocks.MockCustomerRepo) *service.AuthService {
+	return service.NewAuthService(customerRepo)
 }
 
 // newTestQuotaService creates a QuotaService with mock repos.

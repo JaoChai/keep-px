@@ -3,10 +3,13 @@ package router
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
+	keyfunc "github.com/MicahParks/keyfunc/v3"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,7 +25,7 @@ import (
 
 type CleanupFunc func()
 
-func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCtx context.Context) (http.Handler, CleanupFunc) {
+func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCtx context.Context) (http.Handler, CleanupFunc, error) {
 	r := chi.NewRouter()
 
 	// Global middleware
@@ -61,7 +64,6 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 	// Repositories
 	customerRepo := postgres.NewCustomerRepo(pool)
-	refreshTokenRepo := postgres.NewRefreshTokenRepo(pool)
 	pixelRepo := postgres.NewPixelRepo(pool, encryptor)
 	eventRepo := postgres.NewEventRepo(pool)
 	replaySessionRepo := postgres.NewReplaySessionRepo(pool)
@@ -78,8 +80,29 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 	// Facebook CAPI client
 	capiClient := facebook.NewCAPIClient(cfg.FBGraphAPIURL)
 
+	// โหลดกุญแจสาธารณะของ Neon Auth จาก JWKS endpoint
+	// NoErrorReturnFirstHTTPReq=false: บังคับให้ fail ตอน startup ถ้าดึง JWKS ไม่สำเร็จ
+	// ค่า default ของ library (true) จะกลืน error แรกแล้วขึ้นระบบเงียบๆ ทำให้ login พังทุกคน
+	// จนกว่า background refresh goroutine จะสำเร็จ (นานถึง 1 ชม.) — ไม่ใช่พฤติกรรมที่ต้องการ
+	noSwallow := false
+	jwks, err := keyfunc.NewDefaultOverrideCtx(context.Background(),
+		[]string{cfg.NeonAuthURL + "/.well-known/jwks.json"},
+		keyfunc.Override{NoErrorReturnFirstHTTPReq: &noSwallow},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("โหลดกุญแจของ Neon Auth ไม่ได้: %w", err)
+	}
+	// issuer = ส่วน origin ของ NeonAuthURL (scheme://host) ตัด path ทิ้ง
+	issuer := cfg.NeonAuthURL
+	if i := strings.Index(cfg.NeonAuthURL, "://"); i >= 0 {
+		schemeEnd := i + len("://")
+		if j := strings.Index(cfg.NeonAuthURL[schemeEnd:], "/"); j >= 0 {
+			issuer = cfg.NeonAuthURL[:schemeEnd+j]
+		}
+	}
+
 	// Services
-	authService := service.NewAuthService(customerRepo, refreshTokenRepo, cfg)
+	authService := service.NewAuthService(customerRepo)
 	billingService := service.NewBillingService(purchaseRepo, creditRepo, subRepo, customerRepo, webhookEventRepo, pool, cfg)
 	quotaService := service.NewQuotaService(creditRepo, subRepo, usageRepo, pixelRepo, salePageRepo, customerRepo)
 	pixelService := service.NewPixelService(pixelRepo, capiClient, logger, quotaService)
@@ -94,7 +117,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 	// Handlers
 	healthHandler := handler.NewHealthHandler(pool)
-	authHandler := handler.NewAuthHandler(authService, cfg, logger)
+	authHandler := handler.NewAuthHandler(authService, logger, jwks.Keyfunc, issuer)
 	pixelHandler := handler.NewPixelHandler(pixelService, logger)
 	eventHandler := handler.NewEventHandler(eventService, logger)
 	replayHandler := handler.NewReplayHandler(replayService, logger)
@@ -134,15 +157,7 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 			// Auth routes (public)
 			r.Route("/auth", func(r chi.Router) {
-				r.Post("/google", authHandler.GoogleAuth)
-				r.Post("/google/callback", authHandler.GoogleAuthCallback)
-				r.Post("/refresh", authHandler.Refresh)
-
-				// Dev-only login (no Google OAuth required)
-				if cfg.Env == "development" {
-					r.Post("/dev-login", authHandler.DevLogin)
-					logger.Warn("dev-login endpoint enabled (development mode)")
-				}
+				r.Post("/session", authHandler.Session)
 			})
 
 			// Event ingestion (API key auth)
@@ -153,11 +168,10 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 			// Dashboard routes (JWT auth)
 			r.Group(func(r chi.Router) {
-				r.Use(middleware.JWTAuth(cfg.JWTSecret))
+				r.Use(middleware.JWTAuth(jwks.Keyfunc, issuer, customerRepo.GetByAuthUserID))
 
 				// Auth - get current user
 				r.Get("/auth/me", authHandler.Me)
-				r.Post("/auth/logout", authHandler.Logout)
 				r.Post("/auth/regenerate-api-key", authHandler.RegenerateAPIKey)
 
 				// Pixel routes - Phase 3
@@ -262,5 +276,5 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 		}) // end dbTimeout group
 	})
 
-	return r, func() { replayService.Shutdown() }
+	return r, func() { replayService.Shutdown() }, nil
 }

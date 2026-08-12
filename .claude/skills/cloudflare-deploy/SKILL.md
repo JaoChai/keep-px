@@ -87,11 +87,14 @@ Container env var ทั้งหมดมาจาก `env.*` ของ Worker 
 
 ```bash
 npx wrangler secret put DATABASE_URL
-npx wrangler secret put JWT_SECRET
 npx wrangler secret list                    # ดู secret ทั้งหมดที่ตั้งไว้
 ```
 
-secret ที่ envVars อ้างอิง (ต้องครบ): `DATABASE_URL`, `JWT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `GOOGLE_CLIENT_ID`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_PUBLIC_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_PIXEL_SLOT`, `STRIPE_PRICE_REPLAY_SINGLE`, `STRIPE_PRICE_REPLAY_MONTHLY`, `BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`
+secret ที่ envVars อ้างอิง (ต้องครบ): `DATABASE_URL`, `TOKEN_ENCRYPTION_KEY`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_PUBLIC_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_PRICE_PIXEL_SLOT`, `STRIPE_PRICE_REPLAY_SINGLE`, `STRIPE_PRICE_REPLAY_MONTHLY`, `BASE_URL`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`
+
+`NEON_AUTH_URL` **ไม่ใช่ secret** — เป็น `vars` ใน `wrangler.jsonc` (URL สาธารณะ ไม่ใช่ความลับ
+ควรอยู่ใน version control ให้เห็นตอนมันเปลี่ยน) ส่วน `JWT_SECRET`/`GOOGLE_CLIENT_ID` ถูกลบไปแล้ว
+ตั้งแต่ย้ายไป Neon Auth (2026-08-12) — ดู skill `auth-flow`
 
 ⚠️ `TOKEN_ENCRYPTION_KEY` ถ้าหาย container จะ `os.Exit(1)` ทันทีตอน boot (router.go:57) — error จะออกมาเป็น "port connection error" จาก Worker ไม่ใช่สาเหตุจริง
 

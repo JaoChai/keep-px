@@ -2,7 +2,6 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { GoogleOAuthProvider } from '@react-oauth/google'
 import { Toaster } from 'sonner'
 import { ErrorBoundary } from './components/shared/ErrorBoundary'
 import { router } from './router'
@@ -17,8 +16,6 @@ const queryClient = new QueryClient({
   },
 })
 
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-
 const content = (
   <QueryClientProvider client={queryClient}>
     <RouterProvider router={router} />
@@ -29,13 +26,7 @@ const content = (
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      {googleClientId ? (
-        <GoogleOAuthProvider clientId={googleClientId}>
-          {content}
-        </GoogleOAuthProvider>
-      ) : (
-        content
-      )}
+      {content}
     </ErrorBoundary>
   </StrictMode>
 )

@@ -1,0 +1,20 @@
+# Copy to .dev.vars and fill in real values for local dev.
+# CI also copies this file as-is (placeholder values only) so `wrangler types`
+# can see the secret key names and generate a complete Env interface.
+DATABASE_URL=postgres://user:pass@localhost:5432/pixlinks
+TOKEN_ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000
+NEON_AUTH_URL=https://example.neonauth.example.aws.neon.tech/neondb/auth
+S3_ENDPOINT=https://example.r2.cloudflarestorage.com
+S3_BUCKET=example-bucket
+S3_ACCESS_KEY=example
+S3_SECRET_KEY=example
+S3_PUBLIC_URL=https://example.com
+STRIPE_SECRET_KEY=sk_test_example
+STRIPE_WEBHOOK_SECRET=whsec_example
+STRIPE_PUBLISHABLE_KEY=pk_test_example
+STRIPE_PRICE_PIXEL_SLOT=price_example
+STRIPE_PRICE_REPLAY_SINGLE=price_example
+STRIPE_PRICE_REPLAY_MONTHLY=price_example
+BASE_URL=http://localhost:8787
+FRONTEND_URL=http://localhost:5173
+CORS_ALLOWED_ORIGINS=http://localhost:5173

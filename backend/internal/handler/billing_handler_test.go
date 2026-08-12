@@ -13,10 +13,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"github.com/stripe/stripe-go/v86/webhook"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-go/v86/webhook"
 
 	"github.com/jaochai/pixlinks/backend/internal/config"
 	"github.com/jaochai/pixlinks/backend/internal/domain"
@@ -37,9 +37,6 @@ func (m *nbMockPool) Begin(_ context.Context) (pgx.Tx, error) { return nil, nil 
 // nbBillingConfig returns a minimal config with no Stripe keys configured.
 func nbBillingConfig() *config.Config {
 	return &config.Config{
-		JWTSecret:     testJWTSecret,
-		JWTAccessTTL:  15 * time.Minute,
-		JWTRefreshTTL: 7 * 24 * time.Hour,
 		// Stripe keys intentionally empty to test non-Stripe paths
 	}
 }
@@ -126,7 +123,7 @@ func TestBillingHandler_GetBillingOverview(t *testing.T) {
 		subRepo.On("ListByCustomerID", mock.Anything, testCustomerID).Return([]*domain.Subscription{}, nil)
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Get("/billing/overview", h.GetBillingOverview)
 
 		rec := doRequest(r, "GET", "/billing/overview", nil, testJWT(testCustomerID, false))
@@ -154,7 +151,7 @@ func TestBillingHandler_GetBillingOverview(t *testing.T) {
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Get("/billing/overview", h.GetBillingOverview)
 
 		rec := doRequest(r, "GET", "/billing/overview", nil, "")
@@ -195,7 +192,7 @@ func TestBillingHandler_GetQuota(t *testing.T) {
 		usageRepo.On("GetCurrentMonth", mock.Anything, testCustomerID).Return((*domain.EventUsage)(nil), nil)
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Get("/billing/quota", h.GetQuota)
 
 		rec := doRequest(r, "GET", "/billing/quota", nil, testJWT(testCustomerID, false))
@@ -226,7 +223,7 @@ func TestBillingHandler_GetQuota(t *testing.T) {
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Get("/billing/quota", h.GetQuota)
 
 		rec := doRequest(r, "GET", "/billing/quota", nil, "")
@@ -257,7 +254,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
 		body := map[string]interface{}{"type": "pixel_slots", "quantity": 5}
@@ -289,7 +286,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
 		body := map[string]string{"type": "replay_single"}
@@ -321,7 +318,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
 		body := map[string]string{"type": "replay_monthly"}
@@ -347,7 +344,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
 		body := map[string]string{"type": "invalid_type"}
@@ -368,7 +365,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
 		body := map[string]string{}
@@ -394,7 +391,7 @@ func TestBillingHandler_CreateCheckout(t *testing.T) {
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Post("/billing/checkout", h.CreateCheckout)
 
 		body := map[string]string{"type": "pixel_slots"}
@@ -427,7 +424,7 @@ func TestBillingHandler_UpdateSlots(t *testing.T) {
 		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Put("/billing/slots", h.UpdateSlots)
 
 		body := map[string]int{"quantity": 3}
@@ -453,7 +450,7 @@ func TestBillingHandler_UpdateSlots(t *testing.T) {
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Put("/billing/slots", h.UpdateSlots)
 
 		body := map[string]int{"quantity": 0}
@@ -479,7 +476,7 @@ func TestBillingHandler_UpdateSlots(t *testing.T) {
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Put("/billing/slots", h.UpdateSlots)
 
 		body := map[string]int{"quantity": 3}
@@ -512,7 +509,7 @@ func TestBillingHandler_CreatePortalSession(t *testing.T) {
 		customerRepo.On("GetByID", mock.Anything, testCustomerID).Return(customer, nil)
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Post("/billing/portal", h.CreatePortalSession)
 
 		rec := doRequest(r, "POST", "/billing/portal", nil, testJWT(testCustomerID, false))
@@ -537,7 +534,7 @@ func TestBillingHandler_CreatePortalSession(t *testing.T) {
 		h := NewBillingHandler(billingSvc, quotaSvc, nbBillingConfig(), testLogger())
 
 		r := chi.NewRouter()
-		r.Use(middleware.JWTAuth(testJWTSecret))
+		r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 		r.Post("/billing/portal", h.CreatePortalSession)
 
 		rec := doRequest(r, "POST", "/billing/portal", nil, "")

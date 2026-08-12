@@ -12,12 +12,11 @@ export class Backend extends Container {
     PORT: "8080",
     ENV: "production",
     DATABASE_URL: env.DATABASE_URL,
-    JWT_SECRET: env.JWT_SECRET,
+    NEON_AUTH_URL: env.NEON_AUTH_URL,
     // router.go:57 calls os.Exit(1) when this is missing and ENV=production.
     // The container dies before it listens, which surfaces only as a port
     // connection error from the Worker — never as the real reason.
     TOKEN_ENCRYPTION_KEY: env.TOKEN_ENCRYPTION_KEY,
-    GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID,
     S3_ENDPOINT: env.S3_ENDPOINT,
     S3_BUCKET: env.S3_BUCKET,
     S3_ACCESS_KEY: env.S3_ACCESS_KEY,
@@ -34,7 +33,6 @@ export class Backend extends Container {
     CORS_ALLOWED_ORIGINS: env.CORS_ALLOWED_ORIGINS,
     // Non-secret tuning from wrangler.jsonc `vars`. config.go has an envDefault
     // for each, so omitting them here is silent drift rather than a startup error.
-    JWT_REFRESH_TTL: env.JWT_REFRESH_TTL,
     DB_MAX_CONNS: env.DB_MAX_CONNS,
     DB_MIN_CONNS: env.DB_MIN_CONNS,
   };

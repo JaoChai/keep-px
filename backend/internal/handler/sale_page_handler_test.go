@@ -45,7 +45,7 @@ func setupSalePageTest(t *testing.T) *salePageTestEnv {
 	h := NewSalePageHandler(salePageService, "https://test.keepx.io", testLogger())
 
 	r := chi.NewRouter()
-	r.Use(middleware.JWTAuth(testJWTSecret))
+	r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 	r.Get("/sale-pages", h.List)
 	r.Post("/sale-pages", h.Create)
 	r.Put("/sale-pages/{id}", h.Update)

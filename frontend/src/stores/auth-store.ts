@@ -5,10 +5,8 @@ import type { Customer } from '@/types'
 interface AuthState {
   customer: Customer | null
   isAuthenticated: boolean
-  _hasHydrated: boolean
   setCustomer: (customer: Customer) => void
   logout: () => void
-  setHasHydrated: (state: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -16,14 +14,8 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       customer: null,
       isAuthenticated: false,
-      _hasHydrated: false,
       setCustomer: (customer) => set({ customer, isAuthenticated: true }),
-      logout: () => {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        set({ customer: null, isAuthenticated: false })
-      },
-      setHasHydrated: (state) => set({ _hasHydrated: state }),
+      logout: () => set({ customer: null, isAuthenticated: false }),
     }),
     {
       name: 'auth-storage',
@@ -43,9 +35,6 @@ export const useAuthStore = create<AuthState>()(
           : null,
         isAuthenticated: state.isAuthenticated,
       }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true)
-      },
     }
   )
 )

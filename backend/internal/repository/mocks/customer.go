@@ -29,8 +29,8 @@ func (m *MockCustomerRepo) GetByEmail(ctx context.Context, email string) (*domai
 	}
 	return args.Get(0).(*domain.Customer), args.Error(1)
 }
-func (m *MockCustomerRepo) GetByGoogleID(ctx context.Context, googleID string) (*domain.Customer, error) {
-	args := m.Called(ctx, googleID)
+func (m *MockCustomerRepo) GetByAuthUserID(ctx context.Context, authUserID string) (*domain.Customer, error) {
+	args := m.Called(ctx, authUserID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

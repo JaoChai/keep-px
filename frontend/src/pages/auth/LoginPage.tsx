@@ -1,17 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
-import { useMutation } from '@tanstack/react-query'
-import { GoogleLogin } from '@react-oauth/google'
 import { Shield, RotateCcw, Zap, Database } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import api from '@/lib/api'
-import { useAuthStore } from '@/stores/auth-store'
-import type { APIResponse, AuthTokens } from '@/types'
-
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-const isDev = import.meta.env.DEV
+import { authClient } from '@/lib/neon-auth'
 
 const features = [
   {
@@ -36,24 +27,9 @@ const features = [
   },
 ]
 
-function storeAuthTokens(data: AuthTokens) {
-  localStorage.setItem('access_token', data.access_token)
-  localStorage.setItem('refresh_token', data.refresh_token)
-  useAuthStore.getState().setCustomer(data.customer)
-}
-
 export function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [devEmail, setDevEmail] = useState('')
-
-  const devLogin = useMutation({
-    mutationFn: async (email: string) => {
-      const { data } = await api.post<APIResponse<AuthTokens>>('/auth/dev-login', { email })
-      return data.data!
-    },
-    onSuccess: storeAuthTokens,
-  })
 
   // Handle Google OAuth errors from query params (one-shot)
   useEffect(() => {
@@ -162,66 +138,21 @@ export function LoginPage() {
               ))}
             </div>
 
-            {/* Google Login */}
-            {googleClientId ? (
-              <div className="flex justify-center">
-                <GoogleLogin
-                  onSuccess={() => {/* redirect mode — handled by backend callback */}}
-                  ux_mode="redirect"
-                  login_uri={
-                    window.location.origin + '/api/v1/auth/google/callback'
-                  }
-                  theme="filled_black"
-                  size="large"
-                  shape="rectangular"
-                  width={320}
-                  text="continue_with"
-                />
-              </div>
-            ) : (
-              <p className="text-center text-sm text-muted-foreground">
-                ยังไม่ได้ตั้งค่า Google Login
-              </p>
-            )}
-
-            {/* Dev Login — development only */}
-            {isDev && (
-              <>
-                <div className="my-6 flex items-center gap-3">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-xs text-muted-foreground">Dev Login</span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault()
-                    if (!devEmail.trim()) return
-                    try {
-                      await devLogin.mutateAsync(devEmail.trim())
-                      toast.success('Dev login สำเร็จ')
-                      navigate('/dashboard')
-                    } catch {
-                      toast.error('ไม่พบ email นี้ในระบบ')
-                    }
-                  }}
-                  className="space-y-3"
-                >
-                  <Input
-                    type="email"
-                    placeholder="email ที่มีอยู่ใน DB"
-                    value={devEmail}
-                    onChange={(e) => setDevEmail(e.target.value)}
-                  />
-                  <Button
-                    type="submit"
-                    disabled={devLogin.isPending}
-                    className="w-full"
-                  >
-                    {devLogin.isPending ? 'กำลังเข้าสู่ระบบ...' : 'Dev Login'}
-                  </Button>
-                </form>
-              </>
-            )}
+            {/* Login ผ่าน Neon Auth */}
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() =>
+                  authClient.signIn.social({
+                    provider: 'google',
+                    callbackURL: window.location.origin + '/dashboard',
+                  })
+                }
+                className="flex h-11 w-[320px] items-center justify-center gap-2 rounded-md bg-foreground text-sm font-medium text-background transition-opacity hover:opacity-90"
+              >
+                เข้าสู่ระบบด้วย Google
+              </button>
+            </div>
 
             <div className="my-6 flex items-center gap-3">
               <div className="h-px flex-1 bg-border" />

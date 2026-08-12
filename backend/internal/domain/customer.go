@@ -6,7 +6,7 @@ type Customer struct {
 	ID               string     `json:"id"`
 	Email            string     `json:"email"`
 	PasswordHash     string     `json:"-"`
-	GoogleID         *string    `json:"-"`
+	AuthUserID       *string    `json:"-"`
 	Name             string     `json:"name"`
 	APIKey           string     `json:"api_key"`
 	Plan             string     `json:"plan"`

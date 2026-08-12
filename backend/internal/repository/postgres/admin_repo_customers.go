@@ -41,7 +41,7 @@ func (r *AdminRepo) ListCustomers(ctx context.Context, search, plan, status stri
 	}
 
 	selectQuery := fmt.Sprintf(
-		`SELECT id, email, password_hash, google_id, name, api_key, plan, stripe_customer_id, is_admin, suspended_at, created_at, updated_at
+		`SELECT id, email, password_hash, name, api_key, plan, stripe_customer_id, is_admin, suspended_at, created_at, updated_at
 		 FROM customers %s ORDER BY created_at DESC LIMIT $%d OFFSET $%d`,
 		baseWhere, argIdx, argIdx+1,
 	)
@@ -72,7 +72,7 @@ func scanCustomerFromRows(rows pgx.Rows) (*domain.Customer, error) {
 	c := &domain.Customer{}
 	var passwordHash *string
 	err := rows.Scan(
-		&c.ID, &c.Email, &passwordHash, &c.GoogleID,
+		&c.ID, &c.Email, &passwordHash,
 		&c.Name, &c.APIKey, &c.Plan, &c.StripeCustomerID,
 		&c.IsAdmin, &c.SuspendedAt,
 		&c.CreatedAt, &c.UpdatedAt,
@@ -88,7 +88,7 @@ func scanCustomerFromRows(rows pgx.Rows) (*domain.Customer, error) {
 
 func (r *AdminRepo) GetCustomerDetail(ctx context.Context, id string) (*domain.AdminCustomerDetail, error) {
 	customer, err := scanCustomer(r.pool.QueryRow(ctx,
-		`SELECT id, email, password_hash, google_id, name, api_key, plan, stripe_customer_id, is_admin, suspended_at, created_at, updated_at
+		`SELECT id, email, password_hash, name, api_key, plan, stripe_customer_id, is_admin, suspended_at, created_at, updated_at
 		 FROM customers WHERE id = $1`, id,
 	))
 	if err != nil {

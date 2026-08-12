@@ -20,7 +20,7 @@ import (
 
 func TestAnalyticsHandler_Overview_NoAuth(t *testing.T) {
 	r := chi.NewRouter()
-	r.Use(middleware.JWTAuth(testJWTSecret))
+	r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 	r.Get("/analytics/overview", func(w http.ResponseWriter, r *http.Request) {
 		JSON(w, http.StatusOK, APIResponse{Data: map[string]string{"status": "ok"}})
 	})
@@ -31,7 +31,7 @@ func TestAnalyticsHandler_Overview_NoAuth(t *testing.T) {
 
 func TestAnalyticsHandler_EventChart_NoAuth(t *testing.T) {
 	r := chi.NewRouter()
-	r.Use(middleware.JWTAuth(testJWTSecret))
+	r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 	r.Get("/analytics/events/chart", func(w http.ResponseWriter, r *http.Request) {
 		JSON(w, http.StatusOK, APIResponse{Data: map[string]string{"status": "ok"}})
 	})
@@ -44,7 +44,7 @@ func TestAnalyticsHandler_Overview_WithAuth(t *testing.T) {
 	// Verify that a valid JWT passes through the middleware to the handler.
 	// We use a stub handler since we can't construct AnalyticsService without pgxpool.
 	r := chi.NewRouter()
-	r.Use(middleware.JWTAuth(testJWTSecret))
+	r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 	r.Get("/analytics/overview", func(w http.ResponseWriter, r *http.Request) {
 		customerID := middleware.GetCustomerID(r.Context())
 		JSON(w, http.StatusOK, APIResponse{Data: map[string]string{"customer_id": customerID}})
@@ -56,7 +56,7 @@ func TestAnalyticsHandler_Overview_WithAuth(t *testing.T) {
 
 func TestAnalyticsHandler_EventChart_WithAuth(t *testing.T) {
 	r := chi.NewRouter()
-	r.Use(middleware.JWTAuth(testJWTSecret))
+	r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
 	r.Get("/analytics/events/chart", func(w http.ResponseWriter, r *http.Request) {
 		customerID := middleware.GetCustomerID(r.Context())
 		JSON(w, http.StatusOK, APIResponse{Data: map[string]string{"customer_id": customerID}})

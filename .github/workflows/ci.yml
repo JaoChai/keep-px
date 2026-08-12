@@ -139,6 +139,8 @@ jobs:
       - run: npm run lint
       - run: npm run test
       - run: npm run build
+        env:
+          VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
 
       - name: npm audit (security scan)
         continue-on-error: true
@@ -160,6 +162,13 @@ jobs:
       - run: npm ci
       # typecheck borrows frontend's tsc, so its node_modules has to exist first
       - run: npm ci --prefix frontend
+      # worker-configuration.d.ts is gitignored (generated) — tsc needs it for
+      # the Cloudflare Workers ambient types (Env, ExecutionContext, etc.).
+      # wrangler types reads secret key names from .dev.vars (placeholder
+      # values only — no live Cloudflare account access needed or used).
+      - run: cp .dev.vars.example .dev.vars
+      - run: npx wrangler types
+      - run: npx wrangler types --cwd workers/custom-domain
       - run: npm run typecheck
       - run: npm test
 
@@ -203,6 +212,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
 
       - name: Verify health
         run: |

@@ -8,23 +8,20 @@ import (
 )
 
 type Config struct {
-	Port                 int           `env:"PORT" envDefault:"8080"`
-	Env                  string        `env:"ENV" envDefault:"production"`
-	DatabaseURL          string        `env:"DATABASE_URL,required"`
-	JWTSecret            string        `env:"JWT_SECRET,required"`
-	JWTAccessTTL         time.Duration `env:"JWT_ACCESS_TTL" envDefault:"15m"`
-	JWTRefreshTTL        time.Duration `env:"JWT_REFRESH_TTL" envDefault:"720h"`
-	FBGraphAPIURL        string        `env:"FB_GRAPH_API_URL" envDefault:"https://graph.facebook.com/v21.0"`
-	CORSAllowedOrigins   []string      `env:"CORS_ALLOWED_ORIGINS" envSeparator:"," envDefault:"http://localhost:5173"`
-	RateLimitRPS         int           `env:"RATE_LIMIT_RPS" envDefault:"100"`
-	RateLimitAPIKeyRPS   int           `env:"RATE_LIMIT_API_KEY_RPS" envDefault:"100"`
-	RateLimitAPIKeyBurst int           `env:"RATE_LIMIT_API_KEY_BURST" envDefault:"200"`
+	Port                 int      `env:"PORT" envDefault:"8080"`
+	Env                  string   `env:"ENV" envDefault:"production"`
+	DatabaseURL          string   `env:"DATABASE_URL,required"`
+	FBGraphAPIURL        string   `env:"FB_GRAPH_API_URL" envDefault:"https://graph.facebook.com/v21.0"`
+	CORSAllowedOrigins   []string `env:"CORS_ALLOWED_ORIGINS" envSeparator:"," envDefault:"http://localhost:5173"`
+	RateLimitRPS         int      `env:"RATE_LIMIT_RPS" envDefault:"100"`
+	RateLimitAPIKeyRPS   int      `env:"RATE_LIMIT_API_KEY_RPS" envDefault:"100"`
+	RateLimitAPIKeyBurst int      `env:"RATE_LIMIT_API_KEY_BURST" envDefault:"200"`
 
 	// Public base URL for sale pages
 	BaseURL string `env:"BASE_URL" envDefault:"https://pixlinks.xyz"`
 
-	// Google OAuth
-	GoogleClientID string `env:"GOOGLE_CLIENT_ID"`
+	// Neon Auth (base URL ของ Neon Auth — ใช้ดึง JWKS และเป็น issuer)
+	NeonAuthURL string `env:"NEON_AUTH_URL,required"`
 
 	// S3/R2 Storage
 	S3Endpoint  string `env:"S3_ENDPOINT"`
