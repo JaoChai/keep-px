@@ -711,15 +711,14 @@ normalizeClientIP ลบ header ที่ client ปลอมได้ทิ้�
 
 - [ ] **Step 2: เขียน worker/index.ts ฉบับเต็ม**
 
+⚠️ **ไฟล์นี้มีอยู่แล้วจาก Task 2 และมีของที่ spike แก้ไว้ 2 อย่างซึ่งห้ามทำหาย** — `toContainerRequest` และ `fetch` override ที่ตั้ง timeout เอง ถ้าเขียนทับจะกลับไปเจอ error 1042 และ container start timeout อีกรอบ **ให้แก้ต่อยอดจากของเดิม อย่าเขียนใหม่ทั้งไฟล์**
+
 ```ts
 import { Container, getContainer } from "@cloudflare/containers";
 import { env } from "cloudflare:workers";
 import { applySecurityHeaders } from "./headers";
 import { normalizeClientIP } from "./client-ip";
 
-⚠️ **ไฟล์นี้มีอยู่แล้วจาก Task 2 และมีของที่ spike แก้ไว้ 2 อย่างซึ่งห้ามทำหาย** — `toContainerRequest` และ `fetch` override ที่ตั้ง timeout เอง ถ้าเขียนทับจะกลับไปเจอ error 1042 และ container start timeout อีกรอบ **ให้แก้ต่อยอดจากของเดิม อย่าเขียนใหม่ทั้งไฟล์**
-
-```ts
 export class Backend extends Container {
   defaultPort = 8080;
   sleepAfter = "1h";
