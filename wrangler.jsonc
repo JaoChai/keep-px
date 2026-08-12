@@ -15,9 +15,8 @@
   // from the Railway service on 2026-08-12 before that project was deleted. Not
   // secrets — they belong in version control where the drift is visible.
   "vars": {
-    // Neon Auth endpoint (from spike). Test branch for now — Task 8 swaps
-    // this to the production branch URL.
-    "NEON_AUTH_URL": "https://ep-ancient-brook-ain4f1ec.neonauth.c-4.us-east-1.aws.neon.tech/neondb/auth",
+    // Neon Auth endpoint — production branch (Task 8, Step 2).
+    "NEON_AUTH_URL": "https://ep-cool-butterfly-ai3qizfi.neonauth.c-4.us-east-1.aws.neon.tech/neondb/auth",
     "DB_MAX_CONNS": "10",
     "DB_MIN_CONNS": "2"
   },
