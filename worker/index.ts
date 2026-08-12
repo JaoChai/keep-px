@@ -87,9 +87,31 @@ async function errorPage(env: Env, status: 502 | 503 | 504): Promise<Response> {
   return new Response(`Backend unavailable (${status})`, { status });
 }
 
+/**
+ * Paths the Go backend owns. Everything else is the React SPA, served from the
+ * ASSETS binding. This routing lives in code rather than in `run_worker_first`
+ * so that every response — static asset included — passes through
+ * applySecurityHeaders on its way out. Serving assets straight from the edge
+ * would skip the Worker entirely and ship the dashboard with no security
+ * headers at all.
+ */
+const BACKEND_PREFIXES = ["/api/", "/p/"];
+const BACKEND_EXACT = ["/health", "/ready"];
+
+function isBackendPath(pathname: string): boolean {
+  return (
+    BACKEND_EXACT.includes(pathname) ||
+    BACKEND_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  );
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const pathname = new URL(request.url).pathname;
+
+    if (!isBackendPath(pathname)) {
+      return applySecurityHeaders(await env.ASSETS.fetch(request), pathname);
+    }
 
     try {
       // Both wrappers are load-bearing: normalizeClientIP stops header forgery,
@@ -102,5 +124,20 @@ export default {
       console.error("failed to reach backend container", error);
       return applySecurityHeaders(await errorPage(env, 502), pathname);
     }
+  },
+
+  /**
+   * Keeps the container awake. The daily retention cleanup runs as an in-process
+   * ticker inside Go (cmd/server/main.go:112), which only fires while the
+   * container is running — this ping is what guarantees that. It deliberately
+   * does not call cleanup itself, so no Go code has to change.
+   */
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(
+      getContainer(env.BACKEND)
+        .fetch(new Request("http://container/health"))
+        .then((res) => console.log("keep-alive ping", res.status))
+        .catch((error) => console.error("keep-alive ping failed", error)),
+    );
   },
 } satisfies ExportedHandler<Env>;

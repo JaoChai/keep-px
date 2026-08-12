@@ -701,7 +701,13 @@ normalizeClientIP ลบ header ที่ client ปลอมได้ทิ้�
 }
 ```
 
-`run_worker_first` ทำให้ 4 path นี้เข้า Worker ก่อน ส่วน path อื่นเสิร์ฟจาก static asset โดยตรง และ `not_found_handling` คืน `index.html` ให้ route ของ React
+⚠️ **แก้แล้วหลังวัดจริง 2026-08-12 — ห้ามใช้ `run_worker_first` แบบระบุ path**
+
+เดิมเขียนไว้ว่า `"run_worker_first": ["/api/*", "/p/*", "/health", "/ready"]` ซึ่ง **ผิด** เพราะ `applySecurityHeaders` อยู่ในโค้ด Worker พอ static asset ถูกเสิร์ฟตรงจาก edge มันไม่ผ่าน Worker เลย → **หน้า `/` ได้ security header 0 จาก 7 ตัว** ขัดกับเกณฑ์ความสำเร็จข้อ 2 โดยตรง
+
+ต้องใช้ `"run_worker_first": true` แล้วแยกเส้นทางในโค้ดแทน (ฟังก์ชัน `isBackendPath`) — path ของ backend ไปเข้า container ที่เหลือดึงจาก `env.ASSETS.fetch()` แล้วใส่ header ก่อนส่งออกทุกกรณี
+
+วัดหลังแก้: `/` ได้ 7/7 · `/assets/*.js` ได้ `X-Content-Type-Options` + CSP · `/p/` ยังไม่มี `X-Frame-Options` ตามเจตนา
 
 - [ ] **Step 2: เขียน worker/index.ts ฉบับเต็ม**
 
