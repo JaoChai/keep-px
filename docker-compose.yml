@@ -26,16 +26,8 @@ services:
     depends_on:
       - postgres
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://localhost:8080
-    ports:
-      - "3000:8080"
-    depends_on:
-      - backend
+# The frontend service was removed with frontend/Dockerfile in 539974c — it is
+# served by Workers Static Assets now. Local dev is `npm run dev --prefix frontend`.
 
 volumes:
   pgdata:
