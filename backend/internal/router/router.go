@@ -27,7 +27,11 @@ func New(cfg *config.Config, logger *slog.Logger, pool *pgxpool.Pool, shutdownCt
 
 	// Global middleware
 	r.Use(chimiddleware.Recoverer)
-	r.Use(chimiddleware.ClientIPFromHeader("X-Real-IP"))
+	// Cloudflare sets CF-Connecting-IP to the real client address at the edge and
+	// overwrites any client-supplied value, so it is the only header we trust.
+	// The Worker strips X-Real-IP / X-Forwarded-For / True-Client-IP before
+	// forwarding — see worker/client-ip.ts.
+	r.Use(chimiddleware.ClientIPFromHeader("CF-Connecting-IP"))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.CORS(cfg.CORSAllowedOrigins))

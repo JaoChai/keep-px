@@ -53,11 +53,11 @@ func do(t *testing.T, h http.Handler, remoteAddr string, headers map[string]stri
 
 // TestRouter_ForgedHeadersCannotBuyFreshBuckets is the router-level guard that
 // replaces the brittle CI grep: it proves router.New actually registers
-// chimiddleware.ClientIPFromHeader("X-Real-IP"). Six requests share one real
-// identity — the same X-Real-IP, the one header Railway's edge overwrites and
-// the only one ClientIPFromHeader reads — but vary everything a client CAN
-// control: a unique forged True-Client-IP and X-Forwarded-For per request, AND
-// a distinct RemoteAddr per request.
+// chimiddleware.ClientIPFromHeader("CF-Connecting-IP"). Six requests share one real
+// identity — the same CF-Connecting-IP, the one header Cloudflare's edge overwrites
+// and the only one ClientIPFromHeader reads — but vary everything a client CAN
+// control: a unique forged X-Real-IP, True-Client-IP and X-Forwarded-For per
+// request, AND a distinct RemoteAddr per request.
 //
 // Correct wiring collapses all six into the single 203.0.113.1 bucket
 // (RateLimitWithContext uses burst = rps*2 = 2), so at least one request must
@@ -89,9 +89,10 @@ func TestRouter_ForgedHeadersCannotBuyFreshBuckets(t *testing.T) {
 		code := do(t, h,
 			fmt.Sprintf("10.0.0.%d:1234", i),
 			map[string]string{
-				"X-Real-IP":       "203.0.113.1",
-				"True-Client-IP":  fmt.Sprintf("198.51.100.%d", i),
-				"X-Forwarded-For": fmt.Sprintf("192.0.2.%d", i),
+				"CF-Connecting-IP": "203.0.113.1",
+				"X-Real-IP":        fmt.Sprintf("198.51.100.%d", i),
+				"True-Client-IP":   fmt.Sprintf("198.51.100.%d", i),
+				"X-Forwarded-For":  fmt.Sprintf("192.0.2.%d", i),
 			},
 		)
 		if code == http.StatusTooManyRequests {
@@ -99,16 +100,16 @@ func TestRouter_ForgedHeadersCannotBuyFreshBuckets(t *testing.T) {
 		}
 	}
 
-	t.Fatal("router does not resolve the client IP from X-Real-IP — forged " +
-		"True-Client-IP / X-Forwarded-IP bought a fresh rate-limit bucket on " +
-		"every request. chimiddleware.ClientIPFromHeader(\"X-Real-IP\") is not " +
-		"registered in router.New, or chimiddleware.RealIP was reintroduced. " +
-		"See docs/superpowers/specs/2026-08-06-dependency-update-followups.md")
+	t.Fatal("router does not resolve the client IP from CF-Connecting-IP — forged " +
+		"X-Real-IP / True-Client-IP / X-Forwarded-For bought a fresh rate-limit " +
+		"bucket on every request. chimiddleware.ClientIPFromHeader(\"CF-Connecting-IP\") " +
+		"is not registered in router.New. See " +
+		"docs/superpowers/specs/2026-08-12-cloudflare-migration-design.md")
 }
 
 // TestRouter_DistinctRealIPsKeepSeparateBuckets is the complement: five
-// genuine visitors behind the SAME RemoteAddr (as all traffic is behind Nginx
-// in production) but each carrying a distinct, edge-resolved X-Real-IP. Each
+// genuine visitors behind the SAME RemoteAddr (as all traffic is behind Cloudflare
+// in production) but each carrying a distinct, edge-resolved CF-Connecting-IP. Each
 // must land in its own bucket, so none is rate-limited — distinct real
 // customers must not be collapsed into one bucket.
 func TestRouter_DistinctRealIPsKeepSeparateBuckets(t *testing.T) {
@@ -119,11 +120,11 @@ func TestRouter_DistinctRealIPsKeepSeparateBuckets(t *testing.T) {
 		code := do(t, h,
 			"10.0.0.1:1234",
 			map[string]string{
-				"X-Real-IP": fmt.Sprintf("203.0.113.%d", i),
+				"CF-Connecting-IP": fmt.Sprintf("203.0.113.%d", i),
 			},
 		)
 		if code == http.StatusTooManyRequests {
-			t.Fatalf("request %d with distinct X-Real-IP 203.0.113.%d was "+
+			t.Fatalf("request %d with distinct CF-Connecting-IP 203.0.113.%d was "+
 				"rate-limited (429) — distinct real client IPs must keep "+
 				"separate buckets", i, i)
 		}
