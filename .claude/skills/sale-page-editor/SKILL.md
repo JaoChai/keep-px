@@ -142,8 +142,7 @@ Handler peeks at the content JSON to determine which template to use:
 After sale page changes:
 ```bash
 cd backend && go vet ./... && go test -race ./...
-cd frontend && npm run lint && npm run build
-cd frontend && npx playwright test sale-pages.spec.ts
+cd frontend && npm run lint && npm run test && npm run build
 ```
 
 Check public page renders correctly:
@@ -155,5 +154,4 @@ curl -s http://localhost:8080/p/<slug> | head -50
 
 - `event-pipeline` for tracking script and CAPI integration
 - `db-migration` for schema changes to sale_pages/sale_page_pixels
-- `e2e-debug` for debugging sale-pages.spec.ts failures
-- `deploy-check` for pre-deployment verification
+- `cloudflare-deploy` for pre-deployment verification

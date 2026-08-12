@@ -17,12 +17,17 @@ description: GitHub Actions CI pipeline structure and failure debugging — ใ�
 Read `.github/workflows/` for the current pipeline definition. Standard flow:
 
 ```
-changes → backend → frontend → e2e → ci-gate → deploy → post-deploy-e2e
+changes → backend ‖ frontend ‖ worker → ci-gate → deploy
 ```
 
+- `changes` เป็น paths filter — job ปลายทางรันเฉพาะเมื่อ path ของมันถูกแตะ
+  **เพิ่ม path ใหม่เข้า filter ทุกครั้งที่สร้างโฟลเดอร์ระดับบนสุด** ไม่งั้นทั้ง test และ deploy เงียบ
+- `worker` รัน `npm run typecheck` + `npm test` (vitest ที่ root) สำหรับ `worker/**` และ `wrangler.jsonc`
 - `ci-gate` is the required status check for PR merges
-- `deploy` runs after merge to main — CI deploys via `npm run deploy` (wrangler) แล้ว verify `/health`; ดู skill `cloudflare-deploy`
-- `post-deploy-e2e` runs `@smoke` tagged tests against production
+- `deploy` runs after merge to main — CI deploys via `npm run deploy` (wrangler) แล้ว verify `/health`
+  และ security header 7 ตัว; ดู skill `cloudflare-deploy`
+  · `if` ของมันต้องมี `always()` นำหน้าเสมอ ไม่งั้นจะรับ skip ต่อมาจาก needs chain
+- **ไม่มี e2e แล้ว** — ถูกลบทั้งชุดเมื่อ 2026-08-12
 
 ## Debugging Decision Tree
 
@@ -56,37 +61,33 @@ Build failed but types pass?
   → Check Vite-specific issues (env vars, imports)
 ```
 
-### E2E Job Failed
+### Worker Job Failed
 
 ```
-Auth setup failed?
-  → Token expired or E2E env vars missing in CI secrets
-  → Check .auth/user.json generation step
+typecheck failed?
+  → Env type ล้าสมัย — รัน `npx wrangler types` หลังแก้ vars/secret ใน wrangler.jsonc
 
-Test timeout?
-  → Usually network/dialog timing — add explicit waits
-  → Check if test relies on data that doesn't exist in sandbox
-
-Strict mode violation?
-  → Multiple elements matched — use .first() or scope with parent locator
-  → See e2e-debug skill for detailed patterns
+vitest failed?
+  → worker/headers.test.ts หรือ client-ip.test.ts — ดู skill `worker-headers`
 ```
 
-### deploy / post-deploy-e2e Failed
+### deploy Failed
 
 ```
+job ขึ้นว่า skipped ไม่ใช่ failed?
+  → path ที่แก้ไม่อยู่ใน `changes` filter หรือ `if` ขาด `always()`
+  → เช็คด้วย `gh run view <id> --json jobs` ดู conclusion ของ job ไม่ใช่ของ run
+
 Health check failed?
   → Check Worker logs: `npx wrangler tail`
   → Container ไม่ตื่น / cold start ช้า / secret หาย? ดู `cloudflare-deploy` skill
   → Did migration fail? Check startup logs for golang-migrate errors
 
-Smoke test failed?
-  → Production URL changed? Check FRONTEND_URL / BASE_URL secret
-  → CSP blocking? See `worker-headers` skill
+Security header หาย?
+  → CSP / header ตกหล่น? See `worker-headers` skill
 ```
 
 ## Related
 
-- `e2e-debug` — detailed E2E failure analysis
 - `cloudflare-deploy` — deployment issues (Worker + Container)
 - `worker-headers` — CSP / security headers
