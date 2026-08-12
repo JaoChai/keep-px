@@ -75,7 +75,7 @@ func TestAuthHandler_Me(t *testing.T) {
 			}
 
 			authService := newTestAuthService(customerRepo, refreshTokenRepo)
-			h := NewAuthHandler(authService, testConfig(), testLogger())
+			h := NewAuthHandler(authService, testConfig(), testLogger(), testAuth.KeyFunc(), testAuthIssuer)
 
 			r := chi.NewRouter()
 			r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
@@ -142,7 +142,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 			}
 
 			authService := newTestAuthService(customerRepo, refreshTokenRepo)
-			h := NewAuthHandler(authService, testConfig(), testLogger())
+			h := NewAuthHandler(authService, testConfig(), testLogger(), testAuth.KeyFunc(), testAuthIssuer)
 
 			r := chi.NewRouter()
 			r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
@@ -252,7 +252,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 			}
 
 			authService := newTestAuthService(customerRepo, refreshTokenRepo)
-			h := NewAuthHandler(authService, testConfig(), testLogger())
+			h := NewAuthHandler(authService, testConfig(), testLogger(), testAuth.KeyFunc(), testAuthIssuer)
 
 			// Refresh is a public endpoint — no JWT middleware.
 			r := chi.NewRouter()
@@ -323,7 +323,7 @@ func TestAuthHandler_GoogleAuthCallback(t *testing.T) {
 			refreshTokenRepo := &mocks.MockRefreshTokenRepo{}
 
 			authService := newTestAuthService(customerRepo, refreshTokenRepo)
-			h := NewAuthHandler(authService, testConfig(), testLogger())
+			h := NewAuthHandler(authService, testConfig(), testLogger(), testAuth.KeyFunc(), testAuthIssuer)
 
 			// Create request with form data
 			body := ""
@@ -398,7 +398,7 @@ func TestAuthHandler_RegenerateAPIKey(t *testing.T) {
 			}
 
 			authService := newTestAuthService(customerRepo, refreshTokenRepo)
-			h := NewAuthHandler(authService, testConfig(), testLogger())
+			h := NewAuthHandler(authService, testConfig(), testLogger(), testAuth.KeyFunc(), testAuthIssuer)
 
 			r := chi.NewRouter()
 			r.Use(middleware.JWTAuth(testAuth.KeyFunc(), testAuthIssuer, testAuth.Lookup))
