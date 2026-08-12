@@ -344,8 +344,8 @@ package middleware
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/rsa"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -360,23 +360,24 @@ import (
 
 const testIssuer = "https://ep-test.neon.tech"
 
-// newTestKey สร้างกุญแจ RSA ในเครื่องสำหรับเซ็นและตรวจ token ในเทสต์
+// newTestKey สร้างกุญแจ Ed25519 ในเครื่องสำหรับเซ็นและตรวจ token ในเทสต์
 // ไม่ต้องต่อเน็ตและไม่ต้องมี JWKS server จริง
-func newTestKey(t *testing.T) (*rsa.PrivateKey, jwt.Keyfunc) {
+// **Ed25519 ไม่ใช่ RSA** — spike ยืนยันแล้วว่า Neon เซ็นด้วย EdDSA (kty=OKP)
+func newTestKey(t *testing.T) (ed25519.PrivateKey, jwt.Keyfunc) {
 	t.Helper()
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
-	return key, func(token *jwt.Token) (any, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+	return priv, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodEd25519); !ok {
 			return nil, jwt.ErrSignatureInvalid
 		}
-		return &key.PublicKey, nil
+		return pub, nil
 	}
 }
 
-func makeToken(t *testing.T, key *rsa.PrivateKey, claims jwt.MapClaims) string {
+func makeToken(t *testing.T, key ed25519.PrivateKey, claims jwt.MapClaims) string {
 	t.Helper()
-	tokenStr, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(key)
+	tokenStr, err := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims).SignedString(key)
 	require.NoError(t, err)
 	return tokenStr
 }
@@ -552,7 +553,7 @@ func JWTAuth(keyFn jwt.Keyfunc, issuer string, lookup CustomerLookup) func(http.
 			token, err := jwt.Parse(tokenStr, keyFn,
 				jwt.WithIssuer(issuer),
 				jwt.WithExpirationRequired(),
-				jwt.WithValidMethods([]string{"RS256"}),
+				jwt.WithValidMethods([]string{"EdDSA"}),
 			)
 			if err != nil || !token.Valid {
 				writeJSONError(w, http.StatusUnauthorized, "invalid token")
@@ -877,7 +878,7 @@ func (h *AuthHandler) Session(w http.ResponseWriter, r *http.Request) {
 	token, err := jwt.Parse(tokenStr, h.jwks,
 		jwt.WithIssuer(h.issuer),
 		jwt.WithExpirationRequired(),
-		jwt.WithValidMethods([]string{"RS256"}),
+		jwt.WithValidMethods([]string{"EdDSA"}),
 	)
 	if err != nil || !token.Valid {
 		ErrorJSON(w, http.StatusUnauthorized, "invalid token")
@@ -888,7 +889,7 @@ func (h *AuthHandler) Session(w http.ResponseWriter, r *http.Request) {
 	authUserID, _ := claims["sub"].(string)
 	email, _ := claims["email"].(string)
 	name, _ := claims["name"].(string)
-	emailVerified, _ := claims["email_verified"].(bool)
+	emailVerified, _ := claims["emailVerified"].(bool) // camelCase — spike ยืนยันแล้ว
 
 	if authUserID == "" || email == "" {
 		ErrorJSON(w, http.StatusUnauthorized, "invalid claims")
@@ -915,8 +916,9 @@ func (h *AuthHandler) Session(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-**ชื่อ claim `email` / `name` / `email_verified` ต้องตรงกับที่ Spike Step 7 บันทึกไว้จริง
-ถ้าต่างให้แก้ตรงนี้ให้ตรง**
+**ชื่อ claim ยืนยันจาก token จริงแล้ว** (ดูหัวข้อ "ผล Spike" ท้ายไฟล์): `sub` `email` `name`
+`emailVerified` — **`emailVerified` เป็น camelCase ไม่ใช่ `email_verified`** ถ้าเขียนผิดจะได้
+`false` เสมอแล้วไม่มีใคร provision ได้เลย โดยไม่มี error ฟ้อง
 
 - [ ] **Step 6: เพิ่ม route**
 
@@ -976,7 +978,40 @@ if (!authURL) {
 }
 
 export const authClient = createAuthClient(authURL)
+
+// ---------------------------------------------------------------------------
+// JWT ที่ backend ตรวจได้ **ไม่ใช่** ค่าที่ getSession() คืนมา
+// getSession().session.token เป็น session token ทึบ ๆ ที่ตรวจกับ JWKS ไม่ได้
+// ตัว JWT จริงต้องขอจาก endpoint /token แยกต่างหาก (spike ยืนยันแล้ว)
+// และมันอายุแค่ 15 นาที จึงต้อง cache ไว้แล้วขอใหม่ก่อนหมดอายุ
+// ---------------------------------------------------------------------------
+let cached: { token: string; expiresAt: number } | null = null
+
+export async function getAccessToken(): Promise<string | null> {
+  // เผื่อเวลาไว้ 60 วินาที กัน token หมดอายุระหว่างทางไปถึง backend
+  if (cached && Date.now() < cached.expiresAt - 60_000) {
+    return cached.token
+  }
+
+  const res = await fetch(`${authURL}/token`, { credentials: 'include' })
+  if (!res.ok) {
+    cached = null
+    return null
+  }
+
+  const { token } = (await res.json()) as { token: string }
+  const payload = JSON.parse(atob(token.split('.')[1])) as { exp: number }
+  cached = { token, expiresAt: payload.exp * 1000 }
+  return token
+}
+
+export function clearAccessToken() {
+  cached = null
+}
 ```
+
+**`credentials: 'include'` จำเป็น** เพราะ session อยู่ในคุกกี้ของโดเมน Neon ซึ่งเป็นคนละโดเมนกับเรา
+→ โดเมนของเราต้องถูกใส่ใน `trusted_origins` ฝั่ง Neon ก่อน ไม่งั้น CORS บล็อก (ทำใน Task 8)
 
 - [ ] **Step 3: เปลี่ยนปุ่มในหน้า login**
 
@@ -1012,7 +1047,7 @@ export const authClient = createAuthClient(authURL)
 import axios from 'axios'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
-import { authClient } from '@/lib/neon-auth'
+import { authClient, getAccessToken, clearAccessToken } from '@/lib/neon-auth'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -1022,8 +1057,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use(async (config) => {
-  const { data } = await authClient.getSession()
-  const token = data?.session?.token
+  const token = await getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -1045,6 +1079,7 @@ api.interceptors.response.use(
     }
 
     if (status === 401) {
+      clearAccessToken()
       await authClient.signOut()
       useAuthStore.getState().logout()
       window.location.href = '/login'
@@ -1343,6 +1378,18 @@ Console แบบ Web application แล้วใส่ redirect URI `{NEON_AUTH
 Google ต้องการให้ publish หน้า consent screen สำหรับใช้งานจริง ซึ่งอาจใช้เวลาตรวจสอบ 2-3 วันทำการ
 **ถ้าติดขั้นนี้ให้แจ้งเจ้าของทันที อย่ารอเงียบ ๆ**
 
+- [ ] **Step 1b: ตั้ง `trusted_origins` และปิด email/password**
+
+ใช้ `configure_neon_auth` (Neon MCP) บน branch production:
+
+- `trusted_origins` = `["https://pixlinks.xyz"]` — **ถ้าไม่ตั้ง เบราว์เซอร์จะถูก CORS บล็อก
+  ตอน `fetch(/token)` แล้ว login ไม่ผ่านทั้งที่ทุกอย่างถูก** (ค่าตั้งต้นเป็น `[]`)
+- `auth_methods.email_password.enabled` = `false` — spec บอกว่าใช้ Google อย่างเดียว
+  ปล่อยไว้เท่ากับเปิดทางให้ใครก็ได้สมัครบัญชีด้วย email/password โดยไม่ต้องยืนยัน email
+  (`require_email_verification: false` เป็นค่าตั้งต้น) ซึ่งไม่มีใครขอ
+
+ยืนยันด้วย `get_neon_auth_config` ว่าทั้งสองค่าเปลี่ยนจริง
+
 - [ ] **Step 2: อัปเดต `NEON_AUTH_URL` ใน `wrangler.jsonc` เป็นค่าของ production**
 
 - [ ] **Step 3: ลบ secret ที่ไม่ใช้แล้ว**
@@ -1396,6 +1443,53 @@ dashboard ได้ และเห็นข้อมูลบัญชีตั
 
 ---
 
-## ผล Spike
+## ผล Spike (รันจริง 2026-08-12 · Claude)
 
-_(Task 1 Step 7 เขียนหัวข้อนี้ให้สมบูรณ์ — ตอนนี้ยังว่างเพราะ spike ยังไม่ได้รัน)_
+**สรุป: ผ่าน — Go ตรวจ JWT ของ Neon ได้จริง** เดินหน้าทั้งแผนต่อได้
+
+สภาพแวดล้อมทดสอบ: Neon project `pixlinks` (`shy-hall-58617360`) branch `neon-auth-spike`
+(`br-snowy-unit-aiesq0jb`) endpoint `ep-ancient-brook-ain4f1ec` — **ไม่ใช่ production
+(`ep-cool-butterfly-ai3qizfi`)** · ตั้งให้หมดอายุเอง 2026-08-26
+
+`NEON_AUTH_URL` ของ branch ทดสอบ:
+`https://ep-ancient-brook-ain4f1ec.neonauth.c-4.us-east-1.aws.neon.tech/neondb/auth`
+
+### สิ่งที่พิสูจน์แล้วด้วยการรันจริง
+
+1. `keyfunc.NewDefaultCtx` ดึงและแปลงกุญแจของ Neon ได้ → ได้ `ed25519.PublicKey` 1 ดอก
+2. `golang-jwt/v5` เซ็นและตรวจ EdDSA ได้
+3. JWT จริงจาก Neon ผ่านการตรวจกับ JWKS ครบ (exit code 0)
+
+### 5 อย่างที่ต่างจากที่แผนเดาไว้ — แก้ในแผนแล้วทั้งหมด
+
+| # | แผนเดิมเดาว่า | ของจริง | แก้ที่ |
+|---|---|---|---|
+| 1 | ลายเซ็น RS256 | **EdDSA / Ed25519** (`kty=OKP`) | Task 3 (เทสต์ + `WithValidMethods`) · Task 4 |
+| 2 | claim ชื่อ `email_verified` | **`emailVerified`** (camelCase) | Task 4 Step 5 |
+| 3 | JWT มากับ `getSession()` | **ต้องขอจาก `GET {base}/token` แยก** — ค่าใน `getSession()` เป็น session token ทึบ ตรวจกับ JWKS ไม่ได้ | Task 5 (เพิ่ม `getAccessToken()`) |
+| 4 | ไม่ได้คิดเรื่องอายุ token | **JWT อายุ 900 วินาที (15 นาที)** | Task 5 (cache + ขอใหม่ก่อนหมด 60 วิ) |
+| 5 | ไม่ได้คิดเรื่อง CORS | ทุก request ต้องมี `Origin` และโดเมนต้องอยู่ใน `trusted_origins` ซึ่งตั้งต้นเป็น `[]` | Task 8 Step 1b |
+
+**ข้อ 3 คือข้อที่อันตรายที่สุด** — คู่มือของ Neon เองแนะนำ `data.session.token` ซึ่งใช้ไม่ได้กับ
+backend แยก ถ้าเดินตามคู่มือจะได้ 401 ทุก request แล้วไล่หาสาเหตุผิดทางนาน
+
+### claim ทั้งหมดที่ Neon ส่งมาจริง
+
+`sub` (= `id`) · `email` · `emailVerified` · `name` · `role` (`"authenticated"`) ·
+`banned` · `banReason` · `banExpires` · `createdAt` · `updatedAt` · `iat` · `exp` ·
+`iss` · `aud`
+
+- `iss` = `https://ep-ancient-brook-ain4f1ec.neonauth.c-4.us-east-1.aws.neon.tech`
+  → **ยืนยันว่าการคำนวณ issuer จาก origin ของ `NEON_AUTH_URL` ถูกต้อง**
+- `aud` มีค่าเท่ากับ `iss`
+- **ไม่มี claim ใดบอกสิทธิ์แอดมิน** → ยืนยันว่าการอ่าน `is_admin` จากฐานข้อมูลเป็นทางเดียวที่ทำได้
+
+### สิ่งที่ยังไม่ได้พิสูจน์ (บอกตรง ๆ)
+
+- **ยังไม่ได้ login ด้วย Google จริง** — token ที่ใช้ทดสอบมาจากการสมัคร email/password
+  (`spike-test@example.com`) ซึ่งเดินเส้นทางการออก JWT เดียวกัน แต่ **ไม่ได้พิสูจน์ว่า OAuth
+  กับ Google สำเร็จ** · จะพิสูจน์จริงตอน Task 5 (ในเครื่อง) และ Task 8 Step 7 (production)
+- **ยังไม่ได้ยืนยันชื่อคำสั่ง `authClient.signIn.social`** ของ `@neondatabase/neon-js`
+  → Task 5 Step 3 ต้องตรวจจากเอกสารของแพ็กเกจก่อนเขียน
+- user ทดสอบ `spike-test@example.com` ยังค้างอยู่บน branch ทดสอบ — หายไปเองพร้อม branch
+  วันที่ 2026-08-26
