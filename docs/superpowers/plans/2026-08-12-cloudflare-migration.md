@@ -29,12 +29,13 @@
 | ไฟล์ | หน้าที่ |
 |---|---|
 | `wrangler.jsonc` | config เดียวของทั้งระบบ — assets, container, DO binding, cron |
+| `worker-configuration.d.ts` | generate ด้วย `wrangler types` · gitignore ไว้ |
 | `worker/index.ts` | Container class + fetch handler + scheduled handler |
 | `worker/headers.ts` | security headers ทั้ง 2 ชุด (pure function ทดสอบได้โดยไม่ต้องมี runtime) |
 | `worker/headers.test.ts` | unit test ของ headers |
 | `worker/client-ip.ts` | normalize client IP ก่อนส่งเข้า container |
 | `worker/client-ip.test.ts` | unit test ของ client IP |
-| `package.json` (root) | wrangler + @cloudflare/containers + script deploy |
+| — | — |
 
 **แก้ไข:** `backend/internal/router/router.go:30` · `backend/internal/router/clientip_test.go` · `backend/internal/handler/health.go:72` · `.github/workflows/ci.yml` · `frontend/playwright.config.ts`
 
@@ -161,38 +162,60 @@ attribution จะพังโดยไม่มี error ให้เห็น"
 **เป้าหมาย:** ตอบคำถามเดียว — Go + pgx pool + migration-on-boot ขึ้นบน Containers ได้ไหม ถ้าไม่ได้ต้องรู้ตอนนี้ ไม่ใช่ตอนทำไปครึ่งทาง
 
 **Files:**
-- Create: `package.json` (root)
+- Modify: `package.json` (root — **มีอยู่แล้ว ห้ามเขียนทับ** ถือ husky/commitlint/lint-staged)
 - Create: `wrangler.jsonc`
 - Create: `worker/index.ts` (ฉบับ minimal — จะขยายใน Task 3)
 
 **Interfaces:**
 - Produces: `export class Backend extends Container` และ binding ชื่อ `BACKEND` — Task 3, 4, 5 ใช้ทั้งคู่
 
-- [ ] **Step 1: สร้าง package.json ที่ root**
+- [ ] **Step 1: แก้ `package.json` ที่ root — ห้ามสร้างทับ**
+
+⚠️ **ไฟล์นี้มีอยู่แล้วและ git ติดตามอยู่** มันถือ husky + commitlint + lint-staged ซึ่งเป็น hook ที่บังคับรูปแบบ commit ของทั้ง repo เขียนทับ = pre-commit hook พังทั้งโปรเจกต์
+
+**เพิ่ม** 4 key นี้เข้าไป โดยคง `private`, `devDependencies` เดิมทั้ง 4 ตัว, `lint-staged` และ `scripts.prepare` ไว้ครบ:
 
 ```json
 {
-  "name": "keep-px",
   "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "npm run build --prefix frontend",
-    "deploy": "npm run build && wrangler deploy",
-    "dev": "wrangler dev",
-    "test": "vitest run"
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "wrangler": "^4.42.0",
+    "vitest": "^4.0.18",
+    "typescript": "~5.9.3"
   },
   "dependencies": {
     "@cloudflare/containers": "^0.0.42"
   },
-  "devDependencies": {
-    "wrangler": "^4.42.0",
-    "vitest": "^4.0.18",
-    "typescript": "~5.9.3"
+  "lint-staged": {
+    "frontend/src/**/*.{ts,tsx}": [
+      "npx --prefix frontend eslint --fix --config frontend/eslint.config.js"
+    ]
+  },
+  "scripts": {
+    "prepare": "husky",
+    "build": "npm run build --prefix frontend",
+    "deploy": "npm run build && wrangler deploy",
+    "dev": "wrangler dev",
+    "test": "vitest run"
   }
 }
 ```
 
-**หมายเหตุ:** เวอร์ชันข้างบนเป็นค่าเริ่มต้น — รัน `npm install @cloudflare/containers wrangler` แล้วปล่อยให้ npm เลือกเวอร์ชันล่าสุด จากนั้นค่อยบันทึกค่าที่ได้จริงลงไฟล์
+⚠️ **ห้ามใส่ `"type": "module"`** — `commitlint.config.js` ที่ root ใช้ `module.exports` (CommonJS) การใส่ `type: module` จะทำให้ commit ทุกครั้งล้มด้วย `module is not defined` wrangler bundle โค้ด Worker เองอยู่แล้ว จึงไม่ต้องพึ่ง field นี้
+
+**หมายเหตุเวอร์ชัน:** เลข 3 ตัวใหม่ (`wrangler`, `vitest`, `@cloudflare/containers`) เป็นค่าตั้งต้น — รัน `npm install -D wrangler vitest typescript && npm install @cloudflare/containers` แล้วปล่อยให้ npm เลือกเวอร์ชันล่าสุด จากนั้นค่อยบันทึกค่าที่ได้จริง
+
+- [ ] **Step 1b: ยืนยันว่า commit hook ยังทำงาน**
+
+```bash
+git commit --allow-empty -m "test: verify commitlint still works" && git reset --hard HEAD~1
+```
+
+Expected: commit ผ่าน แล้วถูกถอยกลับ — ถ้าล้มด้วย `module is not defined` แปลว่าเผลอใส่ `type: module` เข้าไป
 
 - [ ] **Step 2: ติดตั้ง**
 
