@@ -36,6 +36,13 @@ func (m *MockCustomerRepo) GetByGoogleID(ctx context.Context, googleID string) (
 	}
 	return args.Get(0).(*domain.Customer), args.Error(1)
 }
+func (m *MockCustomerRepo) GetByAuthUserID(ctx context.Context, authUserID string) (*domain.Customer, error) {
+	args := m.Called(ctx, authUserID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Customer), args.Error(1)
+}
 func (m *MockCustomerRepo) GetByAPIKey(ctx context.Context, key string) (*domain.Customer, error) {
 	args := m.Called(ctx, key)
 	if args.Get(0) == nil {
