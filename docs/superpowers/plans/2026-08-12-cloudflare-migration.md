@@ -389,7 +389,7 @@ git commit -m "feat(infra): spike Go backend on Cloudflare Containers
 - Create: `worker/headers.test.ts`
 - Create: `worker/client-ip.ts`
 - Create: `worker/client-ip.test.ts`
-- Create: `vitest.config.ts` (root)
+- Create: `vitest.config.mts` (root)
 
 **Interfaces:**
 - Consumes: ไม่มี (pure functions)
@@ -452,9 +452,11 @@ describe("applySecurityHeaders", () => {
 });
 ```
 
-- [ ] **Step 2: สร้าง vitest.config.ts แล้วรัน test ให้ fail**
+- [ ] **Step 2: สร้าง vitest.config.mts แล้วรัน test ให้ fail**
 
-`vitest.config.ts`:
+`vitest.config.mts`:
+
+⚠️ ต้องเป็นนามสกุล `.mts` ไม่ใช่ `.ts` — root `package.json` ไม่มี `"type": "module"` และใส่ไม่ได้เพราะ `commitlint.config.js` เป็น CommonJS ถ้าใช้ `.ts` vitest จะเตือน *"ESM syntax in a file loaded as CommonJS"* ทุกครั้งที่รัน test
 
 ```ts
 import { defineConfig } from "vitest/config";
@@ -644,7 +646,7 @@ Expected: PASS ทั้ง 9 เคส (headers 5 + client-ip 4)
 - [ ] **Step 9: Commit**
 
 ```bash
-git add worker/headers.ts worker/headers.test.ts worker/client-ip.ts worker/client-ip.test.ts vitest.config.ts
+git add worker/headers.ts worker/headers.test.ts worker/client-ip.ts worker/client-ip.test.ts vitest.config.mts
 git commit -m "feat(worker): port nginx security headers and client IP guard to Worker
 
 headers ทั้ง 7 ตัวย้ายมาจาก nginx.conf ครบ แยก 2 ชุดเหมือนเดิม

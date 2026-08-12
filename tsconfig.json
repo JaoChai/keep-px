@@ -10,5 +10,5 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true
   },
-  "include": ["worker/**/*.ts", "worker-configuration.d.ts", "vitest.config.ts"]
+  "include": ["worker/**/*.ts", "worker-configuration.d.ts", "vitest.config.mts"]
 }
