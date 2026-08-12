@@ -32,6 +32,11 @@ export class Backend extends Container {
     BASE_URL: env.BASE_URL,
     FRONTEND_URL: env.FRONTEND_URL,
     CORS_ALLOWED_ORIGINS: env.CORS_ALLOWED_ORIGINS,
+    // Non-secret tuning from wrangler.jsonc `vars`. config.go has an envDefault
+    // for each, so omitting them here is silent drift rather than a startup error.
+    JWT_REFRESH_TTL: env.JWT_REFRESH_TTL,
+    DB_MAX_CONNS: env.DB_MAX_CONNS,
+    DB_MIN_CONNS: env.DB_MIN_CONNS,
   };
 
   override onError(error: unknown) {
