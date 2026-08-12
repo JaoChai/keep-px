@@ -6,6 +6,14 @@
 # Hook is intentionally advisory: prints warnings but does not block commits,
 # to allow gradual adoption while the codebase still has known regressions.
 react_doctor_scan_staged_files() {
+  # React lives only under frontend/. Worker and backend commits stage files
+  # from a package.json with no React dependency, which makes react-doctor
+  # abort with an error instead of scanning. Skip it when nothing under
+  # frontend/ is staged.
+  if ! git diff --cached --name-only --diff-filter=ACMR | grep -q '^frontend/'; then
+    return 0
+  fi
+
   if [ -x "./frontend/node_modules/.bin/react-doctor" ]; then
     "./frontend/node_modules/.bin/react-doctor" --staged --fail-on warning
     return
