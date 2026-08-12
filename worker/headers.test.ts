@@ -44,4 +44,10 @@ describe("applySecurityHeaders", () => {
     const res = new Response("x", { headers: { "Content-Type": "text/html" } });
     expect(applySecurityHeaders(res, "/").headers.get("Content-Type")).toBe("text/html");
   });
+
+  it("CSP ยอมให้ต่อ Neon Auth และไม่เหลือ Google Sign-In", () => {
+    const csp = headersFor("/dashboard").get("Content-Security-Policy")!;
+    expect(csp).toContain("*.neon.tech");
+    expect(csp).not.toContain("accounts.google.com");
+  });
 });

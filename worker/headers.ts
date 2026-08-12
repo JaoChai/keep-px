@@ -1,9 +1,9 @@
 const DASHBOARD_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' js.stripe.com connect.facebook.net accounts.google.com",
-  "style-src 'self' 'unsafe-inline' fonts.googleapis.com accounts.google.com",
-  "connect-src 'self' accounts.google.com js.stripe.com",
-  "frame-src js.stripe.com accounts.google.com",
+  "script-src 'self' 'unsafe-inline' js.stripe.com connect.facebook.net",
+  "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
+  "connect-src 'self' *.neon.tech js.stripe.com",
+  "frame-src js.stripe.com",
   "img-src 'self' data: *.googleusercontent.com *.r2.dev",
   "font-src 'self' data: fonts.gstatic.com",
 ].join("; ");
