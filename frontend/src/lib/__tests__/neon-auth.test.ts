@@ -1,5 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
+// mock ที่ระดับ SDK แทนที่จะ mock fetch ตรง ๆ — เพราะตอนนี้ getAccessToken() ไม่ได้ยิง
+// fetch เอง แต่เรียกผ่าน neon.getJWTToken() ของ SDK (ดูคอมเมนต์ใน neon-auth.ts)
+const getJWTToken = vi.fn()
+vi.mock('@neondatabase/neon-js/auth', () => ({
+  createInternalNeonAuth: vi.fn(() => ({
+    adapter: {},
+    getJWTToken,
+  })),
+}))
+
 // โหลด module ใหม่ทุก test (reset cache `cached` ของ getAccessToken) หลัง stub env
 // เพราะ neon-auth.ts อ่าน VITE_NEON_AUTH_URL ตอน module-load แล้ว throw ถ้าไม่ได้ตั้ง
 let mod: typeof import('@/lib/neon-auth')
@@ -24,7 +34,7 @@ describe('getAccessToken', () => {
     vi.stubEnv('VITE_NEON_AUTH_URL', 'https://auth.test')
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
-    vi.stubGlobal('fetch', vi.fn())
+    getJWTToken.mockReset()
     vi.resetModules()
     mod = await import('@/lib/neon-auth')
   })
@@ -38,60 +48,61 @@ describe('getAccessToken', () => {
   it('returns cached token without refetching while valid', async () => {
     const now = Date.now()
     const token = makeJwt(now / 1000 + 600) // หมดอายุใน 600 วิ
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ token }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-    )
+    getJWTToken.mockResolvedValue(token)
 
     const first = await mod.getAccessToken()
     expect(first).toBe(token)
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(getJWTToken).toHaveBeenCalledTimes(1)
 
-    // เรียกซ้ำตอน cache ยัง valid → ต้องไม่ fetch ใหม่
+    // เรียกซ้ำตอน cache ยัง valid → ต้องไม่เรียก getJWTToken ใหม่
     const second = await mod.getAccessToken()
     expect(second).toBe(token)
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(getJWTToken).toHaveBeenCalledTimes(1)
   })
 
   it('refetches when token is within 60s of expiry', async () => {
     const now = Date.now()
     const token = makeJwt(now / 1000 + 600) // expiresAt = now + 600_000ms
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ token }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-    )
+    getJWTToken.mockResolvedValue(token)
 
     await mod.getAccessToken() // เติม cache
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(getJWTToken).toHaveBeenCalledTimes(1)
 
     // เดินเวลาไปจนเหลือเพดาน 60 วิ (expiresAt - 60_000 = now + 540_000)
     vi.advanceTimersByTime(540_000)
 
     await mod.getAccessToken()
-    expect(fetch).toHaveBeenCalledTimes(2) // cache miss → fetch ใหม่
+    expect(getJWTToken).toHaveBeenCalledTimes(2) // cache miss → เรียกใหม่
   })
 
-  it('returns null (no throw) when /token responds not-ok', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ message: 'Unauthorized', code: 'UNAUTHORIZED' }), {
-        status: 401,
-        headers: { 'content-type': 'application/json' },
-      }),
-    )
+  it('returns null (no throw) when getJWTToken resolves null', async () => {
+    // ไม่มี session ที่ยัง valid — SDK คืน null ตามสัญญาของมันเอง (ไม่ throw)
+    getJWTToken.mockResolvedValue(null)
 
     await expect(mod.getAccessToken()).resolves.toBeNull()
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(getJWTToken).toHaveBeenCalledTimes(1)
   })
 
-  it('returns null (no throw) when fetch rejects', async () => {
+  it('returns null (no throw) when getJWTToken rejects', async () => {
     // network/CORS failure — getAccessToken ต้องไม่ throw ต่อ (สัญญา Promise<string|null>)
-    vi.mocked(fetch).mockRejectedValue(new Error('network down'))
+    getJWTToken.mockRejectedValue(new Error('network down'))
 
     await expect(mod.getAccessToken()).resolves.toBeNull()
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(getJWTToken).toHaveBeenCalledTimes(1)
+  })
+
+  // กันถอยหลัง: ถ้าใครเปลี่ยน getAccessToken() กลับไปยิง authClient.$fetch('/token') เอง
+  // (แบบที่ PR #226 เคยทำ ซึ่งพังเพราะ /token ไม่ใช่ endpoint จริงของ SDK เวอร์ชันนี้ — ดูคอมเมนต์
+  // ใน neon-auth.ts) test นี้ต้องแดง เพราะ mock ของ authClient ด้านบนไม่มีเมธอด $fetch ให้เรียก
+  // และไม่ควรมี fetch ตรง ๆ เกิดขึ้นเลยในเส้นทางนี้
+  it('never calls fetch directly — must go through SDK getJWTToken()', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    getJWTToken.mockResolvedValue(makeJwt(Date.now() / 1000 + 600))
+
+    await mod.getAccessToken()
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(getJWTToken).toHaveBeenCalledTimes(1)
   })
 })
