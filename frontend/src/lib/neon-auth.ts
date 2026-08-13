@@ -1,17 +1,23 @@
-import { createAuthClient } from '@neondatabase/neon-js/auth'
+import { createInternalNeonAuth } from '@neondatabase/neon-js/auth'
 
 const authURL = import.meta.env.VITE_NEON_AUTH_URL
 if (!authURL) {
   throw new Error('ไม่ได้ตั้งค่า VITE_NEON_AUTH_URL')
 }
 
-export const authClient = createAuthClient(authURL)
+const neon = createInternalNeonAuth(authURL)
+
+// authClient คือ Better Auth adapter ตัวเดิม — signIn.social/signOut ฯลฯ ใช้งานเหมือนเดิมทุกอย่าง
+export const authClient = neon.adapter
 
 // ---------------------------------------------------------------------------
-// JWT ที่ backend ตรวจได้ **ไม่ใช่** ค่าที่ getSession() คืนมา
-// getSession().session.token เป็น session token ทึบ ๆ ที่ตรวจกับ JWKS ไม่ได้
-// ตัว JWT จริงต้องขอจาก endpoint /token แยกต่างหาก (spike ยืนยันแล้ว)
-// และมันอายุแค่ 15 นาที จึงต้อง cache ไว้แล้วขอใหม่ก่อนหมดอายุ
+// getJWTToken() คือ API ทางการของ SDK สำหรับเอา JWT ไปยิง backend ด้วย Authorization: Bearer
+// (ยืนยันแล้วด้วยการ login จริงในเครื่อง + decode + verify กับ JWKS endpoint — signature ผ่าน)
+// ภายในมันเรียก getSession() ซึ่งดูเหมือนคืน session token ทึบ ๆ แต่จริง ๆ แล้ว SDK มี onSuccess
+// hook ที่อ่าน header `set-auth-jwt` จาก response แล้ว inject ทับ session.token — ค่าที่ได้จึงเป็น
+// JWT จริงเสมอ ไม่ใช่ opaque token (เดิมเข้าใจผิดว่าต้องยิง endpoint /token เองแยกต่างหาก ซึ่งพัง
+// เพราะ /token ไม่ใช่ endpoint ของ SDK เวอร์ชันนี้เลย ใช้ authClient.$fetch('/token') ไม่ได้)
+// อายุ token 15 นาที จึงต้อง cache ไว้แล้วขอใหม่ก่อนหมดอายุ
 // ---------------------------------------------------------------------------
 let cached: { token: string; expiresAt: number } | null = null
 
@@ -33,18 +39,14 @@ export async function getAccessToken(): Promise<string | null> {
   }
 
   try {
-    // ต้องยิงผ่าน authClient.$fetch (ไม่ใช่ fetch() ตรง ๆ) — SDK จะอ่าน query param
-    // `neon_auth_session_verifier` จาก URL แล้วแนบเข้า request นี้ให้อัตโนมัติ
-    // จำเป็นสำหรับ request แรกหลัง redirect กลับจาก OAuth ถ้ายิง fetch() ตรง ๆ
-    // param นี้จะหายไป ฝั่ง Neon หา session challenge cookie คู่กันไม่เจอ → 401 ตลอด
-    const { data } = await authClient.$fetch<{ token: string }>('/token')
-    if (!data) {
+    const token = await neon.getJWTToken()
+    if (!token) {
       cached = null
       return null
     }
-    const payload = decodeJwtPayload(data.token)
-    cached = { token: data.token, expiresAt: payload.exp * 1000 }
-    return data.token
+    const payload = decodeJwtPayload(token)
+    cached = { token, expiresAt: payload.exp * 1000 }
+    return token
   } catch {
     cached = null
     return null
