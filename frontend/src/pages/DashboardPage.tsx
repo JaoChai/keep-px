@@ -532,7 +532,7 @@ export function DashboardPage() {
       {showOnboarding && <OnboardingWizard />}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      <div className="stagger-in grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <StatCard
           title="พิกเซลที่ใช้งาน"
           value={`${stats?.active_pixels ?? 0}/${stats?.total_pixels ?? 0}`}

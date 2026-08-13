@@ -30,6 +30,31 @@ button:not(:disabled),
   cursor: pointer;
 }
 
+/* การ์ดไล่กันเข้ามาตอนเนื้อหาโหลดเสร็จ — บอกลำดับการอ่านว่าให้กวาดตาจากซ้ายไปขวา
+   `backwards` ทำให้ตัวที่ยังไม่ถึงคิวซ่อนไว้ก่อน ไม่งั้นมันจะโผล่มาก่อนแล้วค่อยเด้ง */
+.stagger-in > * {
+  animation: fadeInUp 0.4s cubic-bezier(0.34, 1.28, 0.64, 1) backwards;
+}
+.stagger-in > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-in > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-in > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-in > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-in > *:nth-child(n + 6) { animation-delay: 300ms; }
+
+/* กันไว้ชั้นเดียวให้ทั้งระบบ — motion ที่เพิ่มทีหลังไม่ต้องมาใส่ motion-reduce: ทีละจุด
+   ไม่ใช้ animation: none เพราะจะทำให้ `backwards` ค้าง element ไว้ที่เฟรมแรก (มองไม่เห็น) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 .login-grid-pattern {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1px),
