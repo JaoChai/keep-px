@@ -22,6 +22,14 @@
   --font-sans: 'Inter', 'Noto Sans Thai', sans-serif;
 }
 
+/* Tailwind v4 preflight ตัด `button { cursor: pointer }` ออก (v3 มี default นี้) ใส่ base rule
+   นี้แทนการไล่เติม cursor-pointer ทีละไฟล์ เพราะปุ่มที่กดได้ในโปรเจกต์นี้เกือบทั้งหมดเป็น
+   native <button> หรือ Radix trigger ที่ render เป็น <button> อยู่แล้ว (Switch, Select, ฯลฯ) */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
 .login-grid-pattern {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1px),
