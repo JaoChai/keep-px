@@ -5,7 +5,12 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn("rounded-xl border border-border bg-card text-card-foreground shadow", className)}
+      className={cn(
+        // ไม่ใส่ hover ไว้ตรงนี้ — การ์ดส่วนใหญ่กดไม่ได้ ถ้ายกตัวตอน hover จะหลอกว่ากดได้
+        // ใส่แค่ transition ไว้ให้ การ์ดที่กดได้จริงค่อยเติม hover:shadow-md เองที่ปลายทาง
+        "rounded-xl border border-border bg-card text-card-foreground shadow transition-shadow duration-200",
+        className,
+      )}
       {...props}
     />
   )
