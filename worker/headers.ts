@@ -1,6 +1,6 @@
 const DASHBOARD_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' js.stripe.com connect.facebook.net",
+  "script-src 'self' 'unsafe-inline' js.stripe.com connect.facebook.net static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
   "connect-src 'self' *.neon.tech js.stripe.com",
   "frame-src js.stripe.com",
@@ -10,7 +10,7 @@ const DASHBOARD_CSP = [
 
 const SALE_PAGE_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
   "connect-src 'self'",
   "img-src * data:",

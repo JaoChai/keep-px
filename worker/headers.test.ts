@@ -50,4 +50,12 @@ describe("applySecurityHeaders", () => {
     expect(csp).toContain("*.neon.tech");
     expect(csp).not.toContain("accounts.google.com");
   });
+
+  it("CSP ยอมให้โหลด Cloudflare Web Analytics beacon ทั้ง dashboard และ sale page", () => {
+    for (const p of ["/dashboard", "/p/x"]) {
+      expect(headersFor(p).get("Content-Security-Policy")).toContain(
+        "static.cloudflareinsights.com",
+      );
+    }
+  });
 });
